@@ -1,0 +1,52 @@
+{
+  "name": "cross-platform-tasks-poc",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build",
+    "build:e2e": "tsc --noEmit && vite build --mode e2e",
+    "preview": "vite preview --host 0.0.0.0",
+    "test:e2e": "wdio run ./wdio.conf.ts",
+    "test:e2e:visual": "HEADLESS=false npm run test:e2e",
+    "test:e2e:playwright": "playwright test",
+    "test:e2e:playwright:visual": "HEADLESS=false playwright test --headed",
+    "test:e2e:visual:edit": "HEADLESS=false wdio run ./wdio.conf.ts --mochaOpts.grep \"move o polígono\"",
+    "test:e2e:electron": "npm run build:e2e && wdio run ./wdio.electron.conf.ts",
+    "test:e2e:android": "wdio run ./wdio.android.conf.ts",
+    "test:e2e:android:build": "npm run build:e2e && cap sync android && cd android && ./gradlew assembleDebug",
+    "test:e2e:watch": "wdio run ./wdio.conf.ts --watch",
+    "electron:dev": "electron ./electron/main.cjs",
+    "electron:build": "npm run build && electron-builder --win --x64",
+    "android:sync": "npm run build && cap sync android",
+    "android:open": "cap open android"
+  },
+  "dependencies": {
+    "@arcgis/core": "latest",
+    "@capacitor/android": "latest",
+    "@capacitor/core": "latest",
+    "lucide": "^1.47.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "latest",
+    "@playwright/test": "^1.63.0",
+    "@types/node": "latest",
+    "@vitejs/plugin-basic-ssl": "latest",
+    "@wdio/cli": "latest",
+    "@wdio/globals": "latest",
+    "@wdio/local-runner": "latest",
+    "@wdio/mocha-framework": "latest",
+    "@wdio/spec-reporter": "latest",
+    "@wdio/visual-service": "latest",
+    "appium": "^3.7.0",
+    "appium-uiautomator2-driver": "^8.7.0",
+    "electron": "44.4.3",
+    "electron-builder": "latest",
+    "typescript": "latest",
+    "vite": "latest",
+    "vite-plugin-pwa": "latest",
+    "wdio-electron-service": "^9.2.1",
+    "webdriverio": "latest"
+  }
+}
