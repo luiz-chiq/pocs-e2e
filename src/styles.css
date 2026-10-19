@@ -224,3 +224,5 @@ dialog p { margin: 12px 0 0; color: var(--muted); font-size: .85rem; line-height
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
 }
+.polygon-file-actions { display: flex; gap: 8px; }
+.polygon-file-actions > button { flex: 1; min-width: 0; }

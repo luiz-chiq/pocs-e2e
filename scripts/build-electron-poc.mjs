@@ -12,7 +12,7 @@ const staging = resolve('test-results/electron-staging')
 await rm(staging, { recursive: true, force: true })
 await mkdir(staging, { recursive: true })
 for (const path of ['dist', 'electron', 'public/icons']) await cp(path, resolve(staging, path), { recursive: true })
-await writeFile(resolve(staging, 'package.json'), JSON.stringify({ name: 'poligonos-poc', version: '0.1.0', main: 'electron/main.cjs', description: 'Editor de polígonos — POCs E2E', author: 'POC E2E' }, null, 2))
+await writeFile(resolve(staging, 'package.json'), JSON.stringify({ name: 'poligonos-poc', version: '0.1.0', main: 'electron/main.cjs', description: 'Editor de polígonos — POCs E2E', author: 'POC E2E', polygonE2E: true }, null, 2))
 const { version } = JSON.parse(await readFile('node_modules/electron/package.json', 'utf8'))
 const config = resolve('test-results/electron-poc-builder.json')
 await writeFile(config, JSON.stringify({

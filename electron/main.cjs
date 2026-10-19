@@ -1,4 +1,5 @@
-const { app, BrowserWindow, net, protocol } = require('electron')
+const { app, BrowserWindow, net, protocol, ipcMain, dialog } = require('electron')
+const { registerPolygonFiles } = require('./polygon-files.cjs')
 const path = require('node:path')
 const { pathToFileURL } = require('node:url')
 
@@ -19,12 +20,16 @@ function createWindow() {
     height: 800,
     useContentSize: true,
     icon: path.join(__dirname, '../public/icons/pwa-512.png'),
-    webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false }
+    webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, preload: path.join(__dirname, 'preload.cjs') }
   })
   return window.loadURL(`${origin}/`)
 }
 
 app.whenReady().then(() => {
+  const fileDialog = require('../package.json').polygonE2E === true && process.env.POLYGON_E2E_DIALOG_PLAN
+    ? require('./testing/dialogs.cjs')(dialog, process.env.POLYGON_E2E_DIALOG_PLAN)
+    : dialog
+  registerPolygonFiles({ ipcMain, BrowserWindow, dialog: fileDialog, origin })
   protocol.handle('poligonos', (request) => {
     const url = new URL(request.url)
     if (url.host !== 'app') return new Response('Not found', { status: 404 })
@@ -41,3 +46,16 @@ app.whenReady().then(() => {
   app.exit(1)
 })
 app.on('window-all-closed', () => app.quit())
+
+app.on('web-contents-created', (_event, contents) => {
+  const trusted = (value) => {
+    try {
+      const url = new URL(value)
+      return `${url.protocol}//${url.host}` === origin && (url.pathname === '/' || url.pathname === '/index.html')
+    } catch { return false }
+  }
+  contents.on('will-navigate', (event, url) => { if (!trusted(url)) event.preventDefault() })
+  contents.setWindowOpenHandler(({ url }) => trusted(url)
+    ? { action: 'allow', overrideBrowserWindowOptions: { webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false } } }
+    : { action: 'deny' })
+})

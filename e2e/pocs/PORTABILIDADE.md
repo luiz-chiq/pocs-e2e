@@ -1,6 +1,6 @@
 ### O que foi reaproveitado nesta POC
 
-As três POCs têm **implementações de testes independentes**. Foram reaproveitados o plano e os critérios funcionais; o código que opera a interface foi escrito para cada ferramenta. Não há um teste de WebdriverIO sendo executado por Playwright ou Selenium, nem conversão automática entre eles.
+No catálogo original C/D, as três POCs têm **implementações de testes independentes**. Foram reaproveitados o plano e os critérios funcionais; o código que opera a interface foi escrito para cada ferramenta. Não há um teste de WebdriverIO sendo executado por Playwright ou Selenium, nem conversão automática entre eles. A rodada adicional N01–N05 de arquivos Electron adota outro desenho, explicado no final deste documento.
 
 | Camada | Como ficou nesta POC | Evidência no projeto |
 | --- | --- | --- |
@@ -49,7 +49,7 @@ Essas decisões pertencem à implementação desta POC, não são imposições u
 
 Selenium → WebdriverIO pode reaproveitar parte da configuração conceitual de WebDriver/Appium; as chamadas do cliente, asserções e lifecycle ainda mudam. Playwright → Selenium/WebdriverIO também exige adaptar fixtures/contextos e a integração de protocolo. Dentro de uma mesma ferramenta, esta POC reutiliza boa parte do corpo dos cenários entre plataformas, com branches e adaptadores para lançamento, toque, persistência e janelas.
 
-Para reduzir custo futuro, seria possível definir ações de domínio como `criarPoligono` e implementar um adaptador por ferramenta. Essa abstração **não foi criada para unificar as três suítes nesta POC**: manter execuções independentes permite observar as diferenças, mas duplica parte da manutenção. Não foi medido o tempo de desenvolvimento/migração nem um percentual de reaproveitamento de código; os tempos do relatório são de execução dos testes.
+No catálogo original C/D, seria possível definir ações de domínio como `criarPoligono` e implementar um adaptador por ferramenta. Essa abstração **não foi criada para unificar as três suítes C/D**: manter execuções independentes permite observar as diferenças, mas duplica parte da manutenção. A nova suíte N01–N05 adota adaptadores compartilhando os cenários. Não foi medido o tempo de desenvolvimento/migração nem um percentual de reaproveitamento de código; os tempos do relatório são de execução dos testes.
 
 ### Exemplo observado na correção dos adaptadores
 
@@ -62,3 +62,19 @@ o mouse ganhou um intervalo de hover antes de pressionar. São correções nos
 adaptadores específicos, sem reescrever o roteiro de negócio ou aplicar uma
 conversão automática às três ferramentas. Os resultados e os tempos dessa
 revalidação ficam separados da rodada comparativa original.
+
+### Rodada adicional de arquivos Electron
+
+Em [electron-files.test.ts](electron-files.test.ts), os cinco cenários N01–N05
+e suas asserções são compartilhados entre os três clientes, com runner Node Test
+e adaptadores de lançamento, clique, leitura, reload e troca de janela. Playwright
+usa `_electron`; Selenium usa `Builder`/ChromeDriver; WebdriverIO usa `remote` com
+ChromeDriver. Os testes continuam em TypeScript. Essa abstração foi criada para
+a nova funcionalidade; as suítes C/D não foram convertidas para ela.
+
+Os dados de entrada são arquivos de teste. A escolha do caminho no diálogo é
+simulada exclusivamente na build POC; importar e exportar continuam sendo ações
+reais pelos botões, preload, IPC e `fs` do main. O runner lê o arquivo de saída
+para conferir seu conteúdo. Há um processo/perfil novo por caso nas três
+ferramentas, diferente do isolamento da suíte WDIO original. Por isso, seus tempos
+ficam [separados](ELECTRON-ARQUIVOS.md) das métricas C/D anteriores.

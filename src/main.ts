@@ -1,7 +1,7 @@
 import '@arcgis/core/assets/esri/themes/light/main.css'
 import Map from '@arcgis/core/Map.js'
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer.js'
-import WebTileLayer from '@arcgis/core/layers/WebTileLayer.js'
+import TileLayer from '@arcgis/core/layers/TileLayer.js'
 import MapView from '@arcgis/core/views/MapView.js'
 import SketchViewModel from '@arcgis/core/widgets/Sketch/SketchViewModel.js'
 import Graphic from '@arcgis/core/Graphic.js'
@@ -13,13 +13,24 @@ import HighlightOptions from '@arcgis/core/views/support/HighlightOptions.js'
 import type GraphicsLayerView from '@arcgis/core/views/layers/GraphicsLayerView.js'
 import { watch } from '@arcgis/core/core/reactiveUtils.js'
 import { Capacitor } from '@capacitor/core'
-import { Check, ChevronRight, Download, ExternalLink, Focus, Minus, PanelsTopLeft, Pencil, Plus, Trash2, VectorPolygon, X, createIcons } from 'lucide'
+import { Check, ChevronRight, Download, ExternalLink, Focus, FolderOpen, Minus, PanelsTopLeft, Pencil, Plus, Save, Trash2, VectorPolygon, X, createIcons } from 'lucide'
 import { createId, DetachedMap } from './detached-map'
 import { attachCompass } from './compass'
 
+const fileActions = document.querySelector<HTMLDivElement>('#polygon-file-actions')!
+const importButton = document.querySelector<HTMLButtonElement>('#import-polygons')!
+const exportButton = document.querySelector<HTMLButtonElement>('#export-polygons')!
+let fileOperationPending = false
+
 const layer = new GraphicsLayer({ title: 'Polígonos' })
 const map = new Map({
-  basemap: { baseLayers: [new WebTileLayer({ urlTemplate: 'https://tile.openstreetmap.org/{level}/{col}/{row}.png', copyright: '© OpenStreetMap contributors' })] },
+  basemap: {
+    title: 'Satélite — Esri World Imagery',
+    baseLayers: [new TileLayer({
+      url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer',
+      title: 'Esri World Imagery'
+    })]
+  },
   layers: [layer]
 })
 const view = new MapView({ container: 'map', map, center: [-46.6333, -23.5505], zoom: 11, constraints: { snapToZoom: false } })
@@ -108,6 +119,7 @@ type MapCommand =
   | { type: 'select' | 'edit' | 'expand'; id: string }
   | { type: 'delete'; id: string | 'all' }
   | { type: 'rename'; id: string; value: string; changeId: string }
+  | { type: 'import'; polygons: PolygonFileData[]; fileName: string }
 interface MapState {
   polygons: PolygonJSON[]
   committed: PolygonJSON[]
@@ -144,6 +156,7 @@ const detachedMap = new DetachedMap<MapState, MapCommand>({
   }),
   applyState: applyWindowState,
   executeCommand: (command) => {
+    if (command.type === 'import') addImportedPolygons(command.polygons, command.fileName)
     if (command.type === 'draw') void beginDrawing()
     if (command.type === 'finish') finishButton.click()
     if (command.type === 'cancel') cancelButton.click()
@@ -305,6 +318,11 @@ function scheduleMapLabels() {
 }
 
 function updateWindowControls() {
+  fileActions.hidden = !window.polygonFiles || windowMode === 'map'
+  const fileWaiting = fileOperationPending || !mapInitialized || activeAction !== null || (windowMode === 'detached' && !windowConnected)
+  importButton.disabled = fileWaiting
+  exportButton.disabled = fileWaiting || committedPolygons.length === 0
+  fileActions.setAttribute('aria-busy', String(fileOperationPending))
   detachButton.disabled = !mapInitialized || activeAction !== null
   detachButton.title = activeAction ? 'Conclua ou cancele a ação atual antes de separar o mapa' : 'Abrir o mapa em outra janela'
   const waiting = windowMode === 'detached' && !windowConnected
@@ -530,7 +548,7 @@ async function persistPolygons(polygons: ReturnType<Graphic['toJSON']>[]) {
 }
 
 function renderIcons() {
-  createIcons({ icons: { Check, ChevronRight, Download, ExternalLink, Focus, Minus, PanelsTopLeft, Pencil, Plus, Trash2, VectorPolygon, X } })
+  createIcons({ icons: { Check, ChevronRight, Download, ExternalLink, Focus, FolderOpen, Minus, PanelsTopLeft, Pencil, Plus, Save, Trash2, VectorPolygon, X } })
 }
 
 function updateSelectionHighlight() {
@@ -589,6 +607,64 @@ function syncCommittedPolygons() {
   pendingPersistence = persistPolygons(committedPolygons)
   return pendingPersistence
 }
+
+function fileFeedback(text: string) {
+  windowFeedback.textContent = text
+  windowFeedback.hidden = false
+}
+
+function addImportedPolygons(polygons: PolygonFileData[], fileName: string) {
+  if (activeAction) {
+    fileFeedback('Conclua ou cancele a edição antes de importar. Nenhum polígono foi acrescentado.')
+    return
+  }
+  const imported = polygons.map((polygon) => new Graphic({
+    geometry: new Polygon(polygon.geometry),
+    attributes: { polygonId: createId(), name: polygon.name },
+    symbol: sketch.polygonSymbol.clone()
+  }))
+  // Construir todo o lote antes de alterar a coleção. IDs novos evitam colisões ao reimportar.
+  layer.addMany(imported)
+  selectedGraphic = imported[0] ?? null
+  expandedGraphic = selectedGraphic
+  setWarning(false)
+  message.textContent = `${imported.length} polígono(s) importado(s) de ${fileName}.`
+  void syncCommittedPolygons()
+  render()
+  void view.goTo(imported).catch(() => { /* O usuário pode interromper o enquadramento. */ })
+}
+
+async function polygonFileOperation(action: 'import' | 'export') {
+  if (!window.polygonFiles || fileOperationPending || activeAction) return
+  fileOperationPending = true
+  windowFeedback.hidden = true
+  updateWindowControls()
+  try {
+    const result = action === 'import'
+      ? await window.polygonFiles.importPolygons()
+      : await window.polygonFiles.exportPolygons(committedPolygons.map((polygon) => ({
+        name: polygon.attributes.name, geometry: polygon.geometry
+      })))
+    if (result.status === 'cancelled') {
+      fileFeedback(action === 'import' ? 'Importação cancelada.' : 'Exportação cancelada.')
+    } else if (result.status === 'error') {
+      fileFeedback(result.message)
+    } else if (action === 'export') {
+      fileFeedback(`${result.count} polígono(s) exportado(s) para ${result.fileName}.`)
+    } else if (result.polygons) {
+      const command = { type: 'import' as const, polygons: result.polygons, fileName: result.fileName }
+      if (!detachedMap.command(command)) addImportedPolygons(command.polygons, command.fileName)
+    }
+  } catch {
+    fileFeedback('Não foi possível concluir a operação de arquivo. Tente novamente.')
+  } finally {
+    fileOperationPending = false
+    updateWindowControls()
+  }
+}
+
+importButton.addEventListener('click', () => { void polygonFileOperation('import') })
+exportButton.addEventListener('click', () => { void polygonFileOperation('export') })
 
 function restoreCommittedPolygons() {
   const selectedId = graphicId(selectedGraphic)

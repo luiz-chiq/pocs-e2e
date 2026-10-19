@@ -14,6 +14,26 @@ de cada combinação em todas as tabelas e nos testes individuais. A origem fica
 indicada; resultados substituídos são apresentados somente nos arquivos históricos.
 Percentuais exigem as três ferramentas da plataforma na mesma rodada.
 
+Depois dessas rodadas, o fundo foi trocado para Esri World Imagery. A
+[verificação posterior do satélite](MAPA-SATELITE.md) usa Chrome e Electron,
+com imagens reais e duas janelas. Ela não representa uma nova execução completa
+do catálogo comparativo nem uma atualização do deploy.
+
+A funcionalidade de importar/exportar arquivos pelo processo principal do
+Electron tem [relatório adicional](ELECTRON-ARQUIVOS.md), com cinco cenários por
+ferramenta, tempos e limites. Para executar no app empacotado:
+
+```bash
+npm run electron:build:poc
+npm run test:poc:electron:files
+npm run test:electron:files
+```
+
+O segundo comando usa Playwright, Selenium e WebdriverIO sequencialmente. A
+seleção do caminho no diálogo é simulada; IPC, validação e operações de disco são
+reais. A build normal usa os diálogos nativos. Essa suíte adicional não está
+incluída no comando original `test:poc:electron`, que executa o catálogo C/D.
+
 ## Suítes web implementadas
 
 Três implementações independentes: WebdriverIO, Selenium e Playwright.

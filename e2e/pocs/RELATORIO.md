@@ -1,6 +1,8 @@
 # Relatório completo das POCs E2E — situação atual
 
-Atualizado em 19/10/2026, 10:33:45 (São Paulo). [Versão direta](RELATORIO-DIRETO.md).
+Atualizado em 19/10/2026, 19:07:09 (São Paulo). [Versão direta](RELATORIO-DIRETO.md).
+
+**Mudança posterior do mapa-base:** o app passou a usar Esri World Imagery. A [verificação adicional de satélite](MAPA-SATELITE.md) cobre Chrome e Electron com duas janelas, separadamente dos catálogos C/D e N abaixo. Não houve nova rodada completa das quatro plataformas nem atualização do deploy.
 
 ## Sumário
 
@@ -16,9 +18,12 @@ Atualizado em 19/10/2026, 10:33:45 (São Paulo). [Versão direta](RELATORIO-DIRE
 - [Portabilidade](#portabilidade)
 - [Limitações e escopo](#limitações-e-escopo)
 - [Ambiente e evidências](#ambiente-e-evidências)
+- [Arquivos no processo principal do Electron](#arquivos-no-processo-principal-do-electron)
 - [Histórico separado](#histórico-separado)
 
 ## Resumo atual
+
+**Nova cobertura:** os testes N01–N05 de arquivos no processo principal Electron estão na [rodada adicional](#arquivos-no-processo-principal-do-electron), separados dos 150 casos C/D abaixo.
 
 **147 aprovações, 3 falhas e 0 sem validação concluída**, de 150 casos previstos. 3 falhas são o bug intencional C10 mouse; 0 são outras falhas.
 
@@ -38,10 +43,10 @@ Este é o consolidado mais recente das 12 combinações. Cada combinação usa a
 | --- | --- | --- | --- |
 | Web | 1 min 18,49 s | 1 min 48,04 s | 2 min 16,55 s |
 | PWA instalado | 1 min 19,55 s | 1 min 41,03 s | 1 min 35,74 s |
-| Electron | 1 min 2,55 s | 1 min 20,58 s | 1 min 5,99 s |
+| Electron | 1 min 2,25 s | 1 min 20,26 s | 1 min 4,36 s |
 | APK Android | 5 min 26,90 s | 8 min 14,45 s | 7 min 29,93 s |
 
-Cada célula mostra o tempo de execução da suíte/comando daquela ferramenta e plataforma. Inclui inicialização, sessões, testes e encerramento internos ao comando; exclui build, preparação externa e limpeza externa. PWA e Electron usam as últimas execuções de rodadas distintas, identificadas na tabela detalhada.
+Cada célula mostra o tempo de execução da suíte/comando daquela ferramenta e plataforma. Inclui inicialização, sessões, testes e encerramento internos ao comando; exclui build, preparação externa e limpeza externa. As origens das últimas execuções estão identificadas na tabela detalhada; combinações da mesma plataforma podem vir de rodadas distintas.
 
 ## Tempos por ferramenta e plataforma
 
@@ -49,18 +54,18 @@ Cada célula mostra o tempo de execução da suíte/comando daquela ferramenta e
 | --- | --- | --- | --- | --- | --- | --- |
 | Playwright | Web | 14/15 aprovados; 1 falha | 76,30 s | 1 min 18,49 s | 0,00% | Revalidação · [JSON](../../test-results/pocs/web-fix-2026-10-19/verified/web/playwright/results.json) · [Log](../../test-results/pocs/web-fix-2026-10-19/verified/web/playwright.log) |
 | Playwright | PWA instalado | 13/13 aprovados | 78,50 s | 1 min 19,55 s | — | Rodada original · [JSON](../../test-results/pocs/final-2026-10-19/pwa/playwright/results.json) · [Log](../../test-results/pocs/final-2026-10-19/pwa/playwright.log) |
-| Playwright | Electron | 13/13 aprovados | 61,74 s | 1 min 2,55 s | — | Rodada original · [JSON](../../test-results/pocs/final-2026-10-19/electron/playwright/results.json) · [Log](../../test-results/pocs/final-2026-10-19/electron/playwright.log) |
+| Playwright | Electron | 13/13 aprovados | 61,52 s | 1 min 2,25 s | 0,00% | Revalidação · [JSON](../../test-results/pocs/electron-files-regression/electron/playwright/results.json) · [Log](../../test-results/pocs/electron-files-regression/electron/playwright.log) |
 | Playwright | APK Android | 9/9 aprovados | 325,92 s | 5 min 26,90 s | 0,00% | Rodada original · [JSON](../../test-results/pocs/final-2026-10-19/android/playwright/results.json) · [Log](../../test-results/pocs/final-2026-10-19/android/playwright.log) |
 | Selenium | Web | 14/15 aprovados; 1 falha | 106,18 s | 1 min 48,04 s | 37,65% | Revalidação · [JSON](../../test-results/pocs/web-fix-2026-10-19/verified/web/selenium/results.json) · [Log](../../test-results/pocs/web-fix-2026-10-19/verified/web/selenium.log) |
 | Selenium | PWA instalado | 13/13 aprovados | 99,22 s | 1 min 41,03 s | — | Rodada original · [JSON](../../test-results/pocs/final-2026-10-19/pwa/selenium/results.json) · [Log](../../test-results/pocs/final-2026-10-19/pwa/selenium.log) |
-| Selenium | Electron | 13/13 aprovados | 80,14 s | 1 min 20,58 s | — | Rodada original · [JSON](../../test-results/pocs/final-2026-10-19/electron/selenium/results.json) · [Log](../../test-results/pocs/final-2026-10-19/electron/selenium.log) |
+| Selenium | Electron | 13/13 aprovados | 79,80 s | 1 min 20,26 s | 28,94% | Revalidação · [JSON](../../test-results/pocs/electron-files-regression/electron/selenium/results.json) · [Log](../../test-results/pocs/electron-files-regression/electron/selenium.log) |
 | Selenium | APK Android | 9/9 aprovados | 493,86 s | 8 min 14,45 s | 51,25% | Rodada original · [JSON](../../test-results/pocs/final-2026-10-19/android/selenium/results.json) · [Log](../../test-results/pocs/final-2026-10-19/android/selenium.log) |
 | WebdriverIO | Web | 14/15 aprovados; 1 falha | 132,71 s | 2 min 16,55 s | 73,97% | Revalidação · [JSON](../../test-results/pocs/web-fix-2026-10-19/verified/web/webdriverio/results.json) · [Log](../../test-results/pocs/web-fix-2026-10-19/verified/web/webdriverio.log) |
 | WebdriverIO | PWA instalado | 13/13 aprovados | 87,37 s | 1 min 35,74 s | — | Revalidação · [JSON](../../test-results/pocs/web-fix-2026-10-19/pwa-verified/pwa/webdriverio/results.json) · [Log](../../test-results/pocs/web-fix-2026-10-19/pwa-verified/pwa/webdriverio.log) |
-| WebdriverIO | Electron | 13/13 aprovados | 61,96 s | 1 min 5,99 s | — | Revalidação · [JSON](../../test-results/pocs/wdio-electron-fix-2026-10-19/final-verified/electron/webdriverio/results.json) · [Log](../../test-results/pocs/wdio-electron-fix-2026-10-19/final-verified/electron/webdriverio.log) |
+| WebdriverIO | Electron | 13/13 aprovados | 61,63 s | 1 min 4,36 s | 3,39% | Revalidação · [JSON](../../test-results/pocs/electron-files-regression/electron/webdriverio/results.json) · [Log](../../test-results/pocs/electron-files-regression/electron/webdriverio.log) |
 | WebdriverIO | APK Android | 9/9 aprovados | 438,36 s | 7 min 29,93 s | 37,63% | Rodada original · [JSON](../../test-results/pocs/final-2026-10-19/android/webdriverio/results.json) · [Log](../../test-results/pocs/final-2026-10-19/android/webdriverio.log) |
 
-**Percentuais:** (tempo da suíte ÷ menor tempo elegível − 1) × 100. Só comparamos quando as três ferramentas da plataforma vêm da mesma rodada e todos os casos foram registrados. Web e Android atendem a esse critério; PWA e Electron combinam rodadas distintas e ficam com “—”. Falhas e políticas diferentes de isolamento limitam a comparação; não é um benchmark universal. Os percentuais históricos continuam no arquivo de histórico.
+**Percentuais:** (tempo da suíte ÷ menor tempo elegível − 1) × 100. Só comparamos quando as três ferramentas da plataforma vêm da mesma rodada e todos os casos foram registrados. Plataformas que combinam rodadas distintas ficam com “—”. Falhas e políticas diferentes de isolamento limitam a comparação; não é um benchmark universal. Os percentuais históricos continuam no arquivo de histórico.
 
 ## Etapas externas e totais contínuos
 
@@ -68,7 +73,7 @@ Cada célula mostra o tempo de execução da suíte/comando daquela ferramenta e
 | --- | --- | --- | --- | --- | --- |
 | Web | — | — | 5 min 23,08 s | — | 5 min 23,41 s |
 | PWA instalado | — | — | 4 min 36,32 s | — | — (rodadas distintas) |
-| Electron | — | — | 3 min 29,12 s | — | — (rodadas distintas) |
+| Electron | 5,73 s | — | 3 min 26,87 s | — | 3 min 33,07 s |
 | APK Android | 4,39 s | 27,92 s | 21 min 11,28 s | 1,65 s | 21 min 46,06 s |
 
 **Soma dos testes** reúne as durações individuais. **Suíte/comando** inclui processo, sessões e encerramento internos à ferramenta. O total contínuo da plataforma só existe quando suas três ferramentas pertencem à mesma rodada; não somamos execuções diferentes para apresentar um tempo global. “—” significa não aplicável ou indisponível, não zero. Build/preparação/limpeza externos ficam fora do comando da suíte.
@@ -83,20 +88,23 @@ Playwright e Selenium isolam sessões por teste; WDIO compartilha a sessão e li
 
 ## Correções aplicadas
 
-WDIO reconsulta o rótulo selecionado no D01, agora validado em web/PWA. Playwright direciona o Delete ao mapa com clique real no polígono e confirmação de foco. O bug intencional de instalação por mouse permanece.
+Nova funcionalidade Electron: importação/exportação JSON por preload/contextBridge, IPC e fs no processo principal. Importar acrescenta polígonos e sincroniza a janela separada; a validação do lote é integral. Exportar grava por arquivo temporário e rename. O bug intencional de instalação por mouse permanece.
 
-C08 já passou antes do novo preparo: a causa da intermitência anterior continua inconclusiva. Três verificações isoladas e a suíte completa passaram após o ajuste; isso não mede estabilidade estatística. Nesta etapa foram reexecutados web nas três ferramentas e WDIO/PWA; os demais resultados são anteriores, incluindo a correção WDIO/Electron.
+Nesta etapa foram reexecutados somente os três clientes Electron: catálogo C/D e rodada adicional N01–N05. Web, PWA e Android preservam as últimas evidências indicadas nas tabelas. A escolha do caminho no diálogo é simulada apenas na build POC; IPC, validação e leitura/gravação são reais. O seletor nativo visual não foi automatizado. A causa da intermitência histórica C08 web continua inconclusiva.
 
-**Resultados desta etapa:** 42/45 na web, com apenas os três C10 mouse intencionais; WDIO/PWA 13/13. Total do orquestrador web: **5 min 23,41 s**; WDIO/PWA: **1 min 35,94 s**, em execução separada. Nenhum teste ficou sem execução. O consolidado passa a ter somente três falhas intencionais; os 36 testes de duas janelas estão aprovados. O WDIO/PWA registrou um aviso de sessão antiga no reinício, sem impedir os 13 testes; a versão completa preserva o log e a limitação.
+**Resultados desta etapa:** Electron C/D 39/39; arquivos N01–N05 15/15 (5 por ferramenta); serviço de arquivos Node 6/6. Sem falhas nesta etapa. As tabelas C/D continuam com 150 casos, 147 aprovações e somente os três C10 mouse intencionais da web; os testes de arquivos têm contagem própria. Os 36 testes C/D de duas janelas estão aprovados; N05 acrescenta mais três validações de importação/exportação com duas janelas. As três ferramentas Electron C/D agora pertencem à mesma rodada, permitindo calcular seus percentuais; PWA mantém rodadas distintas. WDIO registrou avisos de referência DOM obsoleta durante a regressão, mas concluiu 13/13 e código de saída 0; o log integral permanece disponível.
 
 - **Perfil:** informar ao ChromeDriver o mesmo `--user-data-dir` usado pelo Electron em `POLYGON_USER_DATA_DIR`. O log anterior mostrou o driver procurando no diretório temporário e o arquivo `DevToolsActivePort` sendo gravado no perfil da POC.
-- **Sessão:** conectar o WDIO diretamente ao ChromeDriver oficial do Electron 44.4.3, com `browserName: chrome`, protocolo clássico e executável Electron explícito. O serviço Electron não é usado na suíte POC; a tentativa com ele registrou timeout da bridge e bloqueio no ciclo de reinício. APIs do processo principal não fazem parte destes testes.
+- **Sessão:** conectar o WDIO diretamente ao ChromeDriver oficial do Electron 44.4.3, com `browserName: chrome`, protocolo clássico e executável Electron explícito. O serviço Electron não é usado na suíte POC; a tentativa com ele registrou timeout da bridge e bloqueio no ciclo de reinício. APIs do processo principal não fazem parte do catálogo C/D; a rodada N01–N05 agora exercita o main via IPC restrito e arquivos reais.
 - **Versão:** informar a versão 152.0.7977.130 obtida do ChromeDriver oficial baixado para este Electron, evitando que o WDIO tente consultar `--version` no aplicativo empacotado. Isso não abre o Chrome comum: as janelas testadas usam a origem `poligonos://app/`.
 - **Janelas:** preservar os tamanhos definidos pela aplicação na abertura, reinício e separação. Este Electron rejeita o redimensionamento WebDriver com `Browser.getWindowForTarget`. Os gestos continuam usando dimensões/coordenadas reais do mapa.
 - **D01:** reconsultar o seletor `.is-selected` a cada leitura. Os rótulos preservam seus nós ao trocar a seleção; o matcher anterior continuava lendo o Polígono 2. A captura mostrou o Polígono 1 selecionado, coerente com o CSS e com a reutilização do elemento observada na implementação. Continua sendo obrigatório haver exatamente um rótulo selecionado com o nome esperado; não há repetição de cliques, estado injetado ou expectativa afrouxada.
 - **Playwright, preparo de Delete:** trazer a página para frente, clicar uma vez no centro do polígono por entrada real e exigir foco na superfície do mapa antes de enviar Delete. As verificações de aviso, confirmação, restauração, exclusão individual e exclusão de todos continuam obrigatórias. A mudança substitui o foco programático, sem repetir a tecla/clique até passar.
 - **Limite do diagnóstico C08:** passou antes de qualquer ajuste nesta etapa. O preparo explícito passou em três execuções isoladas e na suíte completa; isso confirma a execução atual, sem comprovar causa da falha anterior ou estabilidade estatística. Não foi corrigido código de negócio para esconder uma falha.
 - **D01 revalidado:** a consulta renovada do rótulo selecionado, implementada na etapa Electron, passou agora nas suítes completas WDIO/web e WDIO/PWA, com criação, edição, cancelamento e exclusão em duas janelas. O critério funcional foi mantido.
+- **Arquivos Electron:** cinco cenários novos compartilhados entre os clientes Playwright, Selenium e WebdriverIO, com adaptadores próprios. Confirmam conteúdo em disco, persistência após reload, cancelamento, rejeição sem importação parcial, erro de leitura/escrita e sincronização em duas janelas. O serviço Electron do WDIO continua sem uso; o main é exercitado pela API IPC da aplicação.
+- **Diagnóstico N03:** na primeira execução Playwright, a aplicação rejeitou corretamente o nome inválido, mas o teste esperava uma palavra ausente da mensagem. O teste passou a exigir o texto exato de cada erro, mantendo as verificações de coleção inalterada. A rodada completa posterior passou 15/15. Evidência inicial: [JSON](../../test-results/pocs/electron-files-diagnostic/results.json).
+- **Regressão Electron:** os 13 cenários C/D foram executados novamente em cada ferramenta no novo pacote; 39/39 aprovados, incluindo os quatro casos de duas janelas por ferramenta.
 
 ## Playwright
 
@@ -148,25 +156,25 @@ C08 já passou antes do novo preparo: a causa da intermitência anterior continu
 
 ### Electron
 
-**Resultado atual: 13/13 aprovados.** Suíte original preservada; não substituída por uma revalidação. Encerramento (UTC): 2026-10-19T10:53:42.189Z.
+**Resultado atual: 13/13 aprovados.** Suíte revalidada. Encerramento (UTC): 2026-10-19T20:13:54.917Z.
 
-[JSON](../../test-results/pocs/final-2026-10-19/electron/playwright/results.json) · [Log](../../test-results/pocs/final-2026-10-19/electron/playwright.log) · [Medições da execução](../../test-results/pocs/final-2026-10-19/timing.json)
+[JSON](../../test-results/pocs/electron-files-regression/electron/playwright/results.json) · [Log](../../test-results/pocs/electron-files-regression/electron/playwright.log) · [Medições da execução](../../test-results/pocs/electron-files-regression/timing.json)
 
 | Teste | Resultado atual | Duração | Observação/evidência |
 | --- | --- | --- | --- |
-| C01 cria um polígono válido com três vértices e rótulo | ✅ Passou | 4,25 s | Verificações concluídas. |
-| C02 bloqueia desenhos vazios, incompletos e sem área | ✅ Passou | 3,93 s | Verificações concluídas. |
-| C03 seleciona sem editar e permite edição por Enter ou botão | ✅ Passou | 2,94 s | Verificações concluídas. |
+| C01 cria um polígono válido com três vértices e rótulo | ✅ Passou | 3,84 s | Verificações concluídas. |
+| C02 bloqueia desenhos vazios, incompletos e sem área | ✅ Passou | 3,97 s | Verificações concluídas. |
+| C03 seleciona sem editar e permite edição por Enter ou botão | ✅ Passou | 2,99 s | Verificações concluídas. |
 | C04 move a área, arrasta um vértice, insere outro e salva | ✅ Passou | 4,94 s | Verificações concluídas. |
-| C05 valida nomes, acentos e limite de trinta caracteres | ✅ Passou | 3,31 s | Verificações concluídas. |
-| C06 cancela alterações de nome e geometria | ✅ Passou | 3,72 s | Verificações concluídas. |
-| C07 preserva nome e geometria ao fechar e reabrir a aplicação | ✅ Passou | 4,50 s | Verificações concluídas. |
-| C08 confirma e cancela exclusões por Delete, individuais e de todos | ✅ Passou | 6,38 s | Verificações concluídas. |
-| C09 aplica zoom, gira a bússola e retorna ao norte | ✅ Passou | 5,32 s | Verificações concluídas. |
-| D01 sincroniza seleção, criação, edição, cancelamento e exclusão em duas janelas | ✅ Passou | 8,73 s | Verificações concluídas. |
-| D02 reúne pela principal e separa novamente sem duplicar dados | ✅ Passou | 4,09 s | Verificações concluídas. |
-| D02 reúne pelo mapa e separa novamente sem duplicar dados | ✅ Passou | 4,18 s | Verificações concluídas. |
-| D03 fecha o mapa com edição pendente e recupera o último estado salvo | ✅ Passou | 5,45 s | Verificações concluídas. |
+| C05 valida nomes, acentos e limite de trinta caracteres | ✅ Passou | 3,38 s | Verificações concluídas. |
+| C06 cancela alterações de nome e geometria | ✅ Passou | 3,79 s | Verificações concluídas. |
+| C07 preserva nome e geometria ao fechar e reabrir a aplicação | ✅ Passou | 4,59 s | Verificações concluídas. |
+| C08 confirma e cancela exclusões por Delete, individuais e de todos | ✅ Passou | 6,40 s | Verificações concluídas. |
+| C09 aplica zoom, gira a bússola e retorna ao norte | ✅ Passou | 5,33 s | Verificações concluídas. |
+| D01 sincroniza seleção, criação, edição, cancelamento e exclusão em duas janelas | ✅ Passou | 8,66 s | Verificações concluídas. |
+| D02 reúne pela principal e separa novamente sem duplicar dados | ✅ Passou | 4,20 s | Verificações concluídas. |
+| D02 reúne pelo mapa e separa novamente sem duplicar dados | ✅ Passou | 4,00 s | Verificações concluídas. |
+| D03 fecha o mapa com edição pendente e recupera o último estado salvo | ✅ Passou | 5,43 s | Verificações concluídas. |
 
 ### APK Android
 
@@ -236,25 +244,25 @@ C08 já passou antes do novo preparo: a causa da intermitência anterior continu
 
 ### Electron
 
-**Resultado atual: 13/13 aprovados.** Suíte original preservada; não substituída por uma revalidação. Encerramento (UTC): 2026-10-19T10:55:02.849Z.
+**Resultado atual: 13/13 aprovados.** Suíte revalidada. Encerramento (UTC): 2026-10-19T20:16:19.730Z.
 
-[JSON](../../test-results/pocs/final-2026-10-19/electron/selenium/results.json) · [Log](../../test-results/pocs/final-2026-10-19/electron/selenium.log) · [Medições da execução](../../test-results/pocs/final-2026-10-19/timing.json)
+[JSON](../../test-results/pocs/electron-files-regression/electron/selenium/results.json) · [Log](../../test-results/pocs/electron-files-regression/electron/selenium.log) · [Medições da execução](../../test-results/pocs/electron-files-regression/timing.json)
 
 | Teste | Resultado atual | Duração | Observação/evidência |
 | --- | --- | --- | --- |
-| C01 cria um polígono válido com três vértices e rótulo | ✅ Passou | 2,70 s | Verificações concluídas. |
-| C02 bloqueia desenhos vazios, incompletos e sem área | ✅ Passou | 4,84 s | Verificações concluídas. |
-| C03 seleciona sem editar e permite edição por Enter ou botão | ✅ Passou | 3,82 s | Verificações concluídas. |
-| C04 move a área, arrasta um vértice, insere outro e salva | ✅ Passou | 6,01 s | Verificações concluídas. |
-| C05 valida nomes, acentos e limite de trinta caracteres | ✅ Passou | 4,04 s | Verificações concluídas. |
-| C06 cancela alterações de nome e geometria | ✅ Passou | 4,55 s | Verificações concluídas. |
-| C07 preserva nome e geometria ao fechar e reabrir a aplicação | ✅ Passou | 5,48 s | Verificações concluídas. |
-| C08 confirma e cancela exclusões por Delete, individuais e de todos | ✅ Passou | 8,82 s | Verificações concluídas. |
-| C09 aplica zoom, gira a bússola e retorna ao norte | ✅ Passou | 5,68 s | Verificações concluídas. |
-| D01 sincroniza seleção, criação, edição, cancelamento e exclusão em duas janelas | ✅ Passou | 13,16 s | Verificações concluídas. |
-| D02 reúne pela principal e separa novamente sem duplicar dados | ✅ Passou | 6,37 s | Verificações concluídas. |
-| D02 reúne pelo mapa e separa novamente sem duplicar dados | ✅ Passou | 6,93 s | Verificações concluídas. |
-| D03 fecha o mapa com edição pendente e recupera o último estado salvo | ✅ Passou | 7,74 s | Verificações concluídas. |
+| C01 cria um polígono válido com três vértices e rótulo | ✅ Passou | 2,67 s | Verificações concluídas. |
+| C02 bloqueia desenhos vazios, incompletos e sem área | ✅ Passou | 4,85 s | Verificações concluídas. |
+| C03 seleciona sem editar e permite edição por Enter ou botão | ✅ Passou | 3,90 s | Verificações concluídas. |
+| C04 move a área, arrasta um vértice, insere outro e salva | ✅ Passou | 6,06 s | Verificações concluídas. |
+| C05 valida nomes, acentos e limite de trinta caracteres | ✅ Passou | 4,06 s | Verificações concluídas. |
+| C06 cancela alterações de nome e geometria | ✅ Passou | 4,63 s | Verificações concluídas. |
+| C07 preserva nome e geometria ao fechar e reabrir a aplicação | ✅ Passou | 5,51 s | Verificações concluídas. |
+| C08 confirma e cancela exclusões por Delete, individuais e de todos | ✅ Passou | 8,80 s | Verificações concluídas. |
+| C09 aplica zoom, gira a bússola e retorna ao norte | ✅ Passou | 5,74 s | Verificações concluídas. |
+| D01 sincroniza seleção, criação, edição, cancelamento e exclusão em duas janelas | ✅ Passou | 12,88 s | Verificações concluídas. |
+| D02 reúne pela principal e separa novamente sem duplicar dados | ✅ Passou | 6,65 s | Verificações concluídas. |
+| D02 reúne pelo mapa e separa novamente sem duplicar dados | ✅ Passou | 7,01 s | Verificações concluídas. |
+| D03 fecha o mapa com edição pendente e recupera o último estado salvo | ✅ Passou | 7,05 s | Verificações concluídas. |
 
 ### APK Android
 
@@ -324,25 +332,25 @@ C08 já passou antes do novo preparo: a causa da intermitência anterior continu
 
 ### Electron
 
-**Resultado atual: 13/13 aprovados.** Suíte revalidada. Encerramento (UTC): 2026-10-19T12:03:02.733Z.
+**Resultado atual: 13/13 aprovados.** Suíte revalidada. Encerramento (UTC): 2026-10-19T20:14:59.398Z.
 
-[JSON](../../test-results/pocs/wdio-electron-fix-2026-10-19/final-verified/electron/webdriverio/results.json) · [Log](../../test-results/pocs/wdio-electron-fix-2026-10-19/final-verified/electron/webdriverio.log) · [Medições da execução](../../test-results/pocs/wdio-electron-fix-2026-10-19/final-verified/timing.json)
+[JSON](../../test-results/pocs/electron-files-regression/electron/webdriverio/results.json) · [Log](../../test-results/pocs/electron-files-regression/electron/webdriverio.log) · [Medições da execução](../../test-results/pocs/electron-files-regression/timing.json)
 
 | Teste | Resultado atual | Duração | Observação/evidência |
 | --- | --- | --- | --- |
-| C01 cria um polígono válido com três vértices e rótulo | ✅ Passou | 1,90 s | Verificações concluídas. |
-| C02 bloqueia desenhos vazios, incompletos e sem área | ✅ Passou | 3,99 s | Verificações concluídas. |
-| C03 seleciona sem editar e permite edição por Enter ou botão | ✅ Passou | 2,87 s | Verificações concluídas. |
-| C04 move a área, arrasta um vértice, insere outro e salva | ✅ Passou | 4,85 s | Verificações concluídas. |
-| C05 valida nomes, acentos e limite de trinta caracteres | ✅ Passou | 3,33 s | Verificações concluídas. |
-| C06 cancela alterações de nome e geometria | ✅ Passou | 3,69 s | Verificações concluídas. |
-| C07 preserva nome e geometria ao fechar e reabrir a aplicação | ✅ Passou | 4,38 s | Verificações concluídas. |
-| C08 confirma e cancela exclusões por Delete, individuais e de todos | ✅ Passou | 7,39 s | Verificações concluídas. |
+| C01 cria um polígono válido com três vértices e rótulo | ✅ Passou | 1,87 s | Verificações concluídas. |
+| C02 bloqueia desenhos vazios, incompletos e sem área | ✅ Passou | 4,01 s | Verificações concluídas. |
+| C03 seleciona sem editar e permite edição por Enter ou botão | ✅ Passou | 2,93 s | Verificações concluídas. |
+| C04 move a área, arrasta um vértice, insere outro e salva | ✅ Passou | 4,83 s | Verificações concluídas. |
+| C05 valida nomes, acentos e limite de trinta caracteres | ✅ Passou | 3,32 s | Verificações concluídas. |
+| C06 cancela alterações de nome e geometria | ✅ Passou | 3,56 s | Verificações concluídas. |
+| C07 preserva nome e geometria ao fechar e reabrir a aplicação | ✅ Passou | 4,23 s | Verificações concluídas. |
+| C08 confirma e cancela exclusões por Delete, individuais e de todos | ✅ Passou | 7,18 s | Verificações concluídas. |
 | C09 aplica zoom, gira a bússola e retorna ao norte | ✅ Passou | 4,36 s | Verificações concluídas. |
-| D01 sincroniza seleção, criação, edição, cancelamento e exclusão em duas janelas | ✅ Passou | 9,96 s | Verificações concluídas. |
-| D02 reúne pela principal e separa novamente sem duplicar dados | ✅ Passou | 4,64 s | Verificações concluídas. |
-| D02 reúne pelo mapa e separa novamente sem duplicar dados | ✅ Passou | 4,90 s | Verificações concluídas. |
-| D03 fecha o mapa com edição pendente e recupera o último estado salvo | ✅ Passou | 5,70 s | Verificações concluídas. |
+| D01 sincroniza seleção, criação, edição, cancelamento e exclusão em duas janelas | ✅ Passou | 10,10 s | Verificações concluídas. |
+| D02 reúne pela principal e separa novamente sem duplicar dados | ✅ Passou | 4,68 s | Verificações concluídas. |
+| D02 reúne pelo mapa e separa novamente sem duplicar dados | ✅ Passou | 4,85 s | Verificações concluídas. |
+| D03 fecha o mapa com edição pendente e recupera o último estado salvo | ✅ Passou | 5,71 s | Verificações concluídas. |
 
 ### APK Android
 
@@ -366,7 +374,7 @@ C08 já passou antes do novo preparo: a causa da intermitência anterior continu
 
 ### O que foi reaproveitado nesta POC
 
-As três POCs têm **implementações de testes independentes**. Foram reaproveitados o plano e os critérios funcionais; o código que opera a interface foi escrito para cada ferramenta. Não há um teste de WebdriverIO sendo executado por Playwright ou Selenium, nem conversão automática entre eles.
+No catálogo original C/D, as três POCs têm **implementações de testes independentes**. Foram reaproveitados o plano e os critérios funcionais; o código que opera a interface foi escrito para cada ferramenta. Não há um teste de WebdriverIO sendo executado por Playwright ou Selenium, nem conversão automática entre eles. A rodada adicional N01–N05 de arquivos Electron adota outro desenho, explicado no final deste documento.
 
 | Camada | Como ficou nesta POC | Evidência no projeto |
 | --- | --- | --- |
@@ -415,7 +423,7 @@ Essas decisões pertencem à implementação desta POC, não são imposições u
 
 Selenium → WebdriverIO pode reaproveitar parte da configuração conceitual de WebDriver/Appium; as chamadas do cliente, asserções e lifecycle ainda mudam. Playwright → Selenium/WebdriverIO também exige adaptar fixtures/contextos e a integração de protocolo. Dentro de uma mesma ferramenta, esta POC reutiliza boa parte do corpo dos cenários entre plataformas, com branches e adaptadores para lançamento, toque, persistência e janelas.
 
-Para reduzir custo futuro, seria possível definir ações de domínio como `criarPoligono` e implementar um adaptador por ferramenta. Essa abstração **não foi criada para unificar as três suítes nesta POC**: manter execuções independentes permite observar as diferenças, mas duplica parte da manutenção. Não foi medido o tempo de desenvolvimento/migração nem um percentual de reaproveitamento de código; os tempos do relatório são de execução dos testes.
+No catálogo original C/D, seria possível definir ações de domínio como `criarPoligono` e implementar um adaptador por ferramenta. Essa abstração **não foi criada para unificar as três suítes C/D**: manter execuções independentes permite observar as diferenças, mas duplica parte da manutenção. A nova suíte N01–N05 adota adaptadores compartilhando os cenários. Não foi medido o tempo de desenvolvimento/migração nem um percentual de reaproveitamento de código; os tempos do relatório são de execução dos testes.
 
 ### Exemplo observado na correção dos adaptadores
 
@@ -429,10 +437,26 @@ adaptadores específicos, sem reescrever o roteiro de negócio ou aplicar uma
 conversão automática às três ferramentas. Os resultados e os tempos dessa
 revalidação ficam separados da rodada comparativa original.
 
+### Rodada adicional de arquivos Electron
+
+Em [electron-files.test.ts](electron-files.test.ts), os cinco cenários N01–N05
+e suas asserções são compartilhados entre os três clientes, com runner Node Test
+e adaptadores de lançamento, clique, leitura, reload e troca de janela. Playwright
+usa `_electron`; Selenium usa `Builder`/ChromeDriver; WebdriverIO usa `remote` com
+ChromeDriver. Os testes continuam em TypeScript. Essa abstração foi criada para
+a nova funcionalidade; as suítes C/D não foram convertidas para ela.
+
+Os dados de entrada são arquivos de teste. A escolha do caminho no diálogo é
+simulada exclusivamente na build POC; importar e exportar continuam sendo ações
+reais pelos botões, preload, IPC e `fs` do main. O runner lê o arquivo de saída
+para conferir seu conteúdo. Há um processo/perfil novo por caso nas três
+ferramentas, diferente do isolamento da suíte WDIO original. Por isso, seus tempos
+ficam [separados](ELECTRON-ARQUIVOS.md) das métricas C/D anteriores.
+
 
 ## Limitações e escopo
 
-Alvo web/PWA: [deploy](https://poc-e2e.chiquetano.com.br/). Electron macOS arm64 empacotado; APK debug em emulador Android. PWA instalado em perfil isolado e standalone verificado. Android C03/C08 usam controles da interface, sem Enter/Delete físicos. Não cobre aparelho físico, instaladores, permissões negadas, plugins nativos, criação/exportação de arquivos ou a disponibilidade de todos os tiles do mapa.
+Alvo web/PWA: [deploy](https://poc-e2e.chiquetano.com.br/). Electron macOS arm64 empacotado; APK debug em emulador Android. PWA instalado em perfil isolado e standalone verificado. Android C03/C08 usam controles da interface, sem Enter/Delete físicos. O catálogo original de 150 casos C/D não cobre aparelho físico, instaladores, permissões negadas, plugins nativos, criação/exportação de arquivos ou a disponibilidade de todos os tiles do mapa. A funcionalidade de arquivos do processo principal Electron tem uma rodada adicional N01–N05, apresentada separadamente abaixo.
 
 ### Limitações por ferramenta em Electron e Android
 
@@ -442,7 +466,7 @@ Alvo web/PWA: [deploy](https://poc-e2e.chiquetano.com.br/). Electron macOS arm64
 | --- | --- | --- |
 | Playwright | **Documentada:** integração `_electron` experimental; o lançamento depende de configuração compatível com inspeção Node. Diálogos nativos do sistema não são tratados como elementos da página. **Escopo da POC:** app macOS empacotado e duas janelas; instalador e diálogos nativos não avaliados. [Documentação Electron](https://playwright.dev/docs/api/class-electron). | **Documentada:** API Android experimental, voltada a Chrome/WebView; requer ADB. Há limitações de cobertura e captura exige dispositivo acordado. **Observada:** esta POC exercita a WebView do Capacitor; reconexão após reiniciar o app exigiu esperar o PID correto. O resultado atual é 9/9; oscilações anteriores estão preservadas no histórico. [Documentação Android](https://playwright.dev/docs/api/class-android). |
 | Selenium | **Integração:** usa ChromeDriver e o executável do Electron, com configuração própria. Controlar a página não fornece automaticamente automação de menus/diálogos do sistema ou das APIs do processo principal. **Observada:** redimensionar por WebDriver falhou em `Browser.getWindowForTarget`; o bootstrap passou a usar o tamanho original. [Guia do Electron](https://www.electronjs.org/docs/latest/tutorial/automated-testing#with-selenium). | **Integração:** nesta POC, Selenium é o cliente de Appium/UiAutomator2; Selenium sozinho não é o driver do APK. Precisa de WebView depurável, contexto correto e ChromeDriver compatível. **Observada:** `browserName` precisou ficar vazio para abrir o app; a rotina genérica de esconder teclado enviava Escape e interrompia a edição. O ajuste atual consulta o teclado e envia somente Back nativo quando o IME está aberto, sem trocar/recriar o contexto WebView; também aguarda geometria estável e entrega do clique confiável. [Appium/UiAutomator2](https://github.com/appium/appium-uiautomator2-driver#hybrid-mode). |
-| WebdriverIO | **Integração atual da POC:** WDIO conecta diretamente ao ChromeDriver oficial compatível, abrindo o binário Electron por WebDriver clássico. O serviço Electron continua sendo uma opção da ferramenta, mas seus hooks de bridge/foco não são usados nesta suíte. **Diagnóstico:** `DevToolsActivePort` era gravado no perfil definido pelo app e procurado em outro pelo driver; os diretórios agora coincidem. A versão é explícita para evitar a consulta `--version` ao app empacotado. **Limites:** usa os tamanhos definidos pelo app, sem `Browser.getWindowForTarget`; não automatiza APIs do processo principal ou diálogos nativos. O catálogo e as asserções funcionais foram preservados; a espera do D01 reconsulta o rótulo selecionado a cada leitura, pois os nós são reutilizados. [Serviço Electron](https://webdriver.io/docs/desktop-testing/electron/). | **Integração:** também usa Appium/UiAutomator2 e ChromeDriver para a WebView; compartilha essas dependências com Selenium. **Observada:** reutiliza a sessão entre casos; rolagem, teclado e a espera pela desseleção precisam ser coordenados. O resultado atual é 9/9; a troca de contextos e as transições de teclado ainda exigem coordenação no adaptador. [Appium/UiAutomator2](https://github.com/appium/appium-uiautomator2-driver#hybrid-mode). |
+| WebdriverIO | **Integração atual da POC:** WDIO conecta diretamente ao ChromeDriver oficial compatível, abrindo o binário Electron por WebDriver clássico. O serviço Electron continua sendo uma opção da ferramenta, mas seus hooks de bridge/foco não são usados nesta suíte. **Diagnóstico:** `DevToolsActivePort` era gravado no perfil definido pelo app e procurado em outro pelo driver; os diretórios agora coincidem. A versão é explícita para evitar a consulta `--version` ao app empacotado. **Limites:** usa os tamanhos definidos pelo app, sem `Browser.getWindowForTarget`; não oferece acesso genérico ao processo principal nem automatiza os diálogos nativos visuais. O fluxo restrito de IPC e arquivos do main é exercitado na rodada adicional N01–N05. O catálogo e as asserções funcionais foram preservados; a espera do D01 reconsulta o rótulo selecionado a cada leitura, pois os nós são reutilizados. [Serviço Electron](https://webdriver.io/docs/desktop-testing/electron/). | **Integração:** também usa Appium/UiAutomator2 e ChromeDriver para a WebView; compartilha essas dependências com Selenium. **Observada:** reutiliza a sessão entre casos; rolagem, teclado e a espera pela desseleção precisam ser coordenados. O resultado atual é 9/9; a troca de contextos e as transições de teclado ainda exigem coordenação no adaptador. [Appium/UiAutomator2](https://github.com/appium/appium-uiautomator2-driver#hybrid-mode). |
 
 A documentação atual do WebdriverIO apresenta `@wdio/electron-service`; o projeto mantém `wdio-electron-service` 9.2.1 para a configuração legada. A suíte POC passou a conectar diretamente ao ChromeDriver, sem atualizar dependências. A diferença entre nomes/versões de pacotes não foi comprovada como causa do problema; o desencontro de perfis foi confirmado no log. A etapa seguinte revalidou web nas três ferramentas e WDIO/PWA: todos os cenários funcionais passaram; só C10 mouse permaneceu falhando por causa do defeito intencional. O C08 Playwright passou antes do novo preparo de foco, portanto a causa da intermitência anterior segue inconclusiva. O teste agora clica de verdade no polígono e confirma foco no mapa antes de Delete; passou em três verificações isoladas e na suíte completa, sem prova estatística de estabilidade. Electron/Android não foram reexecutados nessa etapa web. [Configuração documentada](https://webdriver.io/docs/desktop-testing/electron/).
 
@@ -473,10 +497,15 @@ recusa de permissões não foi avaliada.
 [Arquivos no Appium](https://github.com/appium/appium-uiautomator2-driver#files-management),
 [ações Android no Playwright](https://playwright.dev/docs/api/class-androiddevice).
 
-**Cobertura atual:** nenhuma suíte desta POC avalia criação/exportação de arquivo
-ou o seletor nativo. C07 cobre a persistência dos polígonos ao reiniciar a aplicação.
-Uma futura exportação de GeoJSON poderia validar arquivo, nome, coordenadas,
-conteúdo e reimportação, preservando a gravação real pelo aplicativo.
+**Cobertura atual:** o catálogo original C/D cobre a persistência em C07, sem
+importação/exportação. A nova rodada [Electron — arquivos](ELECTRON-ARQUIVOS.md)
+exercita o processo principal via IPC nas três ferramentas: importação/exportação
+JSON, nomes/coordenadas, cancelamento, rejeição atômica de arquivos inválidos,
+erros de disco e sincronização entre duas janelas. A leitura/gravação é real;
+somente a escolha/cancelamento no diálogo é simulada. O seletor nativo visual
+continua fora da cobertura. Isso não dá acesso genérico ao processo principal
+para Selenium/WDIO: os clientes acionam os botões e observam os efeitos da API
+restrita do aplicativo. O serviço Electron do WDIO continua sem uso nesta rodada.
 
 
 ## Ambiente e evidências
@@ -487,6 +516,65 @@ As 12 linhas da tabela de tempos e as seções por ferramenta apontam para o JSO
 
 Artefatos: Electron em `release/electron/`; APK em `android/app/build/outputs/apk/debug/app-debug.apk`.
 
+## Arquivos no processo principal do Electron
+
+[Relatório da rodada adicional](ELECTRON-ARQUIVOS.md), com evidências, duração individual e limites da simulação do diálogo.
+
+Esta é uma rodada adicional da nova funcionalidade Electron. Seus casos N01–N05 são separados do consolidado histórico de 150 testes; web, PWA e Android não foram reexecutados nesta rodada.
+
+| Ferramenta | Passou | Falhou | Não executado | Soma das durações | Aumento sobre o menor tempo |
+| --- | --- | --- | --- | --- | --- |
+| Playwright | 5 | 0 | 0 | 6.84 s | 48.61% |
+| Selenium | 5 | 0 | 0 | 4.60 s | 0.00% |
+| WebdriverIO | 5 | 0 | 0 | 5.17 s | 12.21% |
+
+Cada duração inclui lançamento de um app empacotado com perfil novo, cenário e encerramento. A soma exclui build e trabalho externo do runner; não equivale ao tempo do comando das suítes antigas. Percentual: (soma ÷ menor soma − 1) × 100, somente com os cinco casos registrados nas três ferramentas. Uma execução não estabelece um benchmark de desempenho.
+
+### Testes por ferramenta
+
+#### Playwright
+
+| Cenário | Resultado | Duração |
+| --- | --- | --- |
+| N01 importa e exporta nomes e coordenadas usando IPC e disco real | Passou | 2.48 s |
+| N02 cancelar abertura e salvamento preserva os polígonos e não cria arquivos | Passou | 0.97 s |
+| N03 rejeita JSON, nomes e geometrias inválidos sem importar parcialmente | Passou | 1.00 s |
+| N04 informa erros de leitura e escrita sem perder dados nem deixar temporários | Passou | 0.90 s |
+| N05 importa com duas janelas, acrescenta áreas, exporta e reúne sem perder dados | Passou | 1.50 s |
+
+#### Selenium
+
+| Cenário | Resultado | Duração |
+| --- | --- | --- |
+| N01 importa e exporta nomes e coordenadas usando IPC e disco real | Passou | 0.97 s |
+| N02 cancelar abertura e salvamento preserva os polígonos e não cria arquivos | Passou | 0.78 s |
+| N03 rejeita JSON, nomes e geometrias inválidos sem importar parcialmente | Passou | 0.79 s |
+| N04 informa erros de leitura e escrita sem perder dados nem deixar temporários | Passou | 0.71 s |
+| N05 importa com duas janelas, acrescenta áreas, exporta e reúne sem perder dados | Passou | 1.36 s |
+
+#### WebdriverIO
+
+| Cenário | Resultado | Duração |
+| --- | --- | --- |
+| N01 importa e exporta nomes e coordenadas usando IPC e disco real | Passou | 1.01 s |
+| N02 cancelar abertura e salvamento preserva os polígonos e não cria arquivos | Passou | 0.87 s |
+| N03 rejeita JSON, nomes e geometrias inválidos sem importar parcialmente | Passou | 0.93 s |
+| N04 informa erros de leitura e escrita sem perder dados nem deixar temporários | Passou | 0.84 s |
+| N05 importa com duas janelas, acrescenta áreas, exporta e reúne sem perder dados | Passou | 1.52 s |
+
+### Implementação e limites
+
+- Botões disponíveis somente no Electron, no rodapé do menu. Importar acrescenta áreas, gera IDs novos e sincroniza com a janela do mapa. Exportar salva todas as áreas confirmadas. Ambos ficam desabilitados durante desenho/edição.
+- O renderer chama duas funções restritas do preload/contextBridge. O processo principal valida a origem IPC e os dados, abre os diálogos e lê/grava por Node fs. A página não recebe caminhos arbitrários nem acesso ao Node.
+- JSON próprio, formato poligonos, versão 1, nome e geometria ArcGIS (rings/spatialReference). Não é GeoJSON. Nomes de 1 a 30 caracteres, letras/números/espaços e acentos; mínimo de três pontos distintos formando área e anéis fechados. Referências 4326/3857/102100/102113; até 10 MB, 1.000 polígonos e 100.000 pontos por arquivo. Não verifica todas as regras topológicas, como auto-interseções.
+- Gravação real por arquivo temporário e rename; falhas não substituem o destino e limpam temporários. Importação só altera a coleção após validar todo o arquivo.
+- Os três clientes usam as mesmas funções de cenário e asserções em TypeScript, com adaptadores de clique, leitura e troca de janela próprios. Playwright lança por _electron; Selenium e WDIO remoto usam ChromeDriver compatível. Não se utiliza o serviço Electron do WDIO nem se executa código arbitrário no main via WebDriver. O efeito do main é verificado por arquivos reais e auditoria de chamadas no processo browser.
+- Apenas a resposta de seleção/cancelamento do diálogo é simulada, por plano local habilitado exclusivamente no pacote POC (polygonE2E=true) e variável POLYGON_E2E_DIALOG_PLAN. A build normal não habilita esse plano. Abertura visual, navegação e interação com o seletor nativo do sistema **não foram automatizadas**.
+- Testado em macOS arm64. Windows/Linux, instalador e diálogos reais continuam sem validação nesta rodada. As duas janelas foram testadas no mesmo computador, sem exigir dois monitores físicos.
+- Validação complementar: seis testes Node do serviço cobrem formato/geometria, disco real, cancelamento, tamanho, preservação do destino quando rename falha, rejeição de origens/subframes IPC e bloqueio de operações simultâneas.
+
+Para repetir: npm run electron:build:poc e npm run test:poc:electron:files. Testes do serviço: npm run test:electron:files.
+
 ## Histórico separado
 
-[Relatório histórico completo](old/RELATORIO-HISTORICO-2026-10-19.md) · [Histórico direto](old/RELATORIO-DIRETO-HISTORICO-2026-10-19.md). Contêm as tentativas anteriores, as falhas já superadas e os tempos originais. Esses registros não são repetidos como resultados atuais.
+[Relatório histórico completo](old/RELATORIO-ANTES-ARQUIVOS-ELECTRON.md) · [Histórico direto](old/RELATORIO-DIRETO-ANTES-ARQUIVOS-ELECTRON.md). Contêm as tentativas anteriores, as falhas já superadas e os tempos originais. Esses registros não são repetidos como resultados atuais.

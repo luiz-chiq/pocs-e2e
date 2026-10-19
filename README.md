@@ -16,9 +16,9 @@ npm run dev
 
 Abra a URL indicada pelo Vite, normalmente `http://localhost:5173`. Navegadores consideram `localhost` um contexto seguro para desenvolvimento, portanto o service worker funciona sem certificado local.
 
-Use Node.js 22.18 ou superior. A configuração ArcGIS é opcional: copie
-`.env.example` para `.env.local` apenas se precisar de um basemap ArcGIS.
-Variáveis `VITE_*` são públicas na build; não coloque segredos nelas.
+Use Node.js 22.18 ou superior. O fundo de satélite atual não exige configurar
+API key ou arquivo `.env.local`. Variáveis `VITE_*` são públicas na build;
+não coloque segredos nelas.
 
 ## PWA
 
@@ -98,6 +98,22 @@ cópias do estado para atualizar a lista. Ao reunir, a janela principal reassume
 a edição e a persistência. Não é necessário servidor de sincronização para
 duas janelas no mesmo navegador.
 
+## Importação e exportação no Electron
+
+No app Electron, os botões **Importar** e **Exportar** ficam no rodapé do menu
+lateral. A importação acrescenta áreas sem apagar as existentes; a exportação
+salva todas as áreas confirmadas em JSON. Conclua ou cancele a edição antes de
+usar os botões. Os arquivos usam o formato próprio `poligonos`, versão `1`, com
+nome, anéis de coordenadas e referência espacial ArcGIS; não são GeoJSON.
+
+Os diálogos nativos, a validação e a leitura/gravação acontecem no processo
+principal do Electron. O preload expõe apenas essas duas operações por IPC,
+mantendo o renderer sem acesso ao Node. Arquivos inválidos são rejeitados por
+inteiro. Limites por arquivo: 10 MB, 1.000 polígonos e 100.000 pontos. As áreas
+importadas também são sincronizadas quando o mapa está separado.
+
+Testes e tempos nas três ferramentas: [Electron — arquivos](e2e/pocs/ELECTRON-ARQUIVOS.md).
+
 ## Teste E2E
 
 As três POCs (WebdriverIO, Selenium e Playwright) estão documentadas em
@@ -159,13 +175,21 @@ comparativas ficam separadas em `e2e/pocs/`.
 
 ## ArcGIS
 
-O mapa usa `MapView`, `GraphicsLayer`, `Graphic` e `PopupTemplate` do ArcGIS. Sem credencial, a POC utiliza tiles públicos do OpenStreetMap como base para não expor uma chave no repositório. Para usar um basemap ArcGIS, crie um arquivo `.env.local` com:
+O editor usa o ArcGIS Maps SDK. O fundo é o **Esri World Imagery**, um mosaico
+global de imagens de satélite e fotografias aéreas, carregado por `TileLayer`
+do serviço público HTTPS. Essa camada responde sem API key e funciona com o
+mesmo código na web, PWA, Electron e Capacitor. A resolução e a data das imagens
+variam conforme a região; não se trata de imagem em tempo real.
 
-```bash
-VITE_ARCGIS_API_KEY=sua_chave_publica_restrita_por_referrer
-```
+O SDK apresenta os créditos dos fornecedores na atribuição do mapa. O acesso
+público não elimina as condições de licença: consulte o
+[item oficial e seus termos](https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9).
+Usamos a camada online, sem exportação ou pré-download de imagens para uso
+offline. A exportação de polígonos contém apenas nomes e coordenadas.
 
-Nunca inclua uma chave privada ou com privilégios além de basemap no repositório.
+A [verificação do satélite](e2e/pocs/MAPA-SATELITE.md) conferiu imagens reais,
+atribuição, desenho e edição em duas janelas no Chrome e no Electron. Para
+repetir, execute `npm run electron:build:poc` e `npm run check:satellite`.
 
 ## A mesma suíte nos três alvos
 

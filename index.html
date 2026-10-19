@@ -34,6 +34,10 @@
           </div>
           <ul id="polygon-list" data-testid="polygon-list" class="polygon-list"></ul>
           <div class="sidebar-actions" aria-label="Ações da aplicação">
+            <div id="polygon-file-actions" class="polygon-file-actions" role="group" aria-label="Arquivos de polígonos" hidden>
+              <button id="import-polygons" data-testid="import-polygons" class="secondary" type="button" title="Acrescentar polígonos de um arquivo JSON"><i data-lucide="folder-open" aria-hidden="true"></i><span>Importar</span></button>
+              <button id="export-polygons" data-testid="export-polygons" class="secondary" type="button" title="Salvar todos os polígonos em um arquivo JSON"><i data-lucide="save" aria-hidden="true"></i><span>Exportar</span></button>
+            </div>
             <button id="detach-map" data-testid="detach-map" class="secondary detach-button" type="button" disabled><i data-lucide="external-link" aria-hidden="true"></i><span>Separar mapa</span></button>
             <div id="detached-tools" class="detached-tools" hidden>
               <p id="connection-status" role="status">Conectando à janela do mapa…</p>
