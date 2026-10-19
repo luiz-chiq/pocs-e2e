@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { appUrl, cases, dualCases, installFixture, installUrl, isAndroid, isPwa, isWeb, s, target, triangle, viewport, type Point, type PocWindow } from '../shared/fixtures'
+import { appUrl, cases, dualCases, installFixture, installUrl, isAndroid, isElectron, isPwa, isWeb, s, target, triangle, viewport, type Point, type PocWindow } from '../shared/fixtures'
 import { preparePwa, startPwaBrowser } from './session'
 import { resolve } from 'node:path'
 import { androidPackage } from '../shared/android'
@@ -35,9 +35,11 @@ async function separate() {
   })
   await expect($(s.connection)).toHaveText(expect.stringContaining('Mapa conectado'))
   await browser.switchToWindow(popup)
+  if (!isElectron) {
   await browser.setWindowSize(viewport.width, viewport.height)
   const padding = await browser.execute(() => ({ width: outerWidth - innerWidth, height: outerHeight - innerHeight }))
   await browser.setWindowSize(viewport.width + padding.width, viewport.height + padding.height)
+  }
   await $(s.ready).waitForDisplayed({ timeout: 45_000 })
   await browser.pause(300)
   await browser.switchToWindow(main)
@@ -163,6 +165,15 @@ async function deleteInEdit() {
 
 async function points() {
   return browser.execute(() => (window as PocWindow).polygonTestApi!.getSelectedScreenPoints())
+}
+
+async function selectedMapLabel(expected: string) {
+  // Os rótulos preservam seus nós e só trocam a classe de seleção. Reconsultar
+  // o seletor em cada leitura evita continuar esperando no rótulo anterior.
+  await browser.waitUntil(async () => {
+    const selected = $$(`${s.mapLabel}.is-selected`)
+    return await selected.length === 1 && await selected[0].getText() === expected
+  }, { timeoutMsg: `O rótulo selecionado no mapa deve ser ${expected}.` })
 }
 
 async function drag(point: Point, dx: number, dy: number) {
@@ -331,9 +342,11 @@ describe(`POC WebdriverIO — ${target}`, () => {
       const debuggerAddress = await startPwaBrowser(profile)
       await browser.reloadSession({ 'goog:chromeOptions': { debuggerAddress } })
     } else await browser.reloadSession()
+    if (!isElectron) {
     await browser.setWindowSize(viewport.width, viewport.height)
     const padding = await browser.execute(() => ({ width: outerWidth - innerWidth, height: outerHeight - innerHeight }))
     await browser.setWindowSize(viewport.width + padding.width, viewport.height + padding.height)
+    }
     if (isWeb) {
       await browser.addInitScript((source: string) => { new Function(source)() }, installFixture)
       await browser.url(appUrl)
@@ -418,12 +431,12 @@ describe(`POC WebdriverIO — ${target}`, () => {
     const { main, popup } = await separate()
     await $(s.items).click()
     await browser.switchToWindow(popup)
-    await expect($(`${s.mapLabel}.is-selected`)).toHaveText('Polígono 1')
+    await selectedMapLabel('Polígono 1')
     const center = (await points()).center
     await browser.switchToWindow(main)
     await $$(s.items)[1].click()
     await browser.switchToWindow(popup)
-    await expect($(`${s.mapLabel}.is-selected`)).toHaveText('Polígono 2')
+    await selectedMapLabel('Polígono 2')
     await clickPoint(center)
     await browser.switchToWindow(main)
     await expect($(`${s.items}.selected ${s.label}`)).toHaveText('Polígono 1')

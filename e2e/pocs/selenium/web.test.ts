@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { resolve } from 'node:path'
 import { createRequire } from 'node:module'
 import { after, test } from 'node:test'
-import { Builder, By, Key, until } from 'selenium-webdriver'
+import { Builder, By, Key, until, error as webdriverError } from 'selenium-webdriver'
 import chrome from 'selenium-webdriver/chrome.js'
 import { Command, Name } from 'selenium-webdriver/lib/command.js'
 import type { Executor } from 'selenium-webdriver/http.js'
@@ -42,6 +42,18 @@ async function text(driver: chrome.Driver, selector: string, expected: string) {
   }, 10_000, `${selector}: texto esperado ${JSON.stringify(expected)}`)
 }
 
+// A sincronização entre janelas recria a lista durante o movimento do mapa.
+// Reconsultar a cada leitura; somente referência obsoleta é transitória aqui.
+async function textChanged(driver: chrome.Driver, selector: string, previous: string) {
+  await driver.wait(async () => {
+    try { return await (await element(driver, selector)).getText() !== previous }
+    catch (failure) {
+      if (failure instanceof webdriverError.StaleElementReferenceError) return false
+      throw failure
+    }
+  }, 10_000, `${selector}: aguardando alteração do texto`)
+}
+
 async function attribute(driver: chrome.Driver, selector: string, name: string, expected: string) {
   await driver.wait(async () => await (await element(driver, selector)).getAttribute(name) === expected, 10_000)
 }
@@ -55,13 +67,23 @@ async function open(driver: chrome.Driver, url = appUrl) {
   if (!isWeb) assert.equal(await (await element(driver, s.install)).isDisplayed(), false)
   if (isAndroid) assert.equal(await (await element(driver, s.detach)).isDisplayed(), false)
   if (isAndroid) assert.equal(await driver.executeScript(() => typeof (window as PocWindow).polygonTestApi?.getDrawingState), 'function', 'Instale o APK E2E atualizado com a consulta de prontidão.')
-  if (isAndroid) await driver.executeScript((mapSelector: string) => {
+  if (isAndroid) await driver.executeScript((mapSelector: string, diagnostics: boolean) => {
     const view = window as PocWindow
     view.pocMapInputs = []
-    document.addEventListener('pointerup', event => {
-      view.pocMapInputs!.push({ pointerType: event.pointerType, x: event.clientX, y: event.clientY, inMap: event.target instanceof Element && Boolean(event.target.closest(mapSelector)), isTrusted: event.isTrusted })
+    for (const type of (diagnostics ? ['keydown', 'keyup', 'click'] : ['click'])) document.addEventListener(type, event => {
+      const target = event.target as Element
+      view.pocMapInputs!.push({
+        pointerType: '', x: 0, y: 0, inMap: false, isTrusted: event.isTrusted,
+        event: event instanceof KeyboardEvent ? type + ':' + event.key + ':' + event.code : type,
+        control: target?.closest('[data-testid]')?.getAttribute('data-testid') ?? undefined,
+        timestamp: event.timeStamp, target: target?.tagName + '#' + target?.id,
+        vertices: view.polygonTestApi?.getDrawingState?.().vertices
+      })
+    }, { capture: true, passive: true })
+    for (const type of ['pointerdown', 'pointerup', 'pointercancel'] as const) document.addEventListener(type, event => {
+      view.pocMapInputs!.push({ pointerType: event.pointerType, x: event.clientX, y: event.clientY, inMap: event.target instanceof Element && Boolean(event.target.closest(mapSelector)), isTrusted: event.isTrusted, event: event.type, timestamp: event.timeStamp, target: (event.target as Element)?.tagName + '#' + (event.target as Element)?.id + '.' + (event.target as Element)?.className?.toString(), vertices: view.polygonTestApi?.getDrawingState?.().vertices })
     }, { passive: true })
-  }, s.map)
+  }, s.map, Boolean(process.env.POC_INPUT_DIAGNOSTICS))
   await count(driver, s.items, 0)
   await driver.sleep(300)
 }
@@ -72,11 +94,11 @@ async function clickPoint(driver: chrome.Driver, point: Point) {
     await driver.execute(new Command(Name.ACTIONS).setParameter('actions', [{
       type: 'pointer', id: 'map-touch', parameters: { pointerType: 'touch' }, actions: [
         { type: 'pointerMove', duration: 0, origin: 'viewport', x: Math.round(map.x + point.x), y: Math.round(map.y + point.y) },
-        { type: 'pointerDown', button: 0 }, { type: 'pause', duration: 100 }, { type: 'pointerUp', button: 0 }
+        { type: 'pointerDown', button: 0 }, { type: 'pointerUp', button: 0 }
       ]
     }]))
     await driver.sleep(400)
-  } else await driver.actions().move({ x: Math.round(map.x + point.x), y: Math.round(map.y + point.y), duration: 0 }).click().perform()
+  } else await driver.actions().move({ x: Math.round(map.x + point.x), y: Math.round(map.y + point.y), duration: 0 }).pause(150).click().perform()
 }
 
 async function mapRect(driver: chrome.Driver) {
@@ -142,19 +164,41 @@ async function fillName(driver: chrome.Driver, value: string) {
 }
 
 async function confirmName(driver: chrome.Driver) {
-  const button = await element(driver, s.finish)
-  if (!isAndroid) return button.click()
-  await driver.executeScript((element: HTMLElement) => element.scrollIntoView({ block: 'center' }), button)
-  await driver.sleep(200)
-  const point = await driver.executeScript<Point>((element: HTMLElement) => {
-    const rect = element.getBoundingClientRect()
-    return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }
-  }, button)
+  if (!isAndroid) return (await element(driver, s.finish)).click()
+  // hideKeyboard tenta Escape antes de Back neste driver e Escape cancela a edição.
+  // Back nativo só é enviado quando o IME está comprovadamente aberto.
+  if (await driver.execute(new Command('isKeyboardShown')) as unknown as boolean) {
+    await driver.executeScript('mobile: pressKey', { keycode: 4 })
+    await driver.wait(async () => !(await driver.execute(new Command('isKeyboardShown')) as unknown as boolean), 5_000, 'O teclado Android não fechou.')
+  }
+  await visible(driver, s.finish)
+  await driver.executeScript((selector: string) => document.querySelector(selector)!.scrollIntoView({ block: 'center', behavior: 'instant' }), s.finish)
+  let previous = ''
+  let point: Point
+  await driver.wait(async () => {
+    const current = await driver.executeScript<Point & { height: number; width: number; visibleHeight: number; hit: boolean }>((selector: string) => {
+      const button = document.querySelector(selector)!
+      button.scrollIntoView({ block: 'center', behavior: 'instant' })
+      const rect = button.getBoundingClientRect()
+      const x = Math.round(rect.x + rect.width / 2), y = Math.round(rect.y + rect.height / 2)
+      const hit = document.elementFromPoint(x, y)
+      return { x, y, height: innerHeight, width: innerWidth, visibleHeight: visualViewport?.height ?? innerHeight, hit: hit === button || button.contains(hit) }
+    }, s.finish)
+    point = current
+    const snapshot = JSON.stringify(current)
+    const stable = snapshot === previous
+    previous = snapshot
+    return stable && current.hit && current.x > 0 && current.x < current.width && current.y > 0 && current.y < Math.min(current.height, current.visibleHeight)
+  }, 5_000, 'Botão de confirmação fora da viewport ou ainda em movimento.')
+  const deliveredClicks = () => driver.executeScript<number>(() => (window as PocWindow).pocMapInputs!.filter(event => event.event === 'click' && event.control === 'finish-drawing' && event.isTrusted).length)
+  const clicks = await deliveredClicks()
   await driver.execute(new Command(Name.ACTIONS).setParameter('actions', [{ type: 'pointer', id: 'confirm-touch', parameters: { pointerType: 'touch' }, actions: [
-    { type: 'pointerMove', duration: 0, origin: 'viewport', x: Math.round(point.x), y: Math.round(point.y) },
-    { type: 'pointerDown', button: 0 }, { type: 'pause', duration: 100 }, { type: 'pointerUp', button: 0 }
+    { type: 'pointerMove', duration: 0, origin: 'viewport', x: point!.x, y: point!.y },
+    { type: 'pointerDown', button: 0 }, { type: 'pointerUp', button: 0 }
   ] }]))
-  await driver.sleep(400)
+  // pointerUp pode retornar antes da entrega do clique de compatibilidade touch.
+  // Não preencher o próximo nome enquanto a confirmação anterior ainda está pendente.
+  await driver.wait(async () => await deliveredClicks() > clicks, 5_000, 'O toque não gerou um clique confiável no botão de confirmação.')
 }
 
 async function deleteInEdit(driver: chrome.Driver) {
@@ -234,7 +278,8 @@ async function drag(driver: chrome.Driver, point: Point, dx: number, dy: number)
     }]))
     return
   }
-  const gesture = driver.actions().move({ x: Math.round(map.x + point.x), y: Math.round(map.y + point.y), duration: 0 }).press().pause(250)
+  // Permitir que o SDK processe o hover antes de pressionar para arrastar.
+  const gesture = driver.actions().move({ x: Math.round(map.x + point.x), y: Math.round(map.y + point.y), duration: 0 }).pause(150).press().pause(250)
   for (let step = 1; step <= 5; step++) {
     gesture.move({ x: Math.round(map.x + point.x + dx * step / 5), y: Math.round(map.y + point.y + dy * step / 5), duration: 150 })
   }
@@ -387,12 +432,12 @@ scenario(cases.invalid, async (driver) => {
       await clickPoint(driver, { x: map.width / 2 + x, y: map.height / 2 + y })
       if (isAndroid) {
         vertices++
-        await driver.wait(async () => await driver.executeScript(() => (window as PocWindow).polygonTestApi!.getDrawingState!().vertices) === vertices, 5_000)
+        await driver.wait(async () => await driver.executeScript(() => (window as PocWindow).polygonTestApi!.getDrawingState!().vertices) === vertices, 5_000, `O SDK não recebeu o vértice ${vertices}.`)
       }
       await driver.sleep(150)
     }
     await (await element(driver, s.finish)).click()
-    assert.equal(await (await element(driver, s.instructions)).getAttribute('role'), 'alert')
+    await attribute(driver, s.instructions, 'role', 'alert')
     assert.match(await (await element(driver, s.instructions)).getText(), /formando uma área/)
     await count(driver, s.items, 0)
     await visible(driver, s.finish)
@@ -433,11 +478,11 @@ scenario(cases.edit, async (driver) => {
   await driver.sleep(500)
   await drag(driver, (await points(driver)).center, 70, 40)
   await text(driver, s.lastEdit, 'Polígono movido.')
-  await driver.wait(async () => await (await element(driver, s.vertexList)).getText() !== original, 10_000)
+  await textChanged(driver, s.vertexList, original)
   const moved = await (await element(driver, s.vertexList)).getText()
   await drag(driver, (await points(driver)).vertices[0], 45, 35)
   await text(driver, s.lastEdit, 'Vértice ou aresta arrastada.')
-  await driver.wait(async () => await (await element(driver, s.vertexList)).getText() !== moved, 10_000)
+  await textChanged(driver, s.vertexList, moved)
   await clickPoint(driver, (await points(driver)).edgeMidpoint)
   await count(driver, s.vertices, 4)
   const edited = await (await element(driver, s.vertexList)).getText()
@@ -455,7 +500,7 @@ scenario(cases.name, async (driver) => {
     await fillName(driver, value)
     await confirmName(driver)
     assert.equal(await (await element(driver, s.name)).getAttribute('aria-invalid'), 'true')
-    assert.equal(await (await element(driver, s.instructions)).getAttribute('role'), 'alert')
+    await attribute(driver, s.instructions, 'role', 'alert')
     await visible(driver, s.finish)
   }
   await fillName(driver, '  Área   São José 12  ')
@@ -477,7 +522,7 @@ scenario(cases.cancel, async (driver) => {
   const original = await (await element(driver, s.vertexList)).getText()
   await beginEdit(driver)
   await drag(driver, (await points(driver)).vertices[0], 45, 35)
-  await driver.wait(async () => await (await element(driver, s.vertexList)).getText() !== original, 10_000)
+  await textChanged(driver, s.vertexList, original)
   await fillName(driver, 'Nome temporário')
   await (await element(driver, s.cancel)).click()
   await text(driver, s.label, 'Polígono 1')
@@ -595,7 +640,7 @@ scenario(dualCases.sync, async (driver) => {
   await drag(driver, (await points(driver)).vertices[0], 45, 35)
   await driver.switchTo().window(main)
   await attribute(driver, s.name, 'value', 'Área compartilhada')
-  await driver.wait(async () => await (await element(driver, s.vertexList)).getText() !== original, 10_000)
+  await textChanged(driver, s.vertexList, original)
   await (await element(driver, s.finish)).click()
   await driver.wait(until.elementIsNotVisible(await element(driver, s.finish)), 10_000)
   const saved = await (await element(driver, s.vertexList)).getText()
@@ -608,7 +653,7 @@ scenario(dualCases.sync, async (driver) => {
   await attribute(driver, s.name, 'value', 'Rascunho')
   await drag(driver, (await points(driver)).center, 35, 25)
   await driver.switchTo().window(main)
-  await driver.wait(async () => await (await element(driver, s.vertexList)).getText() !== saved, 10_000)
+  await textChanged(driver, s.vertexList, saved)
   await driver.switchTo().window(popup)
   await (await element(driver, s.cancel)).click()
   await driver.switchTo().window(main)
@@ -667,7 +712,7 @@ scenario(dualCases.close, async (driver) => {
   await fillName(driver, 'Rascunho pendente')
   await drag(driver, (await points(driver)).vertices[0], 45, 35)
   await driver.switchTo().window(main)
-  await driver.wait(async () => await (await element(driver, s.vertexList)).getText() !== saved, 10_000)
+  await textChanged(driver, s.vertexList, saved)
   await driver.switchTo().window(popup)
   await driver.close()
   await driver.switchTo().window(main)

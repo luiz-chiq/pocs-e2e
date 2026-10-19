@@ -2,6 +2,17 @@ import { access, chmod, mkdir, readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { downloadArtifact } from '@electron/get'
 import extract from 'extract-zip'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
+
+// O app empacotado não é o CLI do Chrome e não encerra com --version.
+// O driver oficial baixado para este Electron fornece a versão compatível.
+export async function electronDriverVersion(binary: string) {
+  const { stdout } = await promisify(execFile)(binary, ['--version'], { timeout: 5_000 })
+  const version = stdout.match(/ChromeDriver (\d+\.\d+\.\d+\.\d+)/)?.[1]
+  if (!version) throw new Error(`Não foi possível identificar a versão do ChromeDriver: ${stdout.trim()}`)
+  return version
+}
 
 export async function electronDriver() {
   if (process.env.CHROMEDRIVER_PATH) return resolve(process.env.CHROMEDRIVER_PATH)

@@ -11,6 +11,22 @@ const frameworks = (process.env.POC_FRAMEWORKS ?? 'playwright,webdriverio,seleni
 if (frameworks.some(framework => !['playwright', 'webdriverio', 'selenium'].includes(framework))) throw new Error('POC_FRAMEWORKS inválido.')
 const directory = resolve(process.env.POC_RESULTS_DIR ?? `test-results/pocs/${selection}-${new Date().toISOString().replace(/[:.]/g, '-')}`)
 await mkdir(directory, { recursive: true })
+const runStarted = performance.now()
+const metrics = { startedAt: new Date().toISOString(), finishedAt: null, durationMs: null, targets, frameworks, platforms: {}, stages: [] }
+const saveMetrics = () => writeFile(join(directory, 'timing.json'), JSON.stringify(metrics, null, 2))
+await saveMetrics()
+async function measure(target, stage, action, framework) {
+  const entry = { target, stage, ...(framework ? { framework } : {}), startedAt: new Date().toISOString(), finishedAt: null, durationMs: null, status: 'running' }
+  metrics.stages.push(entry)
+  await saveMetrics()
+  const started = performance.now()
+  try {
+    const value = await action()
+    entry.status = typeof value === 'number' && value !== 0 ? 'failed' : 'completed'
+    return value
+  } catch (error) { entry.status = 'failed'; entry.error = String(error); throw error }
+  finally { entry.finishedAt = new Date().toISOString(); entry.durationMs = Math.round(performance.now() - started); await saveMetrics() }
+}
 let summary = []
 try { summary = JSON.parse(await readFile(join(directory, 'summary.json'), 'utf8')).filter(result => !(targets.includes(result.target) && frameworks.includes(result.framework))) } catch {}
 await writeFile(join(directory, 'summary.json'), JSON.stringify(summary, null, 2))
@@ -39,6 +55,8 @@ async function run(name, env, path) {
 }
 
 for (const target of targets) {
+  const platformStarted = performance.now()
+  metrics.platforms[target] = { startedAt: new Date().toISOString(), finishedAt: null, durationMs: null }
   const targetDirectory = join(directory, target)
   await mkdir(targetDirectory, { recursive: true })
   let env = { ...process.env, POC_TARGET: target, POC_RESULTS_DIR: targetDirectory }
@@ -48,7 +66,7 @@ for (const target of targets) {
     if (target === 'electron' || target === 'android') {
       if (target === 'android') env = { ...await androidEnvironment(), POC_TARGET: target, POC_RESULTS_DIR: targetDirectory }
       console.log(`\nPreparando build ${target}...`)
-      const build = await run(target === 'android' ? 'test:e2e:android:build' : 'electron:build:poc', { ...env, VITE_E2E: 'true' }, join(targetDirectory, 'build.log'))
+      const build = await measure(target, 'build', () => run(target === 'android' ? 'test:e2e:android:build' : 'electron:build:poc', { ...env, VITE_E2E: 'true' }, join(targetDirectory, 'build.log')))
       await updateReport(`${target}Build`, build === 0 ? (target === 'android' ? 'APK de debug gerado com sucesso.' : 'Aplicativo Electron empacotado para o sistema local em release/electron (sem instalador e sem assinatura).') : 'Falhou; consulte build.log. Testes desta plataforma não executados.')
       if (build !== 0) throw new Error(`Build ${target} falhou. Consulte build.log.`)
       if (target === 'electron' && !env.ELECTRON_APP_PATH) {
@@ -57,12 +75,12 @@ for (const target of targets) {
           : process.platform === 'win32' ? resolve('release/electron/win-unpacked/Poligonos POC.exe') : resolve('release/electron/linux-unpacked/poligonos-poc')
       }
     }
-    if (target === 'android') { android = await prepareAndroid(env, targetDirectory); env = android.env }
+    if (target === 'android') { android = await measure(target, 'prepare', () => prepareAndroid(env, targetDirectory)); env = android.env }
     for (const framework of frameworks) {
       console.log(`\nExecutando ${framework} / ${target}...`)
       await rm(join(targetDirectory, framework, 'results.json'), { force: true })
       const started = performance.now()
-      const exitCode = await run(`test:poc:${framework}`, env, join(targetDirectory, `${framework}.log`))
+      const exitCode = await measure(target, 'suite', () => run(`test:poc:${framework}`, env, join(targetDirectory, `${framework}.log`)), framework)
       let report
       try { report = JSON.parse(await readFile(join(targetDirectory, framework, 'results.json'), 'utf8')) } catch {}
       summary.push({ target, framework, exitCode, durationMs: Math.round(performance.now() - started), report, ...(report ? {} : { infrastructureError: 'A ferramenta encerrou sem produzir relatório.' }) })
@@ -79,9 +97,18 @@ for (const target of targets) {
     console.error(String(error))
     for (const framework of frameworks) summary.push({ target, framework, exitCode: 1, status: 'not_run', infrastructureError: String(error) })
     await updateReport(target, `Impedimento: ${String(error)}. Etapa encerrada sem executar o restante desta plataforma.`)
-  } finally { await android?.cleanup() }
+  } finally {
+    if (android) await measure(target, 'cleanup', () => android.cleanup())
+    metrics.platforms[target].finishedAt = new Date().toISOString()
+    metrics.platforms[target].durationMs = Math.round(performance.now() - platformStarted)
+    await saveMetrics()
+  }
 }
 await writeFile(join(directory, 'summary.json'), JSON.stringify(summary, null, 2))
+metrics.finishedAt = new Date().toISOString()
+metrics.durationMs = Math.round(performance.now() - runStarted)
+await saveMetrics()
+await updateReport()
 console.log(`\nRelatórios: ${directory}`)
 if (targets.includes('web')) console.log('C10 mouse deve falhar enquanto o defeito intencional de instalação existir.')
-process.exitCode = summary.some(result => targets.includes(result.target) && result.exitCode !== 0) ? 1 : 0
+process.exitCode = summary.some(result => targets.includes(result.target) && frameworks.includes(result.framework) && result.exitCode !== 0) ? 1 : 0

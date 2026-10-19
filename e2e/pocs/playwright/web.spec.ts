@@ -16,8 +16,8 @@ async function open(page: Page, url = '/') {
   if (isAndroid) await page.evaluate((mapSelector: string) => {
     const view = window as PocWindow
     view.pocMapInputs = []
-    document.addEventListener('pointerup', event => {
-      view.pocMapInputs!.push({ pointerType: event.pointerType, x: event.clientX, y: event.clientY, inMap: event.target instanceof Element && Boolean(event.target.closest(mapSelector)), isTrusted: event.isTrusted })
+    for (const type of ['pointerdown', 'pointerup', 'pointercancel'] as const) document.addEventListener(type, event => {
+      view.pocMapInputs!.push({ pointerType: event.pointerType, x: event.clientX, y: event.clientY, inMap: event.target instanceof Element && Boolean(event.target.closest(mapSelector)), isTrusted: event.isTrusted, event: event.type, timestamp: event.timeStamp, target: (event.target as Element)?.className?.toString(), vertices: view.polygonTestApi?.getDrawingState?.().vertices })
     }, { passive: true })
   }, s.map)
   await expect(page.locator(s.items)).toHaveCount(0)
@@ -63,12 +63,13 @@ async function separate(page: Page) {
 }
 
 test.afterEach(async ({ context, appSession }, testInfo) => {
-  if (testInfo.status === testInfo.expectedStatus) return
+  if (!isAndroid && testInfo.status === testInfo.expectedStatus) return
   for (const [index, page] of (appSession?.context() ?? context).pages().entries()) {
     if (page.isClosed()) continue
     const path = testInfo.outputPath(`window-${index}.png`)
     try {
       if (isAndroid) await testInfo.attach(`inputs-${index}`, { body: JSON.stringify(await page.evaluate(() => (window as PocWindow).pocMapInputs)), contentType: 'application/json' })
+      if (testInfo.status === testInfo.expectedStatus) continue
       await page.screenshot({ path })
       await testInfo.attach(`window-${index}`, { path, contentType: 'image/png' })
     } catch { /* Preservar o erro do cenário. */ }
@@ -88,7 +89,11 @@ async function persist(page: Page) {
 async function deleteInEdit(page: Page) {
   await page.locator(s.items).first().click()
   await beginEdit(page)
-  await page.locator(s.mapSurface).focus()
+  // Direcionar o teclado ao mapa por uma interação real antes de Delete.
+  // Exibir os controles de edição não garante que o canvas esteja com foco.
+  await page.bringToFront()
+  await clickPoint(page, (await points(page)).center)
+  await expect(page.locator(s.mapSurface)).toBeFocused()
   await page.keyboard.press('Delete')
   await expect(page.locator(s.instructions)).toContainText('Polígono apagado nesta edição')
   await page.locator(s.finish).click()
@@ -114,9 +119,12 @@ async function clickPoint(page: Page, point: Point) {
   const map = await mapRect(page)
   if (isAndroid) {
     const cdp = await page.context().newCDPSession(page)
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: map.x + point.x, y: map.y + point.y }] })
-    await page.waitForTimeout(100)
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+    // Enviar início/fim consecutivamente, como o tap do Playwright, sem transformar
+    // a latência de dois comandos + espera em um toque longo para o Sketch.
+    await Promise.all([
+      cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: map.x + point.x, y: map.y + point.y }] }),
+      cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+    ])
     await cdp.detach()
     // No Sketch, dois toques rápidos concluem o desenho antes do terceiro ponto.
     await page.waitForTimeout(400)

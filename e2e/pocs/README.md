@@ -2,6 +2,17 @@
 
 Veja a [validação inicial realizada no deploy](RESULTADOS-WEB.md) e o
 [relatório atual por ferramenta e plataforma](RELATORIO.md).
+Há também uma [versão direta](RELATORIO-DIRETO.md), com sumário, matriz,
+tempos por plataforma, aumento percentual em relação ao menor tempo de cada
+plataforma, falhas, portabilidade e limites. O percentual usa o tempo da suíte:
+`(tempo / menor tempo elegível - 1) × 100`. Sessões que não executaram todos os
+casos previstos não entram na referência; casos com falhas continuam incluídos
+e podem encurtar/alongar a medição. Não é um ranking de desempenho.
+
+Quando há revalidação parcial, os relatórios atuais usam a última suíte completa
+de cada combinação em todas as tabelas e nos testes individuais. A origem fica
+indicada; resultados substituídos são apresentados somente nos arquivos históricos.
+Percentuais exigem as três ferramentas da plataforma na mesma rodada.
 
 ## Suítes web implementadas
 
@@ -69,6 +80,8 @@ Os testes usam perfis/contextos de automação, sem abrir o perfil pessoal.
 O comando conjunto cria `test-results/pocs/<ambiente>-<data-hora>/`, com:
 
 - `summary.json`: resultados e códigos de saída das três ferramentas.
+- `timing.json`: início/fim e duração da rodada, de cada plataforma e das etapas
+  build, preparação externa, suíte e limpeza.
 - `<ferramenta>.log`: saída completa de cada execução.
 - `<ferramenta>/results.json`: resultado individual, duração e erro.
 - Screenshots nas falhas; Playwright também mantém trace das falhas.
@@ -123,8 +136,14 @@ CDP `PWA` disponível; a validação parcial usou Chrome 155 no macOS.
 Electron usa um diretório de dados de teste. O comando conjunto gera o aplicativo
 empacotado para o sistema local e testa esse binário. O comando individual usa o
 runtime local por padrão; informe `ELECTRON_APP_PATH` para testar um binário específico.
-Selenium baixa o ChromeDriver oficial correspondente à versão Electron, ou
-usa `CHROMEDRIVER_PATH` quando informado.
+Selenium e WebdriverIO usam o ChromeDriver oficial correspondente à versão
+Electron, ou `CHROMEDRIVER_PATH` quando informado. Na suíte POC, WDIO conecta
+diretamente ao binário Electron por WebDriver clássico, com perfil explícito e
+versão obtida do driver; não usa os hooks do serviço Electron. Isso mantém
+reinício e troca de janelas sob controle da suíte. A principal e o mapa separado
+usam os tamanhos definidos pelo app, pois este Electron não implementa o
+redimensionamento `Browser.getWindowForTarget`. O `browserName: 'chrome'` é a
+capability do protocolo; o executável aberto continua sendo o Electron.
 
 O orquestrador `node scripts/run-pocs.mjs <ambiente>` executa as três
 ferramentas; `all` solicita a matriz inteira e `POC_FRAMEWORKS` permite escolher
@@ -146,11 +165,49 @@ O relatório Markdown é atualizado após cada ferramenta. Para reconstruí-lo:
 node scripts/report-pocs.mjs test-results/pocs/minha-execucao
 ```
 
+Para regenerar os relatórios da rodada final de 19/10/2026:
+
+```bash
+node scripts/report-pocs.mjs test-results/pocs/final-2026-10-19
+```
+
+A [versão completa anterior](RELATORIO-2026-10-19-ANTES-RODADA-FINAL.md) e a
+[versão direta anterior](RELATORIO-DIRETO-2026-10-19-ANTES-RODADA-FINAL.md) foram
+preservadas. A rodada final não importa seus resultados.
+
+A correção posterior de WDIO/Electron é aplicada ao resumo, à tabela de tempos
+e aos 13 testes individuais dos dois relatórios atuais. Os dados estão em
+`test-results/pocs/wdio-electron-fix-2026-10-19/`; o comando de regeneração acima
+inclui essa revalidação pelo manifesto `followup.json`. A rodada de 12
+combinações permanece separada, com seus tempos originais. Os relatórios de antes
+dessa correção também foram preservados em
+[completo](RELATORIO-2026-10-19-ANTES-CORRECAO-WDIO-ELECTRON.md) e
+[direto](RELATORIO-DIRETO-2026-10-19-ANTES-CORRECAO-WDIO-ELECTRON.md).
+
+Quando existe `followup.json` no diretório informado, o gerador lê as raízes de
+resultados/timing listadas em `suites`, consolida a situação mais recente em todas as seções e mantém
+a rodada original em arquivos históricos separados. O manifesto desta etapa também está em
+`test-results/pocs/fixes-2026-10-19/followup.json`; as tentativas de diagnóstico
+referenciadas ficam no relatório completo, sem substituir os testes da última
+suíte completa pelo melhor resultado anterior.
+
 O relatório começa com uma tabela por ferramenta e plataforma, distinguindo
 aprovações, falhas, preparação bloqueada e execução parcial. Cada teste tem
 sua duração em segundos; os totais são a soma dos tempos individuais e não
-incluem build/boot externos. Preparação por teste e sessão compartilhada têm
-custos diferentes, portanto esses tempos não são um benchmark entre ferramentas.
+incluem build/boot externos. A coluna de tempo da suíte/comando acrescenta
+inicialização, sessões e encerramento dentro do comando da ferramenta. Um tempo
+inconsistente é descartado; quando possível, o total do runner no log é usado
+e identificado. Preparação por teste e sessão compartilhada têm custos diferentes,
+portanto esses tempos não são um benchmark entre ferramentas.
+
+O gerador incorpora [LIMITACOES.md](LIMITACOES.md) ao relatório, com a análise
+das divergências e as limitações documentadas/observadas em Electron e Android.
+Atualize esse arquivo ao mudar os adaptadores ou investigar novas causas.
+Também incorpora [PORTABILIDADE.md](PORTABILIDADE.md), que explica quais camadas
+foram compartilhadas e quais implementações foram escritas por ferramenta.
+O mesmo comando produz `RELATORIO.md` e `RELATORIO-DIRETO.md`, ambos com sumário.
+O total por plataforma inclui build/preparação/limpeza externos e geração dos
+relatórios. Preparação Android agrupa boot, instalação inicial do APK e Appium.
 
 O preparador Android pode iniciar um AVD, instalar o APK e iniciar Appium.
 Use somente dispositivo/perfil de testes: os testes limpam os dados do pacote
@@ -162,3 +219,30 @@ oferece separar mapa. São quatro execuções de duas janelas por ferramenta,
 pois D02 tem duas variações. O planejamento resulta em 15 testes web,
 13 PWA, 13 Electron e 9 Android por ferramenta. As suítes anteriores de
 regressão continuam disponíveis separadamente.
+
+## Revalidação web posterior
+
+A etapa de 19/10/2026 em `test-results/pocs/web-fix-2026-10-19/` reexecutou
+web nas três ferramentas e WDIO/PWA. Os dois relatórios mostram a matriz
+atualizada e os novos tempos, incluindo o preparo explícito do Delete e a
+validação de D01 no PWA. O manifesto da rodada final original referencia essas
+novas suítes e preserva a revalidação anterior WDIO/Electron. O comando de
+regeneração continua sendo:
+
+```bash
+node scripts/report-pocs.mjs test-results/pocs/final-2026-10-19
+```
+
+Os resultados de antes desta etapa estão preservados em
+[completo anterior](RELATORIO-2026-10-19-ANTES-REVALIDACAO-WEB.md) e
+[direto anterior](RELATORIO-DIRETO-2026-10-19-ANTES-REVALIDACAO-WEB.md).
+
+## Leitura dos relatórios atuais
+
+As tabelas principais e os 150 testes individuais mostram somente a suíte vigente
+de cada combinação. A tabela de tempo de execução tem uma linha por plataforma e
+colunas Playwright, Selenium e WebdriverIO; cada célula mede o comando da suíte,
+sem build ou preparação externa. Os dados brutos usados estão vinculados no
+relatório. Resultados substituídos ficam no
+[histórico completo](RELATORIO-HISTORICO-2026-10-19.md) e no
+[histórico direto](RELATORIO-DIRETO-HISTORICO-2026-10-19.md).
