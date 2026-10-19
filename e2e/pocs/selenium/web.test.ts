@@ -8,10 +8,13 @@ import { after, test } from 'node:test'
 import { Builder, By, Key, until } from 'selenium-webdriver'
 import chrome from 'selenium-webdriver/chrome.js'
 import { Command, Name } from 'selenium-webdriver/lib/command.js'
+import type { Executor } from 'selenium-webdriver/http.js'
 import { appUrl, cases, dualCases, installFixture, installUrl, isAndroid, isElectron, isPwa, isWeb, s, target, triangle, viewport, type Point, type PocWindow, type ScreenPoints } from '../shared/fixtures.ts'
-import { BrowserCdp, installPwa, launchPwa } from '../shared/pwa.ts'
+import { installPwa, launchPwa } from '../shared/pwa.ts'
+import { ChromePipe } from '../shared/chrome-pipe.ts'
 import { electronDriver } from '../shared/electron.ts'
 import { systemChrome } from '../shared/chrome.ts'
+import { androidCapabilities, androidPackage, appiumUrl } from '../shared/android.ts'
 
 const directory = `${process.env.POC_RESULTS_DIR ?? `test-results/pocs/${target}`}/selenium`
 const results: object[] = []
@@ -50,24 +53,65 @@ async function open(driver: chrome.Driver, url = appUrl) {
   await driver.wait(() => driver.executeScript(() => typeof (window as PocWindow).polygonTestApi?.getSelectedScreenPoints === 'function'), 10_000, 'O deploy precisa incluir a API da build E2E.')
   if (isPwa) assert.equal(await driver.executeScript(() => matchMedia('(display-mode: standalone)').matches), true)
   if (!isWeb) assert.equal(await (await element(driver, s.install)).isDisplayed(), false)
+  if (isAndroid) assert.equal(await (await element(driver, s.detach)).isDisplayed(), false)
+  if (isAndroid) assert.equal(await driver.executeScript(() => typeof (window as PocWindow).polygonTestApi?.getDrawingState), 'function', 'Instale o APK E2E atualizado com a consulta de prontidão.')
+  if (isAndroid) await driver.executeScript((mapSelector: string) => {
+    const view = window as PocWindow
+    view.pocMapInputs = []
+    document.addEventListener('pointerup', event => {
+      view.pocMapInputs!.push({ pointerType: event.pointerType, x: event.clientX, y: event.clientY, inMap: event.target instanceof Element && Boolean(event.target.closest(mapSelector)), isTrusted: event.isTrusted })
+    }, { passive: true })
+  }, s.map)
   await count(driver, s.items, 0)
   await driver.sleep(300)
 }
 
 async function clickPoint(driver: chrome.Driver, point: Point) {
-  const map = await (await element(driver, s.map)).getRect()
-  await driver.actions().move({ x: Math.round(map.x + point.x), y: Math.round(map.y + point.y), duration: 0 }).click().perform()
+  const map = await mapRect(driver)
+  if (isAndroid) {
+    await driver.execute(new Command(Name.ACTIONS).setParameter('actions', [{
+      type: 'pointer', id: 'map-touch', parameters: { pointerType: 'touch' }, actions: [
+        { type: 'pointerMove', duration: 0, origin: 'viewport', x: Math.round(map.x + point.x), y: Math.round(map.y + point.y) },
+        { type: 'pointerDown', button: 0 }, { type: 'pause', duration: 100 }, { type: 'pointerUp', button: 0 }
+      ]
+    }]))
+    await driver.sleep(400)
+  } else await driver.actions().move({ x: Math.round(map.x + point.x), y: Math.round(map.y + point.y), duration: 0 }).click().perform()
+}
+
+async function mapRect(driver: chrome.Driver) {
+  if (!isAndroid) return (await element(driver, s.map)).getRect()
+  await driver.executeScript((selector: string) => document.querySelector(selector)!.scrollIntoView({ block: 'start' }), s.map)
+  await driver.sleep(150)
+  return driver.executeScript<{ x: number; y: number; width: number; height: number }>((selector: string) => {
+    const map = document.querySelector(selector)!
+    const rect = map.getBoundingClientRect()
+    return { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+  }, s.map)
+}
+
+async function deselect(driver: chrome.Driver) {
+  if (!isAndroid) return driver.actions().sendKeys(Key.ESCAPE).perform()
+  const map = await mapRect(driver)
+  await clickPoint(driver, { x: map.width - 30, y: map.height - 100 })
 }
 
 async function create(driver: chrome.Driver, offset = 0) {
-  const map = await (await element(driver, s.map)).getRect()
+  const map = await mapRect(driver)
   const previous = (await driver.findElements(By.css(s.items))).length
-  if (await (await element(driver, s.draw)).getAttribute('data-mode') === 'edit') await driver.actions().sendKeys(Key.ESCAPE).perform()
+  if (await (await element(driver, s.draw)).getAttribute('data-mode') === 'edit') await deselect(driver)
   await (await element(driver, s.draw)).click()
   await visible(driver, s.finish)
   await driver.sleep(300)
+  const acknowledged = isAndroid && await driver.executeScript(() => typeof (window as PocWindow).polygonTestApi?.getDrawingState === 'function')
+  if (acknowledged) await driver.wait(() => driver.executeScript(() => (window as PocWindow).polygonTestApi!.getDrawingState!().ready), 15_000, 'SDK ainda não está pronto para desenhar.')
+  let vertices = 0
   for (const [x, y] of triangle) {
-    await clickPoint(driver, { x: map.width / 2 + x + offset, y: map.height / 2 + y })
+    await clickPoint(driver, { x: map.width / 2 + x + (isAndroid ? Math.min(offset, map.width / 2 - 20) : offset), y: map.height / 2 + y })
+    if (acknowledged) {
+      vertices++
+      await driver.wait(async () => await driver.executeScript(() => (window as PocWindow).polygonTestApi!.getDrawingState!().vertices) === vertices, 5_000, `O SDK não recebeu o vértice ${vertices}.`)
+    }
     await driver.sleep(150)
   }
   await (await element(driver, s.finish)).click()
@@ -93,8 +137,24 @@ async function persist(driver: chrome.Driver) {
 
 async function fillName(driver: chrome.Driver, value: string) {
   const input = await element(driver, s.name)
-  await input.sendKeys(Key.chord(process.platform === 'darwin' ? Key.COMMAND : Key.CONTROL, 'a'), Key.BACK_SPACE)
+  await input.sendKeys(Key.chord(!isAndroid && process.platform === 'darwin' ? Key.COMMAND : Key.CONTROL, 'a'), Key.BACK_SPACE)
   if (value) await input.sendKeys(value)
+}
+
+async function confirmName(driver: chrome.Driver) {
+  const button = await element(driver, s.finish)
+  if (!isAndroid) return button.click()
+  await driver.executeScript((element: HTMLElement) => element.scrollIntoView({ block: 'center' }), button)
+  await driver.sleep(200)
+  const point = await driver.executeScript<Point>((element: HTMLElement) => {
+    const rect = element.getBoundingClientRect()
+    return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }
+  }, button)
+  await driver.execute(new Command(Name.ACTIONS).setParameter('actions', [{ type: 'pointer', id: 'confirm-touch', parameters: { pointerType: 'touch' }, actions: [
+    { type: 'pointerMove', duration: 0, origin: 'viewport', x: Math.round(point.x), y: Math.round(point.y) },
+    { type: 'pointerDown', button: 0 }, { type: 'pause', duration: 100 }, { type: 'pointerUp', button: 0 }
+  ] }]))
+  await driver.sleep(400)
 }
 
 async function deleteInEdit(driver: chrome.Driver) {
@@ -118,9 +178,11 @@ async function separate(driver: chrome.Driver) {
   }, 10_000)
   await driver.wait(until.elementTextContains(await element(driver, s.connection), 'Mapa conectado'), 30_000)
   await driver.switchTo().window(popup)
-  await driver.manage().window().setRect({ width: viewport.width, height: viewport.height })
-  const padding = await driver.executeScript<{ width: number; height: number }>(() => ({ width: outerWidth - innerWidth, height: outerHeight - innerHeight }))
-  await driver.manage().window().setRect({ width: viewport.width + padding.width, height: viewport.height + padding.height })
+  if (!isElectron) {
+    await driver.manage().window().setRect({ width: viewport.width, height: viewport.height })
+    const padding = await driver.executeScript<{ width: number; height: number }>(() => ({ width: outerWidth - innerWidth, height: outerHeight - innerHeight }))
+    await driver.manage().window().setRect({ width: viewport.width + padding.width, height: viewport.height + padding.height })
+  }
   await visible(driver, s.ready)
   await driver.sleep(300)
   await driver.switchTo().window(main)
@@ -160,7 +222,18 @@ async function points(driver: chrome.Driver): Promise<ScreenPoints> {
 }
 
 async function drag(driver: chrome.Driver, point: Point, dx: number, dy: number) {
-  const map = await (await element(driver, s.map)).getRect()
+  const map = await mapRect(driver)
+  if (isAndroid) {
+    await driver.execute(new Command(Name.ACTIONS).setParameter('actions', [{
+      type: 'pointer', id: 'map-touch', parameters: { pointerType: 'touch' }, actions: [
+        { type: 'pointerMove', duration: 0, origin: 'viewport', x: Math.round(map.x + point.x), y: Math.round(map.y + point.y) },
+        { type: 'pointerDown', button: 0 }, { type: 'pause', duration: 250 },
+        ...Array.from({ length: 5 }, (_, step) => ({ type: 'pointerMove', duration: 150, origin: 'viewport', x: Math.round(map.x + point.x + dx * (step + 1) / 5), y: Math.round(map.y + point.y + dy * (step + 1) / 5) })),
+        { type: 'pointerUp', button: 0 }
+      ]
+    }]))
+    return
+  }
   const gesture = driver.actions().move({ x: Math.round(map.x + point.x), y: Math.round(map.y + point.y), duration: 0 }).press().pause(250)
   for (let step = 1; step <= 5; step++) {
     gesture.move({ x: Math.round(map.x + point.x + dx * step / 5), y: Math.round(map.y + point.y + dy * step / 5), duration: 150 })
@@ -169,7 +242,7 @@ async function drag(driver: chrome.Driver, point: Point, dx: number, dy: number)
 }
 
 function scenario(title: string, body: (driver: chrome.Driver, restart: () => Promise<chrome.Driver>) => Promise<void>) {
-  test(title, { timeout: 90_000 }, async () => {
+  test(title, { timeout: isAndroid ? 180_000 : 90_000 }, async () => {
     const started = performance.now()
     const profile = mkdtempSync(join(tmpdir(), 'polygon-poc-selenium-'))
     const options = new chrome.Options()
@@ -184,8 +257,9 @@ function scenario(title: string, body: (driver: chrome.Driver, restart: () => Pr
     let status = 'passed'
     let error: string | undefined
     let inputs: unknown
+    let mapInputs: unknown
     const artifacts: string[] = []
-    let cdp: BrowserCdp | undefined
+    let cdp: ChromePipe | undefined
     const manifestId = new URL('./', appUrl).href
     let pwaInstalled = false
     let bootstrap: string
@@ -193,24 +267,36 @@ function scenario(title: string, body: (driver: chrome.Driver, restart: () => Pr
     if (isElectron) process.env.POLYGON_USER_DATA_DIR = profile
     let cleanupFailure: unknown
     const start = async () => {
-      const builder = new Builder().forBrowser('chrome').setChromeOptions(options)
+      if (isPwa) {
+        cdp = await ChromePipe.launch(profile)
+        options.debuggerAddress(cdp.debuggerAddress)
+      }
+      const builder = isAndroid
+        ? new Builder().usingServer(appiumUrl).withCapabilities({ ...androidCapabilities, browserName: '' })
+        : new Builder().forBrowser('chrome').setChromeOptions(options)
       if (isElectron) builder.setChromeService(new chrome.ServiceBuilder(await electronDriver()))
       driver = await builder.build() as chrome.Driver
       await driver.manage().setTimeouts({ pageLoad: 45_000, script: 15_000, implicit: 0 })
+      if (isAndroid) {
+        const executor = driver.getExecutor() as Executor
+        executor.defineCommand('getContexts', 'GET', '/session/:sessionId/contexts')
+        executor.defineCommand('setContext', 'POST', '/session/:sessionId/context')
+        executor.defineCommand('isKeyboardShown', 'GET', '/session/:sessionId/appium/device/is_keyboard_shown')
+        executor.defineCommand('hideKeyboard', 'POST', '/session/:sessionId/appium/device/hide_keyboard')
+      } else if (!isElectron) {
       const padding = await driver.executeScript<{ width: number; height: number }>(() => ({ width: outerWidth - innerWidth, height: outerHeight - innerHeight }))
       await driver.manage().window().setRect({ width: viewport.width + padding.width, height: viewport.height + padding.height })
+      }
       if (isWeb) await driver.sendDevToolsCommand('Page.addScriptToEvaluateOnNewDocument', { source: installFixture })
       if (isPwa) {
         bootstrap = await driver.getWindowHandle()
-        const chromeOptions = (await driver.getCapabilities()).get('goog:chromeOptions')
-        cdp = await BrowserCdp.connect(chromeOptions.debuggerAddress)
         if (!pwaInstalled) {
           await driver.get(appUrl)
-          await installPwa(cdp)
+          await installPwa(cdp!)
           pwaInstalled = true
           await driver.get('about:blank')
         }
-        await launchPwa(cdp, manifestId)
+        await launchPwa(cdp!, manifestId)
         await driver.wait(async () => {
           for (const handle of await driver!.getAllWindowHandles()) {
             await driver!.switchTo().window(handle)
@@ -226,8 +312,20 @@ function scenario(title: string, body: (driver: chrome.Driver, restart: () => Pr
     }
     try {
       await body(await start(), async () => {
-        cdp?.close()
+        if (isAndroid) {
+          await driver!.execute(new Command('setContext').setParameter('name', 'NATIVE_APP'))
+          await driver!.executeScript('mobile: terminateApp', { appId: androidPackage })
+          await driver!.executeScript('mobile: activateApp', { appId: androidPackage })
+          let context = ''
+          await driver!.wait(async () => {
+            context = (await driver!.execute(new Command('getContexts')) as unknown as string[]).find(item => item.startsWith('WEBVIEW')) ?? ''
+            return Boolean(context)
+          }, 45_000)
+          await driver!.execute(new Command('setContext').setParameter('name', context))
+          return driver!
+        }
         await driver!.quit()
+        await cdp?.close()
         driver = undefined
         return start()
       })
@@ -248,17 +346,18 @@ function scenario(title: string, body: (driver: chrome.Driver, restart: () => Pr
     } finally {
       if (driver) {
         try { inputs = await driver.executeScript(() => (window as PocWindow).pocInstallInputs) } catch { /* Janela indisponível. */ }
+        if (isAndroid) try { mapInputs = await driver.executeScript(() => (window as PocWindow).pocMapInputs) } catch { /* Sessão indisponível. */ }
         if (pwaInstalled) {
           try { await cdp!.send('PWA.uninstall', { manifestId }); await driver.switchTo().window(bootstrap!) } catch { /* Encerrar ainda libera todas as janelas. */ }
         }
-        cdp?.close()
         try { await driver.quit() } catch (cleanupError) {
           if (status === 'passed') cleanupFailure = cleanupError
           status = 'failed'
           error ??= `Falha ao encerrar sessão: ${String(cleanupError)}`
         }
       }
-      results.push({ title, status, durationMs: Math.round(performance.now() - started), error, inputs, artifacts })
+      await cdp?.close()
+      results.push({ title, status, durationMs: Math.round(performance.now() - started), error, inputs, mapInputs, artifacts })
       rmSync(profile, { recursive: true, force: true })
       if (previousUserData === undefined) delete process.env.POLYGON_USER_DATA_DIR
       else process.env.POLYGON_USER_DATA_DIR = previousUserData
@@ -282,8 +381,14 @@ scenario(cases.invalid, async (driver) => {
   for (const drawing of [[], triangle.slice(0, 1), triangle.slice(0, 2), [[-120, -50], [-60, -50], [0, -50]]]) {
     await (await element(driver, s.draw)).click()
     await driver.sleep(300)
+    if (isAndroid) await driver.wait(() => driver.executeScript(() => (window as PocWindow).polygonTestApi!.getDrawingState!().ready), 15_000)
+    let vertices = 0
     for (const [x, y] of drawing) {
       await clickPoint(driver, { x: map.width / 2 + x, y: map.height / 2 + y })
+      if (isAndroid) {
+        vertices++
+        await driver.wait(async () => await driver.executeScript(() => (window as PocWindow).polygonTestApi!.getDrawingState!().vertices) === vertices, 5_000)
+      }
       await driver.sleep(150)
     }
     await (await element(driver, s.finish)).click()
@@ -306,12 +411,13 @@ scenario(cases.select, async (driver) => {
   assert.match(await (await element(driver, s.mapLabel)).getAttribute('class') ?? '', /\bis-selected\b/)
   assert.equal(await (await element(driver, s.finish)).isDisplayed(), false)
   const center = (await points(driver)).center
-  await driver.actions().sendKeys(Key.ESCAPE).perform()
+  await deselect(driver)
   assert.equal(await (await element(driver, s.draw)).getAttribute('data-mode'), 'create')
   await clickPoint(driver, center)
   await driver.wait(async () => (await (await element(driver, s.items)).getAttribute('class'))?.includes('selected'), 10_000)
   assert.equal(await (await element(driver, s.finish)).isDisplayed(), false)
-  await (await element(driver, s.label)).sendKeys(Key.ENTER)
+  if (isAndroid) await (await element(driver, s.draw)).click()
+  else await (await element(driver, s.label)).sendKeys(Key.ENTER)
   await visible(driver, s.finish)
   await (await element(driver, s.cancel)).click()
   await beginEdit(driver)
@@ -347,19 +453,20 @@ scenario(cases.name, async (driver) => {
   await beginEdit(driver)
   for (const value of ['   ', 'Área@1', 'Área-1', 'Área_1']) {
     await fillName(driver, value)
-    await (await element(driver, s.finish)).click()
+    await confirmName(driver)
     assert.equal(await (await element(driver, s.name)).getAttribute('aria-invalid'), 'true')
     assert.equal(await (await element(driver, s.instructions)).getAttribute('role'), 'alert')
     await visible(driver, s.finish)
   }
   await fillName(driver, '  Área   São José 12  ')
-  await (await element(driver, s.name)).sendKeys(Key.ENTER)
+  if (isAndroid) await confirmName(driver)
+  else await (await element(driver, s.name)).sendKeys(Key.ENTER)
   await text(driver, s.label, 'Área São José 12')
   await text(driver, s.mapLabel, 'Área São José 12')
   await beginEdit(driver)
   await fillName(driver, 'A'.repeat(40))
   assert.equal(await (await element(driver, s.name)).getAttribute('value'), 'A'.repeat(30))
-  await (await element(driver, s.finish)).click()
+  await confirmName(driver)
   await text(driver, s.label, 'A'.repeat(30))
   await text(driver, s.mapLabel, 'A'.repeat(30))
 })
@@ -402,6 +509,7 @@ scenario(cases.delete, async (driver) => {
   await open(driver)
   await create(driver)
   await create(driver, 240)
+  if (!isAndroid) {
   await deleteInEdit(driver)
   await (await element(driver, s.restoreDeleted)).click()
   await count(driver, s.items, 2)
@@ -410,12 +518,18 @@ scenario(cases.delete, async (driver) => {
   await (await element(driver, s.confirmDeleted)).click()
   await count(driver, s.items, 1)
   await count(driver, s.mapLabel, 1)
+  }
+  const remaining = (await driver.findElements(By.css(s.items))).length
   await (await element(driver, s.remove)).click()
   await (await element(driver, s.dismissClear)).click()
-  await count(driver, s.items, 1)
+  await count(driver, s.items, remaining)
   await (await element(driver, s.remove)).click()
   await (await element(driver, s.confirmClear)).click()
-  await count(driver, s.items, 0)
+  await count(driver, s.items, remaining - 1)
+  if (isAndroid) {
+    await (await element(driver, s.clear)).click()
+    await (await element(driver, s.confirmClear)).click()
+  }
   await create(driver)
   await create(driver, 240)
   await (await element(driver, s.clear)).click()
@@ -447,10 +561,12 @@ scenario(cases.navigation, async (driver) => {
   await attribute(driver, s.needle, 'style', 'transform: rotate(60deg);')
   await (await element(driver, s.compass)).click()
   await attribute(driver, s.needle, 'style', 'transform: rotate(0deg);')
+  if (!isAndroid) {
   await (await element(driver, s.compass)).sendKeys(Key.ARROW_RIGHT)
   await attribute(driver, s.needle, 'style', 'transform: rotate(15deg);')
   await (await element(driver, s.compass)).sendKeys(Key.HOME)
   await attribute(driver, s.needle, 'style', 'transform: rotate(0deg);')
+  }
 })
 
 if (!isAndroid) {

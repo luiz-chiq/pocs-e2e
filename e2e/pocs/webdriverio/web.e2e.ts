@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
-import { appUrl, cases, dualCases, installFixture, installUrl, isAndroid, isPwa, isWeb, s, triangle, viewport, type Point, type PocWindow } from '../shared/fixtures'
-import { preparePwa } from './session'
+import { appUrl, cases, dualCases, installFixture, installUrl, isAndroid, isPwa, isWeb, s, target, triangle, viewport, type Point, type PocWindow } from '../shared/fixtures'
+import { preparePwa, startPwaBrowser } from './session'
+import { resolve } from 'node:path'
 import { androidPackage } from '../shared/android'
 
 async function open(url = '/') {
@@ -14,6 +15,7 @@ async function open(url = '/') {
   if (isPwa) assert.equal(await browser.execute(() => matchMedia('(display-mode: standalone)').matches), true)
   if (!isWeb) await expect($(s.install)).not.toBeDisplayed()
   if (isAndroid) await expect($(s.detach)).not.toBeDisplayed()
+  if (isAndroid) assert.equal(await browser.execute(() => typeof (window as PocWindow).polygonTestApi?.getDrawingState), 'function', 'Instale o APK E2E atualizado com a consulta de prontidão.')
   if (await $(s.clear).isEnabled()) {
     await $(s.clear).click()
     await $(s.confirmClear).click()
@@ -90,14 +92,25 @@ async function deselect() {
   if (!isAndroid) return browser.keys('Escape')
   const size = await $(s.map).getSize()
   await clickPoint({ x: size.width - 30, y: size.height - 100 })
+  // A seleção só é atualizada depois do hitTest assíncrono do mapa.
+  await expect($(s.draw)).toHaveAttribute('data-mode', 'create')
 }
 
 async function fillName(value: string) {
   await $(s.name).setValue(value)
-  if (isAndroid && await browser.isKeyboardShown()) {
-    await browser.hideKeyboard()
-    await browser.pause(300)
-  }
+}
+
+async function confirmName() {
+  if (!isAndroid) return $(s.finish).click()
+  await $(s.finish).scrollIntoView({ block: 'center' })
+  await browser.pause(200)
+  const point = await $(s.finish).execute(element => {
+    const rect = element.getBoundingClientRect()
+    return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }
+  }) as Point
+  await browser.action('pointer', { parameters: { pointerType: 'touch' } })
+    .move({ origin: 'viewport', x: Math.round(point.x), y: Math.round(point.y) }).down({ button: 0 }).pause(100).up({ button: 0 }).perform()
+  await browser.pause(400)
 }
 
 async function create(offset = 0) {
@@ -107,8 +120,15 @@ async function create(offset = 0) {
   await $(s.draw).click()
   await $(s.finish).waitForDisplayed()
   await browser.pause(300)
+  const acknowledged = isAndroid && await browser.execute(() => typeof (window as PocWindow).polygonTestApi?.getDrawingState === 'function')
+  if (acknowledged) await browser.waitUntil(() => browser.execute(() => (window as PocWindow).polygonTestApi!.getDrawingState!().ready), { timeout: 15_000, timeoutMsg: 'SDK ainda não está pronto para desenhar.' })
+  let vertices = 0
   for (const [x, y] of triangle) {
-    await clickPoint({ x: map.width / 2 + x + (isAndroid ? Math.min(offset, map.width / 4) : offset), y: map.height / 2 + y })
+    await clickPoint({ x: map.width / 2 + x + (isAndroid ? Math.min(offset, map.width / 2 - 20) : offset), y: map.height / 2 + y })
+    if (acknowledged) {
+      vertices++
+      await browser.waitUntil(async () => (await browser.execute(() => (window as PocWindow).polygonTestApi!.getDrawingState!().vertices)) === vertices, { timeout: 5_000, timeoutMsg: `O SDK não recebeu o vértice ${vertices}.` })
+    }
     await browser.pause(150)
   }
   await $(s.finish).click()
@@ -163,7 +183,7 @@ async function drag(point: Point, dx: number, dy: number) {
   }])
 }
 
-describe('POC WebdriverIO — web', () => {
+describe(`POC WebdriverIO — ${target}`, () => {
   before(async () => { if (isPwa) await preparePwa(true) })
   it(cases.create, async () => {
     await open()
@@ -180,8 +200,14 @@ describe('POC WebdriverIO — web', () => {
     for (const drawing of [[], triangle.slice(0, 1), triangle.slice(0, 2), [[-120, -50], [-60, -50], [0, -50]]]) {
       await $(s.draw).click()
       await browser.pause(300)
+      if (isAndroid) await browser.waitUntil(() => browser.execute(() => (window as PocWindow).polygonTestApi!.getDrawingState!().ready), { timeout: 15_000 })
+      let vertices = 0
       for (const [x, y] of drawing) {
         await clickPoint({ x: map.width / 2 + x, y: map.height / 2 + y })
+        if (isAndroid) {
+          vertices++
+          await browser.waitUntil(async () => (await browser.execute(() => (window as PocWindow).polygonTestApi!.getDrawingState!().vertices)) === vertices, { timeout: 5_000 })
+        }
         await browser.pause(150)
       }
       await $(s.finish).click()
@@ -247,20 +273,20 @@ describe('POC WebdriverIO — web', () => {
     const input = $(s.name)
     for (const name of ['   ', 'Área@1', 'Área-1', 'Área_1']) {
       await fillName(name)
-      await $(s.finish).click()
+      await confirmName()
       await expect(input).toHaveAttribute('aria-invalid', 'true')
       await expect($(s.instructions)).toHaveAttribute('role', 'alert')
       await expect($(s.finish)).toBeDisplayed()
     }
     await fillName('  Área   São José 12  ')
-    if (isAndroid) await $(s.finish).click()
+    if (isAndroid) await confirmName()
     else await browser.keys('Enter')
     await expect($(s.label)).toHaveText('Área São José 12')
     await expect($(s.mapLabel)).toHaveText('Área São José 12')
     await beginEdit()
     await fillName('A'.repeat(40))
     await expect(input).toHaveValue('A'.repeat(30))
-    await $(s.finish).click()
+    await confirmName()
     await expect($(s.label)).toHaveText('A'.repeat(30))
     await expect($(s.mapLabel)).toHaveText('A'.repeat(30))
   })
@@ -300,7 +326,11 @@ describe('POC WebdriverIO — web', () => {
       }, { timeout: 45_000 })
       await browser.switchContext(webview)
     } else {
-    await browser.reloadSession()
+    if (isPwa) {
+      const profile = resolve(`${process.env.POC_RESULTS_DIR ?? 'test-results/pocs/pwa'}/webdriverio/browser-profile`)
+      const debuggerAddress = await startPwaBrowser(profile)
+      await browser.reloadSession({ 'goog:chromeOptions': { debuggerAddress } })
+    } else await browser.reloadSession()
     await browser.setWindowSize(viewport.width, viewport.height)
     const padding = await browser.execute(() => ({ width: outerWidth - innerWidth, height: outerHeight - innerHeight }))
     await browser.setWindowSize(viewport.width + padding.width, viewport.height + padding.height)

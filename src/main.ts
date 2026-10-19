@@ -1046,9 +1046,14 @@ if (import.meta.env.DEV || import.meta.env.VITE_E2E === 'true') {
         edgeMidpoint: { x: number; y: number }
       }
       waitForPersistence: () => Promise<void>
+      getDrawingState: () => { ready: boolean; vertices: number }
     }
   }
   testWindow.polygonTestApi = {
+    getDrawingState: () => ({
+      ready: activeAction === 'create' && sketch.state === 'active' && sketch.activeTool === 'polygon' && !sketch.toolTransitionInProgress,
+      vertices: draftVertices.length
+    }),
     getSelectedScreenPoints: () => {
       const graphic = activeGraphic ?? selectedGraphic
       if (!graphic) throw new Error('Nenhum polígono selecionado para teste.')

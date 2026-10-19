@@ -3,8 +3,9 @@ import { resolve } from 'node:path'
 import { config as browserConfig } from './wdio.conf'
 import { appUrl, isAndroid, isElectron, isPwa, isWeb, installFixture, target, viewport } from './e2e/pocs/shared/fixtures'
 import { androidCapabilities } from './e2e/pocs/shared/android'
-import { preparePwa, releasePwa } from './e2e/pocs/webdriverio/session'
+import { startPwaBrowser, closePwaBrowser, releasePwa } from './e2e/pocs/webdriverio/session'
 import { systemChrome } from './e2e/pocs/shared/chrome'
+import { electronDriver } from './e2e/pocs/shared/electron'
 
 const results: object[] = []
 const directory = `${process.env.POC_RESULTS_DIR ?? `test-results/pocs/${target}`}/webdriverio`
@@ -17,6 +18,7 @@ export const config = {
   specs: ['./e2e/pocs/webdriverio/web.e2e.ts'],
   capabilities: isAndroid ? [androidCapabilities] : isElectron ? [{
     browserName: 'electron',
+    'wdio:chromedriverOptions': { binary: await electronDriver() },
     'wdio:electronServiceOptions': process.env.ELECTRON_APP_PATH
       ? { appBinaryPath: process.env.ELECTRON_APP_PATH, appArgs: [] }
       : { appEntryPoint: './electron/main.cjs', appArgs: [] }
@@ -31,6 +33,9 @@ export const config = {
   ...(isAndroid ? { hostname: process.env.APPIUM_HOST ?? '127.0.0.1', port: Number(process.env.APPIUM_PORT ?? 4723), path: '/' } : {}),
   baseUrl: appUrl,
   mochaOpts: { ui: 'bdd', timeout: isAndroid ? 180_000 : 90_000 },
+  beforeSession: async (_config: unknown, capabilities: Record<string, any>) => {
+    if (isPwa) capabilities['goog:chromeOptions'] = { debuggerAddress: await startPwaBrowser(profile), binary: systemChrome() }
+  },
   before: async () => {
     process.env.E2E_TARGET = isAndroid ? 'android' : isElectron ? 'electron' : 'browser'
     mkdirSync(directory, { recursive: true })
@@ -48,6 +53,7 @@ export const config = {
     const windows: object[] = []
     let main: string | undefined
     const auxiliary: string[] = []
+    try {
     for (const [index, handle] of (await browser.getWindowHandles()).entries()) {
       await browser.switchToWindow(handle)
       const url = await browser.getUrl()
@@ -62,9 +68,11 @@ export const config = {
     }
     for (const handle of auxiliary) { await browser.switchToWindow(handle); await browser.closeWindow() }
     if (main) await browser.switchToWindow(main)
+    } catch (error) { windows.push({ captureError: String(error) }) }
     results.push({ title: test.title, status: result.passed ? 'passed' : 'failed', durationMs: result.duration, error: result.error?.message, inputs, windows, artifacts })
     writeFileSync(`${directory}/results.json`, JSON.stringify({ framework: 'webdriverio', target, url: appUrl, tests: results }, null, 2))
   },
   after: async () => { if (isPwa) await releasePwa() },
+  afterSession: async () => { if (isPwa) await closePwaBrowser() },
   onComplete: () => { rmSync(profile, { recursive: true, force: true }) }
 }

@@ -1,39 +1,36 @@
 # Estado das POCs
 
-A matriz está em desenvolvimento. Resultados de subconjuntos e verificações
-de inicialização não representam aprovação da suíte completa.
+O [relatório da rodada atual](RELATORIO.md) é a referência por ferramenta,
+plataforma e teste, incluindo falhas funcionais, falhas de preparação e
+cenários que não puderam ser executados. Ele é atualizado durante a execução.
 
-| Ambiente | Playwright | WebdriverIO | Selenium |
-| --- | --- | --- | --- |
-| Web C01–C10 | 10 aprovados; C10 mouse reprovado | 10 aprovados; C10 mouse reprovado | 10 aprovados; C10 mouse reprovado |
-| Web D01–D03 (4 execuções) | Subconjunto com 4 aprovados | D02 nas duas variações e D03 aprovados; D01 aprovado em repetição isolada | 3 aprovados; D01 falhou |
-| PWA realmente instalado | Subconjunto C01 e D01–D03: 5 aprovados | Adaptador implementado; falha de infraestrutura na execução parcial | Adaptador implementado; execução pendente |
-| Electron local | Inicialização verificada; suíte pendente | Configuração implementada; suíte pendente | Driver preparado; suíte pendente |
-| Android Capacitor | APK debug compilado; adaptador experimental e execução pendente | Adaptador da POC pendente | Adaptador da POC pendente |
+As três ferramentas incluem D01, D02 pela principal, D02 pelo mapa e D03 nas
+suítes completas web, PWA instalado e Electron. Android executa C01–C09,
+com controles de toque e sem a funcionalidade de separar mapa.
 
-O resultado inicial C01–C10 está em [RESULTADOS-WEB.md](RESULTADOS-WEB.md).
-C10 mouse deve continuar falhando enquanto existir o defeito intencional;
-C10 touch exige um evento touch confiável e passou nas três ferramentas.
-C10 não se aplica aos ambientes que ocultam o botão de instalação.
+A primeira rodada está preservada em
+[RELATORIO-2026-10-19-PRIMEIRA-RODADA.md](RELATORIO-2026-10-19-PRIMEIRA-RODADA.md).
+Na revalidação, Selenium/Electron aprovou os 13 testes no aplicativo empacotado,
+incluindo as quatro verificações de duas janelas. No APK Android, as suítes
+completas terminaram: Playwright 8/9, Selenium 9/9 e WebdriverIO 8/9.
+Foram corrigidos preparação, descoberta de WebView, tratamento do teclado
+e espera da desseleção. C08 do WebdriverIO passou após essa última correção.
 
-Os testes de duas janelas foram acrescentados depois dessa etapa. Os resultados
-acima são de execuções parciais durante o desenvolvimento; ajustes posteriores
-nos testes exigem nova execução. Não há relatório completo da matriz atual.
-D01 no WebdriverIO apresentou divergência de seleção e espera por alteração
-de geometria, e passou em repetição após padronizar o tamanho da janela
-auxiliar. No Selenium falhou a verificação de geometria; a correção equivalente
-precisa de nova execução. A suíte inteira deve ser repetida para confirmar
-estabilidade. A inicialização PWA no WDIO ainda apresenta falha de infraestrutura.
+Restam duas falhas: Playwright/C03 não conseguiu criar o polígono inicial
+(três toques confiáveis no mapa, dois vértices confirmados); WebdriverIO/C05
+mostrou a validação no campo, mas não o aviso esperado no topo. As etapas
+seguintes desses cenários não foram alcançadas; causas não determinadas.
+O relatório inclui durações individuais, evidências e tabela-resumo das
+12 combinações de ferramenta/plataforma. Web/PWA e as demais ferramentas
+no Electron mantêm os resultados anteriores, identificados como tal.
 
-A instalação PWA validada usou Chrome 155 no macOS, uma instalação real em
-perfil de automação e verificação de `display-mode: standalone`. O Electron
-local abriu na origem segura `poligonos://app/`, com a API E2E disponível.
-O instalador Windows, os testes no APK Android e a execução em dois monitores
-físicos ainda não foram validados. Duas janelas abertas exercitam a sincronização sem exigir
-dois monitores.
+O PWA é instalado de verdade em um perfil isolado, com verificação de
+`display-mode: standalone`. A instalação pessoal do usuário não é usada.
+No Electron, o Playwright registrou `app.isPackaged: true` e a origem segura
+`poligonos://app/`. Duas janelas simultâneas exercitam a sincronização;
+não foi feita validação com dois monitores físicos nem de instalador Windows.
 
-Próximos passos: confirmar D01 em WDIO/Selenium, repetir a suíte web completa,
-executar PWA e Electron nas três ferramentas e concluir os adaptadores Android.
-Relatórios, traces, perfis e screenshots são gerados em `test-results/` e não
-são enviados ao Git. Cada nova execução deve preservar seu diretório e anotar
-o commit testado para tornar o resultado reproduzível.
+A [validação inicial web](RESULTADOS-WEB.md) é histórica e foi realizada antes
+da inclusão dos cenários de duas janelas nas três ferramentas. Logs, JSON,
+traces e screenshots da rodada atual ficam em
+`test-results/pocs/revalidation-2026-10-19/`, fora do Git.

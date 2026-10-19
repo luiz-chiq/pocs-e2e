@@ -1,7 +1,7 @@
 # POCs de automação E2E
 
 Veja a [validação inicial realizada no deploy](RESULTADOS-WEB.md) e o
-[estado atual da expansão para quatro ambientes](STATUS.md).
+[relatório atual por ferramenta e plataforma](RELATORIO.md).
 
 ## Suítes web implementadas
 
@@ -66,7 +66,7 @@ Os testes usam perfis/contextos de automação, sem abrir o perfil pessoal.
 
 ## Evidências
 
-O comando conjunto cria `test-results/pocs/<data-hora>/`, com:
+O comando conjunto cria `test-results/pocs/<ambiente>-<data-hora>/`, com:
 
 - `summary.json`: resultados e códigos de saída das três ferramentas.
 - `<ferramenta>.log`: saída completa de cada execução.
@@ -103,8 +103,8 @@ por JavaScript.
 ## Quatro ambientes
 
 `POC_TARGET` seleciona `web` (padrão), `pwa`, `electron` ou `android`.
-Os adaptadores nativos estão em desenvolvimento. Não considere a presença de
-uma configuração como comprovação de execução: consulte [STATUS.md](STATUS.md).
+As três ferramentas possuem adaptadores para os quatro ambientes. Consulte
+o [relatório](RELATORIO.md) para distinguir implementação de execução comprovada.
 
 Exemplos de execução individual no macOS/Linux:
 
@@ -120,25 +120,42 @@ confere `display-mode: standalone`, sem simular esse valor. A instalação de
 teste é removida ao encerrar. Essa infraestrutura exige Chrome com o domínio
 CDP `PWA` disponível; a validação parcial usou Chrome 155 no macOS.
 
-Electron usa o aplicativo local e um diretório de dados de teste. É possível
-informar `ELECTRON_APP_PATH` para um binário empacotado, ainda não validado.
+Electron usa um diretório de dados de teste. O comando conjunto gera o aplicativo
+empacotado para o sistema local e testa esse binário. O comando individual usa o
+runtime local por padrão; informe `ELECTRON_APP_PATH` para testar um binário específico.
 Selenium baixa o ChromeDriver oficial correspondente à versão Electron, ou
 usa `CHROMEDRIVER_PATH` quando informado.
 
 O orquestrador `node scripts/run-pocs.mjs <ambiente>` executa as três
 ferramentas; `all` solicita a matriz inteira e `POC_FRAMEWORKS` permite escolher
-ferramentas separadas por vírgula. PWA e Electron ainda precisam da execução
-completa. Android está incompleto: os adaptadores WDIO/Selenium faltam e o
-adaptador Playwright é experimental. Não use `all` como validação concluída.
+ferramentas separadas por vírgula. O adaptador Android do Playwright usa a API
+experimental Android; Selenium e WebdriverIO usam Appium/UiAutomator2.
 
 Os atalhos npm são `test:poc:web`, `test:poc:pwa`, `test:poc:electron`,
-`test:poc:android` e `test:poc:all`; os últimos quatro são parte dessa expansão
-ainda em desenvolvimento.
+`test:poc:android` e `test:poc:all`.
+
+Para preservar todas as plataformas em um único diretório e atualizar o relatório:
+
+```bash
+POC_RESULTS_DIR=test-results/pocs/minha-execucao npm run test:poc:all
+```
+
+O relatório Markdown é atualizado após cada ferramenta. Para reconstruí-lo:
+
+```bash
+node scripts/report-pocs.mjs test-results/pocs/minha-execucao
+```
+
+O relatório começa com uma tabela por ferramenta e plataforma, distinguindo
+aprovações, falhas, preparação bloqueada e execução parcial. Cada teste tem
+sua duração em segundos; os totais são a soma dos tempos individuais e não
+incluem build/boot externos. Preparação por teste e sessão compartilhada têm
+custos diferentes, portanto esses tempos não são um benchmark entre ferramentas.
 
 O preparador Android pode iniciar um AVD, instalar o APK e iniciar Appium.
 Use somente dispositivo/perfil de testes: os testes limpam os dados do pacote
 `com.example.tasks.poc`. Configure SDK, JDK 21 e UiAutomator2 antes; o APK
-gerado é de debug. Essa etapa ainda não foi validada nesta matriz.
+gerado é de debug. Consulte o relatório para o resultado efetivamente obtido.
 
 D01–D03 abrangem navegador, PWA instalado desktop e Electron; Android não
 oferece separar mapa. São quatro execuções de duas janelas por ferramenta,

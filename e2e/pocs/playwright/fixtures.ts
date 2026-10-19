@@ -88,25 +88,40 @@ async function desktopSession(): Promise<AppSession> {
 }
 
 async function androidSession(): Promise<AppSession> {
-  const devices = await _android.devices()
-  const device = process.env.ANDROID_SERIAL ? devices.find(item => item.serial() === process.env.ANDROID_SERIAL) : devices[0]
+  let device
+  for (let attempt = 0; attempt < 100 && !device; attempt++) {
+    const devices = await _android.devices()
+    device = process.env.ANDROID_SERIAL ? devices.find(item => item.serial() === process.env.ANDROID_SERIAL) : devices[0]
+    if (!device) await new Promise(resolve => setTimeout(resolve, 200))
+  }
   if (!device) throw new Error('Nenhum Android disponível no adb. Inicie um emulador e instale o APK E2E.')
+  const android = device
+  android.setDefaultTimeout(45_000)
   const pkg = 'com.example.tasks.poc'
   let page: Page
+  const stop = async () => {
+    await android.shell(`am force-stop ${pkg}`)
+    // A descoberta de WebViews é assíncrona. Não reutilizar o alvo do processo encerrado.
+    await expect.poll(() => android.webViews().filter(view => view.pkg() === pkg).length, { timeout: 15_000 }).toBe(0)
+  }
   const start = async () => {
-    await device.shell(`am start -n ${pkg}/.MainActivity`)
-    page = await (await device.webView({ pkg })).page()
+    await android.shell(`am start -W -n ${pkg}/.MainActivity`)
+    await expect.poll(async () => (await android.shell(`pidof ${pkg}`)).toString().trim(), { timeout: 15_000 }).not.toBe('')
+    const pid = Number((await android.shell(`pidof ${pkg}`)).toString().trim())
+    await expect.poll(() => android.webViews().map(view => `${view.pkg()}:${view.pid()}`), { timeout: 30_000 }).toContain(`${pkg}:${pid}`)
+    page = await android.webViews().find(view => view.pkg() === pkg && view.pid() === pid)!.page()
+    page.context().setDefaultTimeout(15_000)
     await page.getByTestId('map-ready').waitFor({ timeout: 45_000 })
     return page
   }
-  await device.shell(`am force-stop ${pkg}`)
-  await device.shell(`pm clear ${pkg}`)
+  await stop()
+  await android.shell(`pm clear ${pkg}`)
   await start()
   return {
     main: async () => page, context: () => page.context(),
-    restart: async () => { await device.shell(`am force-stop ${pkg}`); return start() },
-    metadata: async () => ({ target, serial: device.serial(), url: page.url() }),
-    close: async () => { await device.shell(`am force-stop ${pkg}`); await device.close() }
+    restart: async () => { await stop(); return start() },
+    metadata: async () => ({ target, serial: android.serial(), url: page.url() }),
+    close: async () => { try { await android.shell(`am force-stop ${pkg}`) } finally { await android.close() } }
   }
 }
 

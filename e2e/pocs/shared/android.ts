@@ -17,5 +17,6 @@ export const androidCapabilities = {
   'appium:recreateChromeDriverSessions': true,
   'appium:autoGrantPermissions': true,
   'appium:newCommandTimeout': 120,
-  'appium:noReset': false
+  'appium:noReset': false,
+  'appium:enforceAppInstall': true
 }

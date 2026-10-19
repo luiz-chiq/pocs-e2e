@@ -31,36 +31,54 @@ export async function prepareAndroid(env, directory) {
   const emulatorBinary = join(env.ANDROID_HOME, 'emulator', `emulator${suffix}`)
   const command = async args => (await exec(adb, args, { env, timeout: 15_000 })).stdout.trim()
   const devices = async () => (await command(['devices'])).split(/\r?\n/).slice(1).filter(line => /\sdevice$/.test(line)).map(line => line.split(/\s/)[0])
-  let emulator, appium, serial = env.ANDROID_SERIAL
+  let emulator, appium, logcat, serial = env.ANDROID_SERIAL
   const streams = []
+  const stop = async child => {
+    if (!child || child.exitCode !== null || child.signalCode !== null) return
+    await new Promise(resolve => {
+      const timer = setTimeout(() => { child.kill('SIGKILL'); resolve() }, 5_000)
+      child.once('close', () => { clearTimeout(timer); resolve() })
+      child.kill('SIGTERM')
+    })
+  }
   const cleanup = async () => {
-    appium?.kill('SIGTERM')
+    await stop(appium)
     if (emulator && serial) await command(['-s', serial, 'emu', 'kill']).catch(() => emulator.kill('SIGTERM'))
+    await stop(logcat)
+    await stop(emulator)
     for (const stream of streams) stream.end()
   }
   try {
     const available = await devices()
-    serial ??= available[0]
+    serial ??= available.find(item => item.startsWith('emulator-'))
     if (!serial) {
       const avds = (await exec(emulatorBinary, ['-list-avds'], { env })).stdout.trim().split(/\r?\n/).filter(Boolean)
       const avd = env.ANDROID_AVD ?? avds[0]
       if (!avd) throw new Error('Nenhum dispositivo ou AVD Android disponível. Configure ANDROID_AVD ou conecte um dispositivo de testes.')
       console.log(`Iniciando Android ${avd}...`)
       const log = createWriteStream(join(directory, 'emulator.log')); streams.push(log)
-      emulator = spawn(emulatorBinary, ['-avd', avd, '-no-snapshot-save', '-no-audio', '-no-boot-anim'], { env, stdio: ['ignore', 'pipe', 'pipe'] })
+      emulator = spawn(emulatorBinary, ['-avd', avd, '-no-snapshot', '-no-audio', '-no-boot-anim'], { env, stdio: ['ignore', 'pipe', 'pipe'] })
       emulator.stdout.pipe(log, { end: false }); emulator.stderr.pipe(log, { end: false })
       const deadline = Date.now() + 180_000
       while (!serial && Date.now() < deadline) {
-        serial = (await devices())[0]
+        serial = (await devices()).find(item => item.startsWith('emulator-'))
         if (!serial) await pause(1_000)
       }
       if (!serial) throw new Error('O emulador não ficou disponível no adb. Consulte emulator.log.')
     }
     const deadline = Date.now() + 180_000
-    while ((await command(['-s', serial, 'shell', 'getprop', 'sys.boot_completed']).catch(() => '')) !== '1') {
+    let stable = 0
+    while (stable < 5) {
       if (Date.now() > deadline) throw new Error('O Android não concluiu a inicialização.')
+      const booted = await command(['-s', serial, 'shell', 'getprop', 'sys.boot_completed']).catch(() => '')
+      const animation = await command(['-s', serial, 'shell', 'getprop', 'init.svc.bootanim']).catch(() => '')
+      const packages = await command(['-s', serial, 'shell', 'cmd', 'package', 'path', 'android']).catch(() => '')
+      stable = booted === '1' && animation !== 'running' && packages.includes('package:') ? stable + 1 : 0
       await pause(1_000)
     }
+    const systemLog = createWriteStream(join(directory, 'logcat.log')); streams.push(systemLog)
+    logcat = spawn(adb, ['-s', serial, 'logcat', '-v', 'threadtime'], { env, stdio: ['ignore', 'pipe', 'pipe'] })
+    logcat.stdout.pipe(systemLog, { end: false }); logcat.stderr.pipe(systemLog, { end: false })
     const apk = resolve(env.ANDROID_APK ?? 'android/app/build/outputs/apk/debug/app-debug.apk')
     console.log(`Instalando APK E2E em ${serial}...`)
     await exec(adb, ['-s', serial, 'install', '-r', apk], { env, timeout: 120_000 })

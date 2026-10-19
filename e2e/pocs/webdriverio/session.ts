@@ -1,17 +1,23 @@
 import { browser } from '@wdio/globals'
-import { BrowserCdp, installPwa, launchPwa } from '../shared/pwa'
+import { installPwa, launchPwa } from '../shared/pwa'
 import { appUrl, viewport } from '../shared/fixtures'
+import { ChromePipe } from '../shared/chrome-pipe'
 
-let cdp: BrowserCdp | undefined
+let cdp: ChromePipe | undefined
 let bootstrap: string
 const manifestId = new URL('./', appUrl).href
 
+export async function startPwaBrowser(profile: string) {
+  await cdp?.close()
+  cdp = await ChromePipe.launch(profile)
+  return cdp.debuggerAddress
+}
+
+export async function closePwaBrowser() { await cdp?.close() }
+
 export async function preparePwa(install: boolean) {
-  cdp?.close()
   bootstrap = await browser.getWindowHandle()
-  const options = (browser.capabilities as { 'goog:chromeOptions'?: { debuggerAddress?: string } })['goog:chromeOptions']
-  if (!options?.debuggerAddress) throw new Error('ChromeDriver não informou o endereço CDP necessário para instalar o PWA.')
-  cdp = await BrowserCdp.connect(options.debuggerAddress)
+  if (!cdp) throw new Error('A conexão local do Chrome PWA não foi iniciada.')
   if (install) {
     await browser.url(appUrl)
     await installPwa(cdp)
@@ -34,5 +40,5 @@ export async function releasePwa() {
   try {
     await cdp?.send('PWA.uninstall', { manifestId })
     if ((await browser.getWindowHandles()).includes(bootstrap)) await browser.switchToWindow(bootstrap)
-  } finally { cdp?.close() }
+  } finally { /* O processo é encerrado após a sessão WebDriver. */ }
 }

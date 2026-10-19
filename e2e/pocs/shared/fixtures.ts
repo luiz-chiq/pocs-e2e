@@ -65,9 +65,11 @@ export type Point = { x: number; y: number }
 export type ScreenPoints = { center: Point; vertices: Point[]; edgeMidpoint: Point }
 export type InstallInput = { pointerType: string; isTrusted: boolean }
 export type PocWindow = Window & {
+  pocMapInputs?: Array<{ pointerType: string; x: number; y: number; inMap: boolean; isTrusted: boolean }>
   polygonTestApi?: {
     getSelectedScreenPoints(): ScreenPoints
     waitForPersistence(): Promise<void>
+    getDrawingState?(): { ready: boolean; vertices: number }
   }
   pocInstallInputs?: InstallInput[]
 }

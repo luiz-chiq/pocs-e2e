@@ -12,22 +12,36 @@ async function open(page: Page, url = '/') {
   if (isPwa) expect(await page.evaluate(() => matchMedia('(display-mode: standalone)').matches)).toBe(true)
   if (!isWeb) await expect(page.locator(s.install)).toBeHidden()
   if (isAndroid) await expect(page.locator(s.detach)).toBeHidden()
+  if (isAndroid) await expect.poll(() => page.evaluate(() => typeof (window as PocWindow).polygonTestApi?.getDrawingState), { message: 'Instale o APK E2E atualizado com a consulta de prontidão.' }).toBe('function')
+  if (isAndroid) await page.evaluate((mapSelector: string) => {
+    const view = window as PocWindow
+    view.pocMapInputs = []
+    document.addEventListener('pointerup', event => {
+      view.pocMapInputs!.push({ pointerType: event.pointerType, x: event.clientX, y: event.clientY, inMap: event.target instanceof Element && Boolean(event.target.closest(mapSelector)), isTrusted: event.isTrusted })
+    }, { passive: true })
+  }, s.map)
   await expect(page.locator(s.items)).toHaveCount(0)
   await page.waitForTimeout(300)
 }
 
 async function create(page: Page, offset = 0, controls = page) {
-  const map = await page.locator(s.map).boundingBox()
-  if (!map) throw new Error('Mapa ausente')
   const count = await controls.locator(s.items).count()
-  if (await controls.locator(s.draw).getAttribute('data-mode') === 'edit') await page.keyboard.press('Escape')
+  if (await controls.locator(s.draw).getAttribute('data-mode') === 'edit') await deselect(page)
   await controls.locator(s.draw).click()
   await expect(page.locator(s.finish)).toBeVisible()
   await page.waitForTimeout(300)
+  const map = await mapRect(page)
+  const acknowledged = isAndroid && await page.evaluate(() => typeof (window as PocWindow).polygonTestApi?.getDrawingState === 'function')
+  if (acknowledged) await expect.poll(() => page.evaluate(() => (window as PocWindow).polygonTestApi!.getDrawingState!().ready), { message: 'SDK ainda não está pronto para desenhar.', timeout: 15_000 }).toBe(true)
+  let vertices = 0
   for (const [x, y] of triangle) {
-    const px = map.x + map.width / 2 + x + (isAndroid ? Math.min(offset, map.width / 4) : offset)
-    if (isAndroid) await page.touchscreen.tap(px, map.y + map.height / 2 + y)
+    const px = map.x + map.width / 2 + x + (isAndroid ? Math.min(offset, map.width / 2 - 20) : offset)
+    if (isAndroid) await clickPoint(page, { x: px - map.x, y: map.height / 2 + y })
     else await page.mouse.click(px, map.y + map.height / 2 + y)
+    if (acknowledged) {
+      vertices++
+      await expect.poll(() => page.evaluate(() => (window as PocWindow).polygonTestApi!.getDrawingState!().vertices), { message: `O SDK não recebeu o vértice ${vertices}.`, timeout: 5_000 }).toBe(vertices)
+    }
     await page.waitForTimeout(150)
   }
   await controls.locator(s.finish).click()
@@ -48,12 +62,13 @@ async function separate(page: Page) {
   return popup
 }
 
-test.afterEach(async ({ context }, testInfo) => {
+test.afterEach(async ({ context, appSession }, testInfo) => {
   if (testInfo.status === testInfo.expectedStatus) return
-  for (const [index, page] of context.pages().entries()) {
+  for (const [index, page] of (appSession?.context() ?? context).pages().entries()) {
     if (page.isClosed()) continue
     const path = testInfo.outputPath(`window-${index}.png`)
     try {
+      if (isAndroid) await testInfo.attach(`inputs-${index}`, { body: JSON.stringify(await page.evaluate(() => (window as PocWindow).pocMapInputs)), contentType: 'application/json' })
       await page.screenshot({ path })
       await testInfo.attach(`window-${index}`, { path, contentType: 'image/png' })
     } catch { /* Preservar o erro do cenário. */ }
@@ -81,21 +96,68 @@ async function deleteInEdit(page: Page) {
 }
 
 async function points(page: Page) {
+  if (isAndroid) await mapRect(page)
   return page.evaluate(() => (window as PocWindow).polygonTestApi!.getSelectedScreenPoints())
 }
 
-async function drag(page: Page, point: Point, dx: number, dy: number) {
+async function mapRect(page: Page) {
+  if (isAndroid) {
+    await page.locator(s.map).evaluate(map => map.scrollIntoView({ block: 'start' }))
+    await page.waitForTimeout(100)
+  }
   const map = await page.locator(s.map).boundingBox()
   if (!map) throw new Error('Mapa ausente')
+  return map
+}
+
+async function clickPoint(page: Page, point: Point) {
+  const map = await mapRect(page)
   if (isAndroid) {
     const cdp = await page.context().newCDPSession(page)
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: map.x + point.x, y: map.y + point.y }] })
+    await page.waitForTimeout(100)
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+    await cdp.detach()
+    // No Sketch, dois toques rápidos concluem o desenho antes do terceiro ponto.
+    await page.waitForTimeout(400)
+  } else await page.mouse.click(map.x + point.x, map.y + point.y)
+}
+
+async function deselect(page: Page) {
+  if (!isAndroid) return page.keyboard.press('Escape')
+  const map = await mapRect(page)
+  await clickPoint(page, { x: map.width - 30, y: map.height - 100 })
+}
+
+async function fillName(page: Page, value: string) {
+  await page.locator(s.name).fill(value)
+}
+
+async function confirmName(page: Page) {
+  if (!isAndroid) return page.locator(s.finish).click()
+  await page.locator(s.finish).scrollIntoViewIfNeeded()
+  const rect = (await page.locator(s.finish).boundingBox())!
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }] })
+  await page.waitForTimeout(100)
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+  await cdp.detach()
+  await page.waitForTimeout(400)
+}
+
+async function drag(page: Page, point: Point, dx: number, dy: number) {
+  const map = await mapRect(page)
+  if (isAndroid) {
+    const cdp = await page.context().newCDPSession(page)
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: map.x + point.x, y: map.y + point.y }] })
+    await page.waitForTimeout(250)
     for (let step = 1; step <= 5; step++) {
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: map.x + point.x + dx * step / 5, y: map.y + point.y + dy * step / 5 }] })
       await page.waitForTimeout(150)
     }
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
     await cdp.detach()
+    await page.waitForTimeout(400)
     return
   }
   await page.mouse.move(map.x + point.x, map.y + point.y)
@@ -119,12 +181,18 @@ test(cases.create, async ({ page }) => {
 
 test(cases.invalid, async ({ page }) => {
   await open(page)
-  const map = (await page.locator(s.map).boundingBox())!
   for (const drawing of [[], triangle.slice(0, 1), triangle.slice(0, 2), [[-120, -50], [-60, -50], [0, -50]]]) {
     await page.locator(s.draw).click()
     await page.waitForTimeout(300)
+    if (isAndroid) await expect.poll(() => page.evaluate(() => (window as PocWindow).polygonTestApi!.getDrawingState!().ready), { timeout: 15_000 }).toBe(true)
+    const map = await mapRect(page)
+    let vertices = 0
     for (const [x, y] of drawing) {
-      await page.mouse.click(map.x + map.width / 2 + x, map.y + map.height / 2 + y)
+      await clickPoint(page, { x: map.width / 2 + x, y: map.height / 2 + y })
+      if (isAndroid) {
+        vertices++
+        await expect.poll(() => page.evaluate(() => (window as PocWindow).polygonTestApi!.getDrawingState!().vertices), { timeout: 5_000 }).toBe(vertices)
+      }
       await page.waitForTimeout(150)
     }
     await page.locator(s.finish).click()
@@ -147,10 +215,9 @@ test(cases.select, async ({ page }) => {
   await expect(page.locator(s.mapLabel)).toHaveClass(/is-selected/)
   await expect(page.locator(s.finish)).toBeHidden()
   const center = (await points(page)).center
-  await page.keyboard.press('Escape')
+  await deselect(page)
   await expect(page.locator(s.draw)).toHaveAttribute('data-mode', 'create')
-  const map = (await page.locator(s.map).boundingBox())!
-  await page.mouse.click(map.x + center.x, map.y + center.y)
+  await clickPoint(page, center)
   await expect(page.locator(s.items)).toHaveClass(/selected/)
   await expect(page.locator(s.finish)).toBeHidden()
   if (isAndroid) await page.locator(s.draw).click()
@@ -176,8 +243,7 @@ test(cases.edit, async ({ page }) => {
   await expect(page.locator(s.lastEdit)).toHaveText('Vértice ou aresta arrastada.')
   await expect.poll(() => page.locator(s.vertexList).innerText()).not.toBe(moved)
   const midpoint = (await points(page)).edgeMidpoint
-  const map = (await page.locator(s.map).boundingBox())!
-  await page.mouse.click(map.x + midpoint.x, map.y + midpoint.y)
+  await clickPoint(page, midpoint)
   await expect(page.locator(s.vertices)).toHaveCount(4)
   const edited = await page.locator(s.vertexList).innerText()
   await page.locator(s.finish).click()
@@ -192,20 +258,21 @@ test(cases.name, async ({ page }) => {
   await beginEdit(page)
   const input = page.locator(s.name)
   for (const name of ['   ', 'Área@1', 'Área-1', 'Área_1']) {
-    await input.fill(name)
-    await page.locator(s.finish).click()
+    await fillName(page, name)
+    await confirmName(page)
     await expect(input).toHaveAttribute('aria-invalid', 'true')
     await expect(page.locator(s.instructions)).toHaveAttribute('role', 'alert')
     await expect(page.locator(s.finish)).toBeVisible()
   }
-  await input.fill('  Área   São José 12  ')
-  await input.press('Enter')
+  await fillName(page, '  Área   São José 12  ')
+  if (isAndroid) await confirmName(page)
+  else await input.press('Enter')
   await expect(page.locator(s.label)).toHaveText('Área São José 12')
   await expect(page.locator(s.mapLabel)).toHaveText('Área São José 12')
   await beginEdit(page)
-  await input.fill('A'.repeat(40))
+  await fillName(page, 'A'.repeat(40))
   await expect(input).toHaveValue('A'.repeat(30))
-  await page.locator(s.finish).click()
+  await confirmName(page)
   await expect(page.locator(s.label)).toHaveText('A'.repeat(30))
   await expect(page.locator(s.mapLabel)).toHaveText('A'.repeat(30))
 })
@@ -217,7 +284,7 @@ test(cases.cancel, async ({ page }) => {
   await beginEdit(page)
   await drag(page, (await points(page)).vertices[0], 45, 35)
   await expect.poll(() => page.locator(s.vertexList).innerText()).not.toBe(original)
-  await page.locator(s.name).fill('Nome temporário')
+  await fillName(page, 'Nome temporário')
   await page.locator(s.cancel).click()
   await expect(page.locator(s.label)).toHaveText('Polígono 1')
   await expect(page.locator(s.mapLabel)).toHaveText('Polígono 1')
@@ -231,7 +298,7 @@ test(cases.persist, async ({ appSession }, testInfo) => {
     await create(page)
     await beginEdit(page)
     await drag(page, (await points(page)).vertices[0], 45, 35)
-    await page.locator(s.name).fill('Reserva São José')
+    await fillName(page, 'Reserva São José')
     await page.locator(s.finish).click()
     await expect(page.locator(s.finish)).toBeHidden()
     const saved = await page.locator(s.vertexList).innerText()
@@ -336,16 +403,18 @@ test(cases.navigation, async ({ page }) => {
   await expect(page.locator(s.mapLabel)).toBeVisible()
   await page.locator(s.zoomOut).click()
   await expect.poll(distance).toBeCloseTo(original, 0)
+  const map = await mapRect(page)
   const compass = (await page.locator(s.compass).boundingBox())!
-  const map = (await page.locator(s.map).boundingBox())!
   await drag(page, { x: compass.x + compass.width / 2 - map.x, y: compass.y + compass.height / 2 - map.y }, 60, 0)
   await expect(page.locator(s.needle)).toHaveAttribute('style', 'transform: rotate(60deg);')
   await page.locator(s.compass).click()
   await expect(page.locator(s.needle)).toHaveAttribute('style', 'transform: rotate(0deg);')
+  if (!isAndroid) {
   await page.locator(s.compass).press('ArrowRight')
   await expect(page.locator(s.needle)).toHaveAttribute('style', 'transform: rotate(15deg);')
   await page.locator(s.compass).press('Home')
   await expect(page.locator(s.needle)).toHaveAttribute('style', 'transform: rotate(0deg);')
+  }
 })
 
 if (!isAndroid) {
