@@ -1,4 +1,6 @@
-# Relatório das POCs E2E
+# Histórico — Relatório das POCs E2E
+
+> **RELATÓRIO HISTÓRICO — RESULTADOS SUBSTITUÍDOS.** Os números abaixo descrevem a rodada indicada neste arquivo. Para a situação vigente, consulte o [relatório completo atual](../RELATORIO.md), a [versão direta atual](../RELATORIO-DIRETO.md) ou o [status atual](../STATUS.md).
 
 Atualizado em 19/10/2026, 05:15:38 (São Paulo).
 
@@ -31,7 +33,7 @@ No Android, restam duas falhas na última suíte completa de cada ferramenta: Pl
 
 **Soma dos testes** soma as durações individuais, incluindo casos que falharam. **Tempo da suíte/comando** mede o intervalo observado pelo orquestrador ao executar a ferramenta: inclui inicialização do processo, sessões, testes e encerramento dentro desse comando. Quando a sessão falha antes dos testes, mede somente essa tentativa de preparação. Ambos excluem build, boot inicial do emulador, instalação externa do APK, inicialização externa do Appium e as tentativas anteriores descartadas. Não foi medido separadamente o total completo dessas etapas externas.
 
-\* Selenium/Electron: foi usado o total registrado pelo runner no [log](../../test-results/pocs/revalidation-2026-10-19/electron/selenium.log) (70,60 s); o metadado do comando (9,27 s) é menor que a soma dos testes e foi rejeitado. Esse total não inclui o custo externo de iniciar o comando.
+\* Selenium/Electron: foi usado o total registrado pelo runner no [log](../../../test-results/pocs/revalidation-2026-10-19/electron/selenium.log) (70,60 s); o metadado do comando (9,27 s) é menor que a soma dos testes e foi rejeitado. Esse total não inclui o custo externo de iniciar o comando.
 
 Somando os comandos das últimas suítes Android: **20 min 23,35 s**. São medições de execuções distintas, sem as etapas externas ou as repetições de diagnóstico; não representam o tempo completo de uma única rodada.
 
@@ -48,7 +50,7 @@ O resultado funcional deveria convergir para o mesmo app, estado e interação. 
 
 O 9/9 do Selenium confirma que os cenários passaram naquela execução. Não prova que o app esteja livre de problemas intermitentes nem que os outros resultados sejam falsos positivos. **As duas falhas restantes estão inconclusivas quanto à causa**, apesar de suas asserções terem falhado. A falha anterior de C08 no WebdriverIO era uma transição não aguardada pela automação: o mapa faz `hitTest` assíncrono; depois de esperar o botão voltar ao modo de criação, a suíte completa passou por C08.
 
-As diferenças podem ser verificadas nos adaptadores de [Playwright](playwright/web.spec.ts), [Selenium](selenium/web.test.ts) e [WebdriverIO](webdriverio/web.e2e.ts). Para uma comparação de confiabilidade, falta igualar a política de isolamento e os contratos de gestos/esperas, registrar alvo/coordenadas/viewport e acionamento do botão, e repetir os cenários com o mesmo APK e emulador. Isso permitiria medir frequência de falhas, além do resultado de uma execução. Esses passos não foram executados nesta atualização do relatório.
+As diferenças podem ser verificadas nos adaptadores de [Playwright](../playwright/web.spec.ts), [Selenium](../selenium/web.test.ts) e [WebdriverIO](../webdriverio/web.e2e.ts). Para uma comparação de confiabilidade, falta igualar a política de isolamento e os contratos de gestos/esperas, registrar alvo/coordenadas/viewport e acionamento do botão, e repetir os cenários com o mesmo APK e emulador. Isso permitiria medir frequência de falhas, além do resultado de uma execução. Esses passos não foram executados nesta atualização do relatório.
 
 ## Limitações por ferramenta em Electron e Android
 
@@ -89,7 +91,7 @@ A documentação atual do WebdriverIO apresenta `@wdio/electron-service`; o proj
 - Build E2E expõe somente leitura de prontidão do SDK e contagem de vértices; os testes aguardam a transição da ferramenta e confirmam cada vértice antes de continuar.
 - WebdriverIO Android: aguarda o botão voltar ao modo de criação após a desseleção; o hitTest é assíncrono e o clique seguinte podia iniciar edição.
 
-**Artefatos:** Electron em `release/electron/` e APK em `android/app/build/outputs/apk/debug/app-debug.apk`. Logs das builds: [Electron](../../test-results/pocs/revalidation-2026-10-19/electron/build.log) · [APK](../../test-results/pocs/revalidation-2026-10-19/android/build.log).
+**Artefatos:** Electron em `release/electron/` e APK em `android/app/build/outputs/apk/debug/app-debug.apk`. Logs das builds: [Electron](../../../test-results/pocs/revalidation-2026-10-19/electron/build.log) · [APK](../../../test-results/pocs/revalidation-2026-10-19/android/build.log).
 
 O PWA foi instalado em perfil de automação e teve `display-mode: standalone` verificado. O Electron foi empacotado para macOS, sem instalador Windows. Duas janelas simultâneas foram usadas; não foi avaliado o posicionamento em dois monitores físicos. A API auxiliar lê coordenadas, prontidão e quantidade de vértices e aguarda a persistência; os desenhos e edições usam gestos das ferramentas. Ambiente web/PWA: https://poc-e2e.chiquetano.com.br/.
 
@@ -99,7 +101,7 @@ O PWA foi instalado em perfil de automação e teve `display-mode: standalone` v
 
 Resultado preservado da primeira rodada; não reexecutado nesta revalidação.
 
-[JSON com durações e evidências](../../test-results/pocs/revalidation-2026-10-19/web/playwright/results.json) · [Log completo](../../test-results/pocs/revalidation-2026-10-19/web/playwright.log)
+[JSON com durações e evidências](../../../test-results/pocs/revalidation-2026-10-19/web/playwright/results.json) · [Log completo](../../../test-results/pocs/revalidation-2026-10-19/web/playwright.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -123,7 +125,7 @@ Resultado preservado da primeira rodada; não reexecutado nesta revalidação.
 
 Resultado preservado da primeira rodada; não reexecutado nesta revalidação.
 
-[JSON com durações e evidências](../../test-results/pocs/revalidation-2026-10-19/pwa/playwright/results.json) · [Log completo](../../test-results/pocs/revalidation-2026-10-19/pwa/playwright.log)
+[JSON com durações e evidências](../../../test-results/pocs/revalidation-2026-10-19/pwa/playwright/results.json) · [Log completo](../../../test-results/pocs/revalidation-2026-10-19/pwa/playwright.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -145,7 +147,7 @@ Resultado preservado da primeira rodada; não reexecutado nesta revalidação.
 
 Resultado preservado da primeira rodada; não reexecutado nesta revalidação.
 
-[JSON com durações e evidências](../../test-results/pocs/revalidation-2026-10-19/electron/playwright/results.json) · [Log completo](../../test-results/pocs/revalidation-2026-10-19/electron/playwright.log)
+[JSON com durações e evidências](../../../test-results/pocs/revalidation-2026-10-19/electron/playwright/results.json) · [Log completo](../../../test-results/pocs/revalidation-2026-10-19/electron/playwright.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -165,7 +167,7 @@ Resultado preservado da primeira rodada; não reexecutado nesta revalidação.
 
 ### APK Android
 
-[JSON com durações e evidências](../../test-results/pocs/revalidation-2026-10-19/android/playwright/results.json) · [Log completo](../../test-results/pocs/revalidation-2026-10-19/android/playwright.log)
+[JSON com durações e evidências](../../../test-results/pocs/revalidation-2026-10-19/android/playwright/results.json) · [Log completo](../../../test-results/pocs/revalidation-2026-10-19/android/playwright.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -185,7 +187,7 @@ Resultado preservado da primeira rodada; não reexecutado nesta revalidação.
 
 Resultado preservado da primeira rodada; não reexecutado nesta revalidação.
 
-[JSON com durações e evidências](../../test-results/pocs/revalidation-2026-10-19/web/selenium/results.json) · [Log completo](../../test-results/pocs/revalidation-2026-10-19/web/selenium.log)
+[JSON com durações e evidências](../../../test-results/pocs/revalidation-2026-10-19/web/selenium/results.json) · [Log completo](../../../test-results/pocs/revalidation-2026-10-19/web/selenium.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -209,7 +211,7 @@ Resultado preservado da primeira rodada; não reexecutado nesta revalidação.
 
 Resultado preservado da primeira rodada; não reexecutado nesta revalidação.
 
-[JSON com durações e evidências](../../test-results/pocs/revalidation-2026-10-19/pwa/selenium/results.json) · [Log completo](../../test-results/pocs/revalidation-2026-10-19/pwa/selenium.log)
+[JSON com durações e evidências](../../../test-results/pocs/revalidation-2026-10-19/pwa/selenium/results.json) · [Log completo](../../../test-results/pocs/revalidation-2026-10-19/pwa/selenium.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -229,7 +231,7 @@ Resultado preservado da primeira rodada; não reexecutado nesta revalidação.
 
 ### Electron
 
-[JSON com durações e evidências](../../test-results/pocs/revalidation-2026-10-19/electron/selenium/results.json) · [Log completo](../../test-results/pocs/revalidation-2026-10-19/electron/selenium.log)
+[JSON com durações e evidências](../../../test-results/pocs/revalidation-2026-10-19/electron/selenium/results.json) · [Log completo](../../../test-results/pocs/revalidation-2026-10-19/electron/selenium.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -249,7 +251,7 @@ Resultado preservado da primeira rodada; não reexecutado nesta revalidação.
 
 ### APK Android
 
-[JSON com durações e evidências](../../test-results/pocs/revalidation-2026-10-19/android/selenium/results.json) · [Log completo](../../test-results/pocs/revalidation-2026-10-19/android/selenium.log)
+[JSON com durações e evidências](../../../test-results/pocs/revalidation-2026-10-19/android/selenium/results.json) · [Log completo](../../../test-results/pocs/revalidation-2026-10-19/android/selenium.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -269,7 +271,7 @@ Resultado preservado da primeira rodada; não reexecutado nesta revalidação.
 
 Resultado preservado da primeira rodada; não reexecutado nesta revalidação.
 
-[JSON com durações e evidências](../../test-results/pocs/revalidation-2026-10-19/web/webdriverio/results.json) · [Log completo](../../test-results/pocs/revalidation-2026-10-19/web/webdriverio.log)
+[JSON com durações e evidências](../../../test-results/pocs/revalidation-2026-10-19/web/webdriverio/results.json) · [Log completo](../../../test-results/pocs/revalidation-2026-10-19/web/webdriverio.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -293,7 +295,7 @@ Resultado preservado da primeira rodada; não reexecutado nesta revalidação.
 
 Resultado preservado da primeira rodada; não reexecutado nesta revalidação.
 
-[JSON com durações e evidências](../../test-results/pocs/revalidation-2026-10-19/pwa/webdriverio/results.json) · [Log completo](../../test-results/pocs/revalidation-2026-10-19/pwa/webdriverio.log)
+[JSON com durações e evidências](../../../test-results/pocs/revalidation-2026-10-19/pwa/webdriverio/results.json) · [Log completo](../../../test-results/pocs/revalidation-2026-10-19/pwa/webdriverio.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -315,7 +317,7 @@ Resultado preservado da primeira rodada; não reexecutado nesta revalidação.
 
 Resultado preservado da primeira rodada; não reexecutado nesta revalidação.
 
-⛔ A ferramenta encerrou sem produzir relatório. ChromeDriver não encontrou DevToolsActivePort; a sessão Electron não foi criada. [Log](../../test-results/pocs/revalidation-2026-10-19/electron/webdriverio.log)
+⛔ A ferramenta encerrou sem produzir relatório. ChromeDriver não encontrou DevToolsActivePort; a sessão Electron não foi criada. [Log](../../../test-results/pocs/revalidation-2026-10-19/electron/webdriverio.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -335,7 +337,7 @@ Resultado preservado da primeira rodada; não reexecutado nesta revalidação.
 
 ### APK Android
 
-[JSON com durações e evidências](../../test-results/pocs/revalidation-2026-10-19/android/webdriverio/results.json) · [Log completo](../../test-results/pocs/revalidation-2026-10-19/android/webdriverio.log)
+[JSON com durações e evidências](../../../test-results/pocs/revalidation-2026-10-19/android/webdriverio/results.json) · [Log completo](../../../test-results/pocs/revalidation-2026-10-19/android/webdriverio.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |

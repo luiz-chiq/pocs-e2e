@@ -1,8 +1,8 @@
-# Relatório direto das POCs E2E
+# Histórico — Relatório direto das POCs E2E
 
-> **Arquivo histórico.** Contém resultados substituídos. Consulte o [relatório atual](RELATORIO.md) para a situação vigente.
+> **RELATÓRIO HISTÓRICO — RESULTADOS SUBSTITUÍDOS.** Os números abaixo descrevem a rodada indicada neste arquivo. Para a situação vigente, consulte o [relatório completo atual](../RELATORIO.md), a [versão direta atual](../RELATORIO-DIRETO.md) ou o [status atual](../STATUS.md).
 
-[Relatório completo](RELATORIO-HISTORICO-2026-10-19.md). Resultados: `../../test-results/pocs/final-2026-10-19`. Rodada encerrada.
+[Relatório completo](RELATORIO-2026-10-19-ANTES-REVALIDACAO-WEB.md). Resultados: `../../../test-results/pocs/final-2026-10-19`. Rodada encerrada.
 
 ## Sumário
 
@@ -16,41 +16,35 @@
 
 ## Revalidação após correções
 
-Revalidação web nas três ferramentas e WDIO/PWA em 19/10/2026; preservada a revalidação anterior WDIO/Electron. **Resultado mais recente consolidado: 147 aprovações, 3 falhas e 0 sem validação concluída**, de 150 casos. Combina as suítes reexecutadas abaixo com os resultados originais das demais combinações; não é uma nova rodada das 12 combinações.
+Revalidação WDIO/Electron em 19/10/2026; suíte encerrada às 12:03:02 UTC. **Resultado mais recente consolidado: 144 aprovações, 6 falhas e 0 sem validação concluída**, de 150 casos. Combina as suítes reexecutadas abaixo com os resultados originais das demais combinações; não é uma nova rodada das 12 combinações.
 
 | Ferramenta | Web | PWA instalado | Electron | Android |
 | --- | --- | --- | --- | --- |
-| Playwright | 14/15; 1 falha(s) (revalidado) | 13/13 | 13/13 | 9/9 |
-| Selenium | 14/15; 1 falha(s) (revalidado) | 13/13 | 13/13 | 9/9 |
-| WebdriverIO | 14/15; 1 falha(s) (revalidado) | 13/13 (revalidado) | 13/13 (revalidado) | 9/9 |
+| Playwright | 13/15; 2 falha(s) | 13/13 | 13/13 | 9/9 |
+| Selenium | 14/15; 1 falha(s) | 13/13 | 13/13 | 9/9 |
+| WebdriverIO | 13/15; 2 falha(s) | 12/13; 1 falha(s) | 13/13 (revalidado) | 9/9 |
 
 As células marcadas como revalidadas usam a nova execução; as demais preservam a rodada original.
 
-**Reexecutado após as alterações:** 68 aprovações, 3 falhas e 0 sem validação concluída. Cada linha é uma suíte completa, com os testes de duas janelas integrados quando aplicáveis.
+**Reexecutado após as alterações:** 13 aprovações, 0 falhas e 0 sem validação concluída. Cada linha é uma suíte completa, com os testes de duas janelas integrados quando aplicáveis.
 
-Duas janelas: 20 aprovações e 0 falhas nas suítes reexecutadas; consolidado mais recente de 36 aprovações, 0 falhas e 0 sem validação, de 36 previstos.
+Duas janelas: 4 aprovações e 0 falhas nas suítes reexecutadas; consolidado mais recente de 34 aprovações, 2 falhas e 0 sem validação, de 36 previstos.
 
 | Ferramenta | Plataforma | Resultado atual | Soma dos testes | Tempo da nova suíte | Aumento na revalidação | Evidências |
 | --- | --- | --- | --- | --- | --- | --- |
-| Playwright | Web | 14 passaram; 1 falharam; 0 sem validação | 76,30 s | 1 min 18,49 s | 0,00% | [JSON](../../test-results/pocs/web-fix-2026-10-19/verified/web/playwright/results.json) · [Log](../../test-results/pocs/web-fix-2026-10-19/verified/web/playwright.log) |
-| Selenium | Web | 14 passaram; 1 falharam; 0 sem validação | 106,18 s | 1 min 48,04 s | 37,65% | [JSON](../../test-results/pocs/web-fix-2026-10-19/verified/web/selenium/results.json) · [Log](../../test-results/pocs/web-fix-2026-10-19/verified/web/selenium.log) |
-| WebdriverIO | Web | 14 passaram; 1 falharam; 0 sem validação | 132,71 s | 2 min 16,55 s | 73,97% | [JSON](../../test-results/pocs/web-fix-2026-10-19/verified/web/webdriverio/results.json) · [Log](../../test-results/pocs/web-fix-2026-10-19/verified/web/webdriverio.log) |
-| WebdriverIO | PWA instalado | 13 passaram; 0 falharam; 0 sem validação | 87,37 s | 1 min 35,74 s | — | [JSON](../../test-results/pocs/web-fix-2026-10-19/pwa-verified/pwa/webdriverio/results.json) · [Log](../../test-results/pocs/web-fix-2026-10-19/pwa-verified/pwa/webdriverio.log) |
-| WebdriverIO | Electron | 13 passaram; 0 falharam; 0 sem validação | 61,96 s | 1 min 5,99 s | — | [JSON](../../test-results/pocs/wdio-electron-fix-2026-10-19/final-verified/electron/webdriverio/results.json) · [Log](../../test-results/pocs/wdio-electron-fix-2026-10-19/final-verified/electron/webdriverio.log) |
+| WebdriverIO | Electron | 13 passaram; 0 falharam; 0 sem validação | 61,96 s | 1 min 5,99 s | — | [JSON](../../../test-results/pocs/wdio-electron-fix-2026-10-19/final-verified/electron/webdriverio/results.json) · [Log](../../../test-results/pocs/wdio-electron-fix-2026-10-19/final-verified/electron/webdriverio.log) |
 
 **Comparação de tempos:** o aumento na tabela acima usa somente as ferramentas reexecutadas na mesma plataforma; “—” indica que só uma ferramenta foi reexecutada ou não há medição elegível. Os percentuais da matriz original abaixo usam somente a rodada contínua das três ferramentas. Os novos tempos acima pertencem à revalidação; não foram misturados ao total original de 36 min 46,72 s nem usados para recalcular seus percentuais. Os dois grupos aplicam (tempo ÷ menor tempo elegível − 1) × 100.
 
-**Ajustes:** WDIO reconsulta o rótulo selecionado no D01, agora validado em web/PWA. Playwright direciona o Delete ao mapa com clique real no polígono e confirmação de foco. O bug intencional de instalação por mouse permanece.
+**Ajustes:** Perfil compartilhado corretamente entre app/driver; conexão WDIO direta ao ChromeDriver do Electron, versão explícita e tamanhos definidos pelo app. D01 consulta novamente o rótulo selecionado em cada leitura. Critérios e aplicativo preservados.
 
-**Limite:** C08 já passou antes do novo preparo: a causa da intermitência anterior continua inconclusiva. Três verificações isoladas e a suíte completa passaram após o ajuste; isso não mede estabilidade estatística. Nesta etapa foram reexecutados web nas três ferramentas e WDIO/PWA; os demais resultados são anteriores, incluindo a correção WDIO/Electron.
+**Limite:** Somente WDIO/Electron foi reexecutado. Web/PWA/Android e Playwright/Selenium mantêm os resultados anteriores; o ajuste compartilhado de D01 ainda não foi revalidado em web/PWA. Uma execução não comprova estabilidade estatística. A captura de uma tentativa anterior mostrou tiles OpenStreetMap com 403; a suíte não verifica a disponibilidade de todo o mapa de fundo.
 
-**Resultados desta etapa:** 42/45 na web, com apenas os três C10 mouse intencionais; WDIO/PWA 13/13. Total do orquestrador web: **5 min 23,41 s**; WDIO/PWA: **1 min 35,94 s**, em execução separada. Nenhum teste ficou sem execução. O consolidado passa a ter somente três falhas intencionais; os 36 testes de duas janelas estão aprovados. O WDIO/PWA registrou um aviso de sessão antiga no reinício, sem impedir os 13 testes; a versão completa preserva o log e a limitação.
+**Etapas externas:** build de 6,00 s; total da revalidação com build e geração dos relatórios de 1 min 12,25 s. As seis falhas restantes são os três C10 mouse/web intencionais, C08 Playwright/web e D01 WDIO/web/PWA, sem nova execução nesta etapa.
 
 **Falhas na revalidação:**
 
-- Playwright/Web — C10 mouse deve abrir as instruções de instalação: defeito intencional de instalação continua detectado.
-- Selenium/Web — C10 mouse deve abrir as instruções de instalação: defeito intencional de instalação continua detectado.
-- WebdriverIO/Web — C10 mouse deve abrir as instruções de instalação: defeito intencional de instalação continua detectado.
+Nenhuma falha nas suítes reexecutadas.
 
 A versão completa lista também a duração de cada teste desta revalidação. As seções seguintes preservam a rodada comparativa original, anterior às correções.
 
@@ -95,7 +89,7 @@ APK: sem duas janelas/C10; C03 edita pelo botão e C08 usa controles de exclusã
 | Electron | 6,80 s | — | 4 min 28,33 s | — | 4 min 35,55 s |
 | APK Android | 4,39 s | 27,92 s | 21 min 11,28 s | 1,65 s | 21 min 46,06 s |
 
-**Tempo total da rodada:** 36 min 46,72 s. Intervalo (UTC): 2026-10-19T10:42:07.622Z → 2026-10-19T11:18:54.551Z. “Suíte/comando” inclui processo e sessões internos; o total da plataforma acrescenta build/preparação/limpeza externos e geração intermediária dos relatórios. Preparação Android inclui boot, instalação inicial do APK e Appium. “—” não significa zero. [Medições brutas](../../test-results/pocs/final-2026-10-19/timing.json).
+**Tempo total da rodada:** 36 min 46,72 s. Intervalo (UTC): 2026-10-19T10:42:07.622Z → 2026-10-19T11:18:54.551Z. “Suíte/comando” inclui processo e sessões internos; o total da plataforma acrescenta build/preparação/limpeza externos e geração intermediária dos relatórios. Preparação Android inclui boot, instalação inicial do APK e Appium. “—” não significa zero. [Medições brutas](../../../test-results/pocs/final-2026-10-19/timing.json).
 
 Uma tentativa por suíte, sequencial, um worker. Playwright/Selenium isolam/criam sessões por teste; WDIO compartilha sessão e limpa pela interface. Gestos/esperas diferem e falhas podem encurtar casos ou atingir timeout. São métricas destas implementações, sem ranking de velocidade ou medição de confiabilidade estatística. Builds podem aproveitar cache.
 
@@ -134,6 +128,6 @@ Escopo: Electron macOS arm64; APK debug em emulador. Não cobre aparelho físico
 
 ## Detalhamento omitido
 
-Esta versão não lista as 150 linhas originais nem as linhas individuais das revalidações com suas durações, erros completos, screenshots/traces, exemplos de código de migração, inventário de arquivos compartilhados ou histórico dos ajustes. A [versão completa](RELATORIO-HISTORICO-2026-10-19.md) mantém esses detalhes e links para evidências.
+Esta versão não lista as 150 linhas originais nem as linhas individuais das revalidações com suas durações, erros completos, screenshots/traces, exemplos de código de migração, inventário de arquivos compartilhados ou histórico dos ajustes. A [versão completa](RELATORIO-2026-10-19-ANTES-REVALIDACAO-WEB.md) mantém esses detalhes e links para evidências.
 
 Histórico preservado: [completo anterior](RELATORIO-2026-10-19-ANTES-RODADA-FINAL.md) · [direto anterior](RELATORIO-DIRETO-2026-10-19-ANTES-RODADA-FINAL.md). Esta rodada usa somente os resultados novos.

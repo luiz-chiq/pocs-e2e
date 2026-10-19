@@ -2,8 +2,9 @@ import { readFile, writeFile, stat } from 'node:fs/promises'
 import { resolve, relative, join } from 'node:path'
 import { appUrl, cases, dualCases } from '../e2e/pocs/shared/fixtures.ts'
 import { renderCurrentReport } from './report-poc-current.mjs'
+import { verifyPocReports } from './verify-poc-reports.mjs'
 
-const directory = resolve(process.argv[2] ?? 'test-results/pocs/validation-2026-10-19')
+const directory = resolve(process.argv[2] ?? 'test-results/pocs/final-2026-10-19')
 const output = resolve('e2e/pocs/RELATORIO.md')
 const briefOutput = resolve('e2e/pocs/RELATORIO-DIRETO.md')
 const tools = ['playwright', 'selenium', 'webdriverio']
@@ -206,12 +207,21 @@ brief += failures.length ? failures.map(item => `- **${names[item.entry.tool]}/$
 brief += '\nFalha antes da última etapa não valida o restante do cenário. As causas não diagnosticadas permanecem inconclusivas.\n\n## Portabilidade\n\nNa construção da POC, o plano foi compartilhado e a execução adaptada por ferramenta. Esta rodada executou os cenários existentes com medição externa; testes e expectativas foram mantidos durante a execução.\n\n- **Reaproveitado:** catálogo/critérios dos cenários, seletores, parte dos dados, contratos auxiliares e infraestrutura PWA/ChromeDriver/capabilities.\n- **Reescrito por ferramenta:** corpo dos testes, gestos, esperas, asserções, sessões, janelas e evidências. Não houve conversão automática nem executor universal.\n- **Entre plataformas:** boa parte do cenário é mantida dentro da própria ferramenta, com adaptadores/branches para PWA, Electron e Android.\n- **Migração futura:** preservar critérios/dados; adaptar execução; validar paridade de isolamento/gestos antes das métricas. Não foram medidos tempo de desenvolvimento ou percentual de reutilização de código.\n\n## Limites\n\n| Ferramenta | Electron | Android |\n| --- | --- | --- |\n| Playwright | Integração experimental; configuração própria para Electron; diálogos nativos fora dos locators da página. | API experimental; depende de ADB/WebView; esta POC não mede cobertura nativa completa. |\n| Selenium | ChromeDriver/executável compatíveis; página não equivale a menus nativos; redimensionamento do bootstrap retirado após erro de protocolo. | Usa Appium/UiAutomator2, WebView depurável e ChromeDriver compatível; sessão por caso nesta POC. |\n| WebdriverIO | Serviço Electron/ChromeDriver compatíveis; impedimento de inicialização não significa ausência de suporte. | Usa Appium; sessão compartilhada e coordenação de toque/teclado/rolagem exigem atenção. |\n\nFontes: [Playwright Electron](https://playwright.dev/docs/api/class-electron), [Playwright Android](https://playwright.dev/docs/api/class-android), [Selenium/Electron](https://www.electronjs.org/docs/latest/tutorial/automated-testing#with-selenium), [WDIO/Electron](https://webdriver.io/docs/desktop-testing/electron/), [Appium/WebView](https://github.com/appium/appium-uiautomator2-driver#hybrid-mode).\n\nEscopo: Electron macOS arm64; APK debug em emulador. Não cobre aparelho físico, instaladores, diálogos/permissões do sistema, plugins nativos, carregamento de todos os tiles do mapa de fundo ou posicionamento em dois monitores físicos.\n\n## Detalhamento omitido\n\nEsta versão não lista as 150 linhas originais nem as linhas individuais das revalidações com suas durações, erros completos, screenshots/traces, exemplos de código de migração, inventário de arquivos compartilhados ou histórico dos ajustes. A [versão completa](RELATORIO.md) mantém esses detalhes e links para evidências.\n'
 if (execution.previousReport) brief += `\nHistórico preservado: [completo anterior](${execution.previousReport}) · [direto anterior](${execution.previousBrief}). Esta rodada usa somente os resultados novos.\n`
 const followup = await read(join(directory, 'followup.json'))
+let status
 if (followup) {
   const rendered = await renderCurrentReport(followup, { orderedEntries, planned, names, duration, elapsed, link, clean, preparationFailure, directory, timing, execution, migration })
   text = rendered.full
   brief = rendered.brief
+  status = rendered.status
 }
 await writeFile(output, text)
 console.log(output)
 await writeFile(briefOutput, brief)
 console.log(briefOutput)
+if (status) {
+  const statusOutput = resolve('e2e/pocs/STATUS.md')
+  await writeFile(statusOutput, status)
+  console.log(statusOutput)
+  await verifyPocReports(directory)
+  console.log('Auditoria dos relatórios concluída: resultados, tempos, origens e links conferidos contra os JSONs.')
+}

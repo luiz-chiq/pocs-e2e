@@ -1,4 +1,6 @@
-# Relatório completo das POCs E2E
+# Histórico — Relatório completo das POCs E2E
+
+> **RELATÓRIO HISTÓRICO — RESULTADOS SUBSTITUÍDOS.** Os números abaixo descrevem a rodada indicada neste arquivo. Para a situação vigente, consulte o [relatório completo atual](../RELATORIO.md), a [versão direta atual](../RELATORIO-DIRETO.md) ou o [status atual](../STATUS.md).
 
 Atualizado em 19/10/2026, 09:04:44 (São Paulo). [Versão direta](RELATORIO-DIRETO-2026-10-19-ANTES-REVALIDACAO-WEB.md).
 
@@ -34,7 +36,7 @@ Duas janelas: 4 aprovações e 0 falhas nas suítes reexecutadas; consolidado ma
 
 | Ferramenta | Plataforma | Resultado atual | Soma dos testes | Tempo da nova suíte | Aumento na revalidação | Evidências |
 | --- | --- | --- | --- | --- | --- | --- |
-| WebdriverIO | Electron | 13 passaram; 0 falharam; 0 sem validação | 61,96 s | 1 min 5,99 s | — | [JSON](../../test-results/pocs/wdio-electron-fix-2026-10-19/final-verified/electron/webdriverio/results.json) · [Log](../../test-results/pocs/wdio-electron-fix-2026-10-19/final-verified/electron/webdriverio.log) |
+| WebdriverIO | Electron | 13 passaram; 0 falharam; 0 sem validação | 61,96 s | 1 min 5,99 s | — | [JSON](../../../test-results/pocs/wdio-electron-fix-2026-10-19/final-verified/electron/webdriverio/results.json) · [Log](../../../test-results/pocs/wdio-electron-fix-2026-10-19/final-verified/electron/webdriverio.log) |
 
 **Comparação de tempos:** o aumento na tabela acima usa somente as ferramentas reexecutadas na mesma plataforma; “—” indica que só uma ferramenta foi reexecutada ou não há medição elegível. Os percentuais da matriz original abaixo usam somente a rodada contínua das três ferramentas. Os novos tempos acima pertencem à revalidação; não foram misturados ao total original de 36 min 46,72 s nem usados para recalcular seus percentuais. Os dois grupos aplicam (tempo ÷ menor tempo elegível − 1) × 100.
 
@@ -46,7 +48,7 @@ Duas janelas: 4 aprovações e 0 falhas nas suítes reexecutadas; consolidado ma
 - **Janelas:** preservar os tamanhos definidos pela aplicação na abertura, reinício e separação. Este Electron rejeita o redimensionamento WebDriver com `Browser.getWindowForTarget`. Os gestos continuam usando dimensões/coordenadas reais do mapa.
 - **D01:** reconsultar o seletor `.is-selected` a cada leitura. Os rótulos preservam seus nós ao trocar a seleção; o matcher anterior continuava lendo o Polígono 2. A captura mostrou o Polígono 1 selecionado, coerente com o CSS e com a reutilização do elemento observada na implementação. Continua sendo obrigatório haver exatamente um rótulo selecionado com o nome esperado; não há repetição de cliques, estado injetado ou expectativa afrouxada.
 
-**Medição desta revalidação:** soma dos 13 testes **61,96 s**; comando da suíte **1 min 5,99 s**; build **6,00 s**; total com build e geração dos relatórios **1 min 12,25 s**. [Medições brutas](../../test-results/pocs/wdio-electron-fix-2026-10-19/final-verified/timing.json). São tempos da última execução completa, sem incluir as tentativas de diagnóstico. Como apenas uma ferramenta foi reexecutada, o percentual desta revalidação fica “—”; a matriz comparativa original conserva os percentuais anteriores.
+**Medição desta revalidação:** soma dos 13 testes **61,96 s**; comando da suíte **1 min 5,99 s**; build **6,00 s**; total com build e geração dos relatórios **1 min 12,25 s**. [Medições brutas](../../../test-results/pocs/wdio-electron-fix-2026-10-19/final-verified/timing.json). São tempos da última execução completa, sem incluir as tentativas de diagnóstico. Como apenas uma ferramenta foi reexecutada, o percentual desta revalidação fica “—”; a matriz comparativa original conserva os percentuais anteriores.
 
 **Ainda há seis falhas no consolidado:** C10 mouse/web nas três ferramentas (bug intencional), C08 Playwright/web e D01 WDIO/web/PWA. Nesta etapa, nenhum dos 13 testes Electron ficou sem execução e os quatro cenários de duas janelas passaram. Esses resultados novos substituem somente a célula WDIO/Electron.
 
@@ -62,14 +64,14 @@ Estes registros pertencem à investigação e às execuções anteriores ao últ
 
 | Tentativa | Resultado registrado | Soma dos testes | Evidência |
 | --- | --- | --- | --- |
-| Após corrigir apenas o perfil: 6 passaram; C07 falhou no redimensionamento; tentativa interrompida, restantes não executados | 6 passaram; 1 falharam | 94,92 s | [JSON](../../test-results/pocs/wdio-electron-fix-2026-10-19/validation/electron/webdriverio/results.json) |
-| Conexão direta, antes da espera de seleção: suíte completa 12/13; D01 falhou no matcher do rótulo | 12 passaram; 1 falharam | 66,08 s | [JSON](../../test-results/pocs/wdio-electron-fix-2026-10-19/complete/electron/webdriverio/results.json) |
+| Após corrigir apenas o perfil: 6 passaram; C07 falhou no redimensionamento; tentativa interrompida, restantes não executados | 6 passaram; 1 falharam | 94,92 s | [JSON](../../../test-results/pocs/wdio-electron-fix-2026-10-19/validation/electron/webdriverio/results.json) |
+| Conexão direta, antes da espera de seleção: suíte completa 12/13; D01 falhou no matcher do rótulo | 12 passaram; 1 falharam | 66,08 s | [JSON](../../../test-results/pocs/wdio-electron-fix-2026-10-19/complete/electron/webdriverio/results.json) |
 
 ### Evidências e limites do diagnóstico
 
-A reprodução original não criou sessão: [log WDIO](../../test-results/pocs/wdio-electron-fix-2026-10-19/before.log) · [ChromeDriver detalhado](../../test-results/pocs/wdio-electron-fix-2026-10-19/chromedriver-before.log) · [arquivo de porta no perfil da POC](../../test-results/pocs/wdio-electron-fix-2026-10-19/DevToolsActivePort-before.txt). A tentativa com o serviço registrou `Browser.getWindowForTarget` e timeout da bridge: [log](../../test-results/pocs/wdio-electron-fix-2026-10-19/validation/electron/webdriverio.log). A primeira conexão direta foi interrompida na detecção automática de versão, sem iniciar os testes: [log](../../test-results/pocs/wdio-electron-fix-2026-10-19/verified/electron/webdriverio.log) · [tempos](../../test-results/pocs/wdio-electron-fix-2026-10-19/verified/timing.json). Uma tentativa de build posterior parou no TypeScript da consulta assíncrona de quantidade; esse erro foi corrigido antes da última suíte: [log de build](../../test-results/pocs/wdio-electron-fix-2026-10-19/final/electron/build.log).
+A reprodução original não criou sessão: [log WDIO](../../../test-results/pocs/wdio-electron-fix-2026-10-19/before.log) · [ChromeDriver detalhado](../../../test-results/pocs/wdio-electron-fix-2026-10-19/chromedriver-before.log) · [arquivo de porta no perfil da POC](../../../test-results/pocs/wdio-electron-fix-2026-10-19/DevToolsActivePort-before.txt). A tentativa com o serviço registrou `Browser.getWindowForTarget` e timeout da bridge: [log](../../../test-results/pocs/wdio-electron-fix-2026-10-19/validation/electron/webdriverio.log). A primeira conexão direta foi interrompida na detecção automática de versão, sem iniciar os testes: [log](../../../test-results/pocs/wdio-electron-fix-2026-10-19/verified/electron/webdriverio.log) · [tempos](../../../test-results/pocs/wdio-electron-fix-2026-10-19/verified/timing.json). Uma tentativa de build posterior parou no TypeScript da consulta assíncrona de quantidade; esse erro foi corrigido antes da última suíte: [log de build](../../../test-results/pocs/wdio-electron-fix-2026-10-19/final/electron/build.log).
 
-A tentativa completa anterior ao ajuste de D01 está preservada com 12 aprovações e uma falha. Sua captura do mapa mostra o Polígono 1 em destaque e o fundo com **403 / Access blocked** do OpenStreetMap: [captura](../../test-results/pocs/wdio-electron-fix-2026-10-19/complete/electron/webdriverio/D01-sincroniza-sele-o-cria-o-edi-o-cancelamento-e-exclus-o-em-duas-janelas-window-1.png). O bloqueio dos tiles é uma dependência externa observada, sem demonstrar causa da divergência do matcher. A aplicação e o provedor não foram alterados.
+A tentativa completa anterior ao ajuste de D01 está preservada com 12 aprovações e uma falha. Sua captura do mapa mostra o Polígono 1 em destaque e o fundo com **403 / Access blocked** do OpenStreetMap: [captura](../../../test-results/pocs/wdio-electron-fix-2026-10-19/complete/electron/webdriverio/D01-sincroniza-sele-o-cria-o-edi-o-cancelamento-e-exclus-o-em-duas-janelas-window-1.png). O bloqueio dos tiles é uma dependência externa observada, sem demonstrar causa da divergência do matcher. A aplicação e o provedor não foram alterados.
 
 Fontes de integração: [WebDriver e Electron](https://www.electronjs.org/docs/latest/tutorial/automated-testing#using-the-webdriver-interface) · [serviço Electron do WDIO](https://webdriver.io/docs/desktop-testing/electron/). A escolha de conectar diretamente ao ChromeDriver é a adaptação desta POC; ela não avalia a bridge do processo principal nem representa ausência de suporte do serviço Electron.
 
@@ -140,7 +142,7 @@ No Android, C03 inicia edição pelo botão e C08 usa os controles de exclusão;
 
 **Tempo total medido da rodada:** 36 min 46,72 s. **Início:** 2026-10-19T10:42:07.622Z. **Fim:** 2026-10-19T11:18:54.551Z.
 
-O total da plataforma inclui build, preparação, suítes, limpeza e geração intermediária dos relatórios. No Android, preparação externa agrupa boot/estabilização do emulador, instalação inicial do APK e início/espera do Appium. Preparação feita pela própria ferramenta, inclusive novas sessões e instalação/lançamento do PWA, fica dentro de suíte/comando. “—” indica etapa não aplicável ou medição indisponível, não zero. O total contínuo da rodada não inclui as investigações anteriores. [Medição por etapa](../../test-results/pocs/final-2026-10-19/timing.json).
+O total da plataforma inclui build, preparação, suítes, limpeza e geração intermediária dos relatórios. No Android, preparação externa agrupa boot/estabilização do emulador, instalação inicial do APK e início/espera do Appium. Preparação feita pela própria ferramenta, inclusive novas sessões e instalação/lançamento do PWA, fica dentro de suíte/comando. “—” indica etapa não aplicável ou medição indisponível, não zero. O total contínuo da rodada não inclui as investigações anteriores. [Medição por etapa](../../../test-results/pocs/final-2026-10-19/timing.json).
 
 ## Como interpretar os tempos
 
@@ -158,13 +160,13 @@ Web/PWA acessam o deploy https://poc-e2e.chiquetano.com.br/; não houve build ou
 
 ## Falhas desta rodada
 
-- **Playwright/Web — C08 confirma e cancela exclusões por Delete, individuais e de todos:** O aviso de exclusão esperado após Delete não apareceu. O cenário não avançou para as demais confirmações; causa não determinada. Error: expect(locator).toContainText(expected) failed  Locator: locator('#map-instructions') Expected substring: "Polígono apagado nesta edição" Received string:    "Modo de edição ativo: altere o nome ou arraste vértices e arestas. Use “Concluir edição” para salvar." Timeout: 10000ms  Call log:   - Expect "toContainText" locator('#map-instructions') with timeout 10000ms   - waiting for locator('#map-instructions')     24 × locator resolved to &lt;p id="map-instructions"&gt;Modo de edição ativo: altere o nome ou arraste vé…&lt;/p&gt;        - unexpected value "Modo de edição ativo: altere o nome ou arraste vértices e arestas. Use “Concluir ed [Log](../../test-results/pocs/final-2026-10-19/web/playwright.log).
-- **Playwright/Web — C10 mouse deve abrir as instruções de instalação:** Defeito intencional detectado: clique não abriu as instruções de instalação. A falha continua contada. [Log](../../test-results/pocs/final-2026-10-19/web/playwright.log).
-- **Selenium/Web — C10 mouse deve abrir as instruções de instalação:** Defeito intencional detectado: clique não abriu as instruções de instalação. A falha continua contada. [Log](../../test-results/pocs/final-2026-10-19/web/selenium.log).
-- **WebdriverIO/Web — D01 sincroniza seleção, criação, edição, cancelamento e exclusão em duas janelas:** Expect $(`[data-testid="polygon-map-label"].is-selected`) to have text  Expected: "Polígono 1" Received: "Polígono 2" [Log](../../test-results/pocs/final-2026-10-19/web/webdriverio.log).
-- **WebdriverIO/Web — C10 mouse deve abrir as instruções de instalação:** Defeito intencional detectado: clique não abriu as instruções de instalação. A falha continua contada. [Log](../../test-results/pocs/final-2026-10-19/web/webdriverio.log).
-- **WebdriverIO/PWA instalado — D01 sincroniza seleção, criação, edição, cancelamento e exclusão em duas janelas:** Expect $(`[data-testid="polygon-map-label"].is-selected`) to have text  Expected: "Polígono 1" Received: "Polígono 2" [Log](../../test-results/pocs/final-2026-10-19/pwa/webdriverio.log).
-- **WebdriverIO/Electron — Preparação:** A ferramenta encerrou sem produzir relatório. DevToolsActivePort ausente; a sessão Electron não foi criada. Os cenários sem registro não foram executados. [Log](../../test-results/pocs/final-2026-10-19/electron/webdriverio.log).
+- **Playwright/Web — C08 confirma e cancela exclusões por Delete, individuais e de todos:** O aviso de exclusão esperado após Delete não apareceu. O cenário não avançou para as demais confirmações; causa não determinada. Error: expect(locator).toContainText(expected) failed  Locator: locator('#map-instructions') Expected substring: "Polígono apagado nesta edição" Received string:    "Modo de edição ativo: altere o nome ou arraste vértices e arestas. Use “Concluir edição” para salvar." Timeout: 10000ms  Call log:   - Expect "toContainText" locator('#map-instructions') with timeout 10000ms   - waiting for locator('#map-instructions')     24 × locator resolved to &lt;p id="map-instructions"&gt;Modo de edição ativo: altere o nome ou arraste vé…&lt;/p&gt;        - unexpected value "Modo de edição ativo: altere o nome ou arraste vértices e arestas. Use “Concluir ed [Log](../../../test-results/pocs/final-2026-10-19/web/playwright.log).
+- **Playwright/Web — C10 mouse deve abrir as instruções de instalação:** Defeito intencional detectado: clique não abriu as instruções de instalação. A falha continua contada. [Log](../../../test-results/pocs/final-2026-10-19/web/playwright.log).
+- **Selenium/Web — C10 mouse deve abrir as instruções de instalação:** Defeito intencional detectado: clique não abriu as instruções de instalação. A falha continua contada. [Log](../../../test-results/pocs/final-2026-10-19/web/selenium.log).
+- **WebdriverIO/Web — D01 sincroniza seleção, criação, edição, cancelamento e exclusão em duas janelas:** Expect $(`[data-testid="polygon-map-label"].is-selected`) to have text  Expected: "Polígono 1" Received: "Polígono 2" [Log](../../../test-results/pocs/final-2026-10-19/web/webdriverio.log).
+- **WebdriverIO/Web — C10 mouse deve abrir as instruções de instalação:** Defeito intencional detectado: clique não abriu as instruções de instalação. A falha continua contada. [Log](../../../test-results/pocs/final-2026-10-19/web/webdriverio.log).
+- **WebdriverIO/PWA instalado — D01 sincroniza seleção, criação, edição, cancelamento e exclusão em duas janelas:** Expect $(`[data-testid="polygon-map-label"].is-selected`) to have text  Expected: "Polígono 1" Received: "Polígono 2" [Log](../../../test-results/pocs/final-2026-10-19/pwa/webdriverio.log).
+- **WebdriverIO/Electron — Preparação:** A ferramenta encerrou sem produzir relatório. DevToolsActivePort ausente; a sessão Electron não foi criada. Os cenários sem registro não foram executados. [Log](../../../test-results/pocs/final-2026-10-19/electron/webdriverio.log).
 
 ## Portabilidade
 
@@ -174,12 +176,12 @@ As três POCs têm **implementações de testes independentes**. Foram reaprovei
 
 | Camada | Como ficou nesta POC | Evidência no projeto |
 | --- | --- | --- |
-| Catálogo e critérios | Mesmos IDs C01–C10 e D01–D03, títulos e expectativas de negócio. C10 tem duas entradas e D02 duas variações. | [Catálogo e contratos](shared/fixtures.ts), [plano](README.md). |
-| Seletores e dados comuns | Seletores `data-testid`/CSS, triângulo inicial, viewport, tipos de coordenadas e configuração de ambiente compartilhados. Alguns dados, como listas de nomes inválidos, continuam escritos em cada suíte. | [Fixtures compartilhadas](shared/fixtures.ts). |
-| Infraestrutura | Instalação/lançamento do PWA, conexão CDP, obtenção de ChromeDriver do Electron, capabilities Android e orquestração têm módulos compartilhados. Isso não substitui os gestos de cada ferramenta. | [PWA](shared/pwa.ts), [conexão Chrome](shared/chrome-pipe.ts), [Electron](shared/electron.ts), [Android](shared/android.ts), [orquestrador](../../scripts/run-pocs.mjs). |
+| Catálogo e critérios | Mesmos IDs C01–C10 e D01–D03, títulos e expectativas de negócio. C10 tem duas entradas e D02 duas variações. | [Catálogo e contratos](../shared/fixtures.ts), [plano](../README.md). |
+| Seletores e dados comuns | Seletores `data-testid`/CSS, triângulo inicial, viewport, tipos de coordenadas e configuração de ambiente compartilhados. Alguns dados, como listas de nomes inválidos, continuam escritos em cada suíte. | [Fixtures compartilhadas](../shared/fixtures.ts). |
+| Infraestrutura | Instalação/lançamento do PWA, conexão CDP, obtenção de ChromeDriver do Electron, capabilities Android e orquestração têm módulos compartilhados. Isso não substitui os gestos de cada ferramenta. | [PWA](../shared/pwa.ts), [conexão Chrome](../shared/chrome-pipe.ts), [Electron](../shared/electron.ts), [Android](../shared/android.ts), [orquestrador](../../../scripts/run-pocs.mjs). |
 | Leitura do app | Mesmo contrato auxiliar de coordenadas, persistência, prontidão e contagem de vértices. Não injeta polígonos nem altera resultados para aprovar testes. | `polygonTestApi`, disponível na build E2E. |
-| Execução da interface | Cliques, preenchimento, desenho, arraste, esperas, asserções e troca entre janelas implementados separadamente. Helpers como `create`, `deselect` e `confirmName` existem em cada suíte, com assinaturas/implementações próprias. | [Playwright](playwright/web.spec.ts), [Selenium](selenium/web.test.ts), [WebdriverIO](webdriverio/web.e2e.ts). |
-| Sessões e evidências | Hooks, reinício/persistência, captura de screenshots, trace e gravação do resultado adaptados ao runner. As durações individuais vêm de pontos de medição diferentes. | [Fixtures Playwright](playwright/fixtures.ts), [reporter](playwright/reporter.ts), [Selenium](selenium/web.test.ts), [configuração WDIO](../../wdio.poc.conf.ts). |
+| Execução da interface | Cliques, preenchimento, desenho, arraste, esperas, asserções e troca entre janelas implementados separadamente. Helpers como `create`, `deselect` e `confirmName` existem em cada suíte, com assinaturas/implementações próprias. | [Playwright](../playwright/web.spec.ts), [Selenium](../selenium/web.test.ts), [WebdriverIO](../webdriverio/web.e2e.ts). |
+| Sessões e evidências | Hooks, reinício/persistência, captura de screenshots, trace e gravação do resultado adaptados ao runner. As durações individuais vêm de pontos de medição diferentes. | [Fixtures Playwright](../playwright/fixtures.ts), [reporter](../playwright/reporter.ts), [Selenium](../selenium/web.test.ts), [configuração WDIO](../../../wdio.poc.conf.ts). |
 
 Compartilhado não significa utilizado pelas três ferramentas em todos os ambientes: as capabilities Appium e parte da conexão Chrome atendem Selenium/WebdriverIO; Playwright usa seus próprios adaptadores de sessão para Android/Electron. Os helpers comuns de instalação do PWA são usados pelas três integrações.
 
@@ -249,7 +251,7 @@ O resultado funcional deveria convergir para o mesmo app, estado e interação. 
 
 O 9/9 do Selenium confirma que os cenários passaram naquela execução. Não prova que o app esteja livre de problemas intermitentes nem que os outros resultados sejam falsos positivos. **As duas falhas restantes estão inconclusivas quanto à causa**, apesar de suas asserções terem falhado. A falha anterior de C08 no WebdriverIO era uma transição não aguardada pela automação: o mapa faz `hitTest` assíncrono; depois de esperar o botão voltar ao modo de criação, a suíte completa passou por C08.
 
-As diferenças podem ser verificadas nos adaptadores de [Playwright](playwright/web.spec.ts), [Selenium](selenium/web.test.ts) e [WebdriverIO](webdriverio/web.e2e.ts). Para uma comparação de confiabilidade, falta igualar a política de isolamento e os contratos de gestos/esperas, registrar alvo/coordenadas/viewport e acionamento do botão, e repetir os cenários com o mesmo APK e emulador. Isso permitiria medir frequência de falhas, além do resultado de uma execução. A rodada comparativa de métricas repetiu as suítes existentes, sem normalizar essas diferenças entre adaptadores. A revalidação posterior do Selenium/Playwright ajusta alguns gestos e esperas; seus novos tempos são apresentados separadamente.
+As diferenças podem ser verificadas nos adaptadores de [Playwright](../playwright/web.spec.ts), [Selenium](../selenium/web.test.ts) e [WebdriverIO](../webdriverio/web.e2e.ts). Para uma comparação de confiabilidade, falta igualar a política de isolamento e os contratos de gestos/esperas, registrar alvo/coordenadas/viewport e acionamento do botão, e repetir os cenários com o mesmo APK e emulador. Isso permitiria medir frequência de falhas, além do resultado de uma execução. A rodada comparativa de métricas repetiu as suítes existentes, sem normalizar essas diferenças entre adaptadores. A revalidação posterior do Selenium/Playwright ajusta alguns gestos e esperas; seus novos tempos são apresentados separadamente.
 
 ### Limitações por ferramenta em Electron e Android
 
@@ -290,7 +292,7 @@ Comando usado nesta rodada (a partir da raiz do projeto):
 POC_FRAMEWORKS=playwright,selenium,webdriverio POC_RESULTS_DIR=test-results/pocs/final-2026-10-19 npm run test:poc:all
 ```
 
-**Artefatos:** Electron em `release/electron/` e APK em `android/app/build/outputs/apk/debug/app-debug.apk`. Logs das builds: [Electron](../../test-results/pocs/final-2026-10-19/electron/build.log) · [APK](../../test-results/pocs/final-2026-10-19/android/build.log).
+**Artefatos:** Electron em `release/electron/` e APK em `android/app/build/outputs/apk/debug/app-debug.apk`. Logs das builds: [Electron](../../../test-results/pocs/final-2026-10-19/electron/build.log) · [APK](../../../test-results/pocs/final-2026-10-19/android/build.log).
 
 O PWA foi instalado em perfil de automação e teve `display-mode: standalone` verificado. O Electron foi empacotado para macOS, sem instalador Windows. Duas janelas simultâneas foram usadas; não foi avaliado o posicionamento em dois monitores físicos. A API auxiliar lê coordenadas, prontidão e quantidade de vértices e aguarda a persistência; os desenhos e edições usam gestos das ferramentas. Ambiente web/PWA: https://poc-e2e.chiquetano.com.br/.
 
@@ -298,7 +300,7 @@ O PWA foi instalado em perfil de automação e teve `display-mode: standalone` v
 
 ### Web
 
-[JSON com durações e evidências](../../test-results/pocs/final-2026-10-19/web/playwright/results.json) · [Log completo](../../test-results/pocs/final-2026-10-19/web/playwright.log)
+[JSON com durações e evidências](../../../test-results/pocs/final-2026-10-19/web/playwright/results.json) · [Log completo](../../../test-results/pocs/final-2026-10-19/web/playwright.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -320,7 +322,7 @@ O PWA foi instalado em perfil de automação e teve `display-mode: standalone` v
 
 ### PWA instalado
 
-[JSON com durações e evidências](../../test-results/pocs/final-2026-10-19/pwa/playwright/results.json) · [Log completo](../../test-results/pocs/final-2026-10-19/pwa/playwright.log)
+[JSON com durações e evidências](../../../test-results/pocs/final-2026-10-19/pwa/playwright/results.json) · [Log completo](../../../test-results/pocs/final-2026-10-19/pwa/playwright.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -340,7 +342,7 @@ O PWA foi instalado em perfil de automação e teve `display-mode: standalone` v
 
 ### Electron
 
-[JSON com durações e evidências](../../test-results/pocs/final-2026-10-19/electron/playwright/results.json) · [Log completo](../../test-results/pocs/final-2026-10-19/electron/playwright.log)
+[JSON com durações e evidências](../../../test-results/pocs/final-2026-10-19/electron/playwright/results.json) · [Log completo](../../../test-results/pocs/final-2026-10-19/electron/playwright.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -360,7 +362,7 @@ O PWA foi instalado em perfil de automação e teve `display-mode: standalone` v
 
 ### APK Android
 
-[JSON com durações e evidências](../../test-results/pocs/final-2026-10-19/android/playwright/results.json) · [Log completo](../../test-results/pocs/final-2026-10-19/android/playwright.log)
+[JSON com durações e evidências](../../../test-results/pocs/final-2026-10-19/android/playwright/results.json) · [Log completo](../../../test-results/pocs/final-2026-10-19/android/playwright.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -378,7 +380,7 @@ O PWA foi instalado em perfil de automação e teve `display-mode: standalone` v
 
 ### Web
 
-[JSON com durações e evidências](../../test-results/pocs/final-2026-10-19/web/selenium/results.json) · [Log completo](../../test-results/pocs/final-2026-10-19/web/selenium.log)
+[JSON com durações e evidências](../../../test-results/pocs/final-2026-10-19/web/selenium/results.json) · [Log completo](../../../test-results/pocs/final-2026-10-19/web/selenium.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -400,7 +402,7 @@ O PWA foi instalado em perfil de automação e teve `display-mode: standalone` v
 
 ### PWA instalado
 
-[JSON com durações e evidências](../../test-results/pocs/final-2026-10-19/pwa/selenium/results.json) · [Log completo](../../test-results/pocs/final-2026-10-19/pwa/selenium.log)
+[JSON com durações e evidências](../../../test-results/pocs/final-2026-10-19/pwa/selenium/results.json) · [Log completo](../../../test-results/pocs/final-2026-10-19/pwa/selenium.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -420,7 +422,7 @@ O PWA foi instalado em perfil de automação e teve `display-mode: standalone` v
 
 ### Electron
 
-[JSON com durações e evidências](../../test-results/pocs/final-2026-10-19/electron/selenium/results.json) · [Log completo](../../test-results/pocs/final-2026-10-19/electron/selenium.log)
+[JSON com durações e evidências](../../../test-results/pocs/final-2026-10-19/electron/selenium/results.json) · [Log completo](../../../test-results/pocs/final-2026-10-19/electron/selenium.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -440,7 +442,7 @@ O PWA foi instalado em perfil de automação e teve `display-mode: standalone` v
 
 ### APK Android
 
-[JSON com durações e evidências](../../test-results/pocs/final-2026-10-19/android/selenium/results.json) · [Log completo](../../test-results/pocs/final-2026-10-19/android/selenium.log)
+[JSON com durações e evidências](../../../test-results/pocs/final-2026-10-19/android/selenium/results.json) · [Log completo](../../../test-results/pocs/final-2026-10-19/android/selenium.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -458,7 +460,7 @@ O PWA foi instalado em perfil de automação e teve `display-mode: standalone` v
 
 ### Web
 
-[JSON com durações e evidências](../../test-results/pocs/final-2026-10-19/web/webdriverio/results.json) · [Log completo](../../test-results/pocs/final-2026-10-19/web/webdriverio.log)
+[JSON com durações e evidências](../../../test-results/pocs/final-2026-10-19/web/webdriverio/results.json) · [Log completo](../../../test-results/pocs/final-2026-10-19/web/webdriverio.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -480,7 +482,7 @@ O PWA foi instalado em perfil de automação e teve `display-mode: standalone` v
 
 ### PWA instalado
 
-[JSON com durações e evidências](../../test-results/pocs/final-2026-10-19/pwa/webdriverio/results.json) · [Log completo](../../test-results/pocs/final-2026-10-19/pwa/webdriverio.log)
+[JSON com durações e evidências](../../../test-results/pocs/final-2026-10-19/pwa/webdriverio/results.json) · [Log completo](../../../test-results/pocs/final-2026-10-19/pwa/webdriverio.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -500,7 +502,7 @@ O PWA foi instalado em perfil de automação e teve `display-mode: standalone` v
 
 ### Electron
 
-⛔ A ferramenta encerrou sem produzir relatório. ChromeDriver não encontrou DevToolsActivePort; a sessão Electron não foi criada. [Log](../../test-results/pocs/final-2026-10-19/electron/webdriverio.log)
+⛔ A ferramenta encerrou sem produzir relatório. ChromeDriver não encontrou DevToolsActivePort; a sessão Electron não foi criada. [Log](../../../test-results/pocs/final-2026-10-19/electron/webdriverio.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -520,7 +522,7 @@ O PWA foi instalado em perfil de automação e teve `display-mode: standalone` v
 
 ### APK Android
 
-[JSON com durações e evidências](../../test-results/pocs/final-2026-10-19/android/webdriverio/results.json) · [Log completo](../../test-results/pocs/final-2026-10-19/android/webdriverio.log)
+[JSON com durações e evidências](../../../test-results/pocs/final-2026-10-19/android/webdriverio/results.json) · [Log completo](../../../test-results/pocs/final-2026-10-19/android/webdriverio.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |

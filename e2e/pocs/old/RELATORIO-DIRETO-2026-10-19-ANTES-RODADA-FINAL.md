@@ -1,6 +1,8 @@
-# Relatório direto das POCs E2E
+# Histórico — Relatório direto das POCs E2E
 
-[Relatório completo](RELATORIO-2026-10-19-ANTES-RODADA-FINAL.md). Resultados: `../../test-results/pocs/metrics-2026-10-19-run2`. Rodada encerrada.
+> **RELATÓRIO HISTÓRICO — RESULTADOS SUBSTITUÍDOS.** Os números abaixo descrevem a rodada indicada neste arquivo. Para a situação vigente, consulte o [relatório completo atual](../RELATORIO.md), a [versão direta atual](../RELATORIO-DIRETO.md) ou o [status atual](../STATUS.md).
+
+[Relatório completo](RELATORIO-2026-10-19-ANTES-RODADA-FINAL.md). Resultados: `../../../test-results/pocs/metrics-2026-10-19-run2`. Rodada encerrada.
 
 ## Sumário
 
@@ -22,11 +24,11 @@ Duas janelas: 12 aprovações e 0 falhas nas suítes reexecutadas; consolidado m
 
 | Ferramenta | Plataforma | Resultado atual | Tempo da nova suíte | Aumento na revalidação | Evidências |
 | --- | --- | --- | --- | --- | --- |
-| Playwright | APK Android | 9 passaram; 0 falharam; 0 sem validação | 5 min 56,29 s | 0,00% | [JSON](../../test-results/pocs/fixes-2026-10-19/playwright-verified/android/playwright/results.json) · [Log](../../test-results/pocs/fixes-2026-10-19/playwright-verified/android/playwright.log) |
-| Selenium | Web | 13 passaram; 2 falharam; 0 sem validação | 1 min 57,57 s | — | [JSON](../../test-results/pocs/fixes-2026-10-19/selenium-web-final/web/selenium/results.json) · [Log](../../test-results/pocs/fixes-2026-10-19/selenium-web-final/web/selenium.log) |
-| Selenium | PWA instalado | 13 passaram; 0 falharam; 0 sem validação | 1 min 43,87 s | — | [JSON](../../test-results/pocs/fixes-2026-10-19/selenium-pwa-final/pwa/selenium/results.json) · [Log](../../test-results/pocs/fixes-2026-10-19/selenium-pwa-final/pwa/selenium.log) |
-| Selenium | Electron | 13 passaram; 0 falharam; 0 sem validação | 1 min 21,97 s | — | [JSON](../../test-results/pocs/fixes-2026-10-19/selenium-electron-final/electron/selenium/results.json) · [Log](../../test-results/pocs/fixes-2026-10-19/selenium-electron-final/electron/selenium.log) |
-| Selenium | APK Android | 9 passaram; 0 falharam; 0 sem validação | 7 min 53,78 s | 32,98% | [JSON](../../test-results/pocs/fixes-2026-10-19/selenium-verified/android/selenium/results.json) · [Log](../../test-results/pocs/fixes-2026-10-19/selenium-verified/android/selenium.log) |
+| Playwright | APK Android | 9 passaram; 0 falharam; 0 sem validação | 5 min 56,29 s | 0,00% | [JSON](../../../test-results/pocs/fixes-2026-10-19/playwright-verified/android/playwright/results.json) · [Log](../../../test-results/pocs/fixes-2026-10-19/playwright-verified/android/playwright.log) |
+| Selenium | Web | 13 passaram; 2 falharam; 0 sem validação | 1 min 57,57 s | — | [JSON](../../../test-results/pocs/fixes-2026-10-19/selenium-web-final/web/selenium/results.json) · [Log](../../../test-results/pocs/fixes-2026-10-19/selenium-web-final/web/selenium.log) |
+| Selenium | PWA instalado | 13 passaram; 0 falharam; 0 sem validação | 1 min 43,87 s | — | [JSON](../../../test-results/pocs/fixes-2026-10-19/selenium-pwa-final/pwa/selenium/results.json) · [Log](../../../test-results/pocs/fixes-2026-10-19/selenium-pwa-final/pwa/selenium.log) |
+| Selenium | Electron | 13 passaram; 0 falharam; 0 sem validação | 1 min 21,97 s | — | [JSON](../../../test-results/pocs/fixes-2026-10-19/selenium-electron-final/electron/selenium/results.json) · [Log](../../../test-results/pocs/fixes-2026-10-19/selenium-electron-final/electron/selenium.log) |
+| Selenium | APK Android | 9 passaram; 0 falharam; 0 sem validação | 7 min 53,78 s | 32,98% | [JSON](../../../test-results/pocs/fixes-2026-10-19/selenium-verified/android/selenium/results.json) · [Log](../../../test-results/pocs/fixes-2026-10-19/selenium-verified/android/selenium.log) |
 
 **Comparação de tempos:** o aumento na tabela acima usa somente as ferramentas reexecutadas na mesma plataforma; “—” indica que só uma ferramenta foi reexecutada ou não há medição elegível. Os percentuais da matriz original abaixo usam somente a rodada contínua das três ferramentas. Os novos tempos acima pertencem à revalidação; não foram misturados ao total original de 33 min 43,36 s nem usados para recalcular seus percentuais. Os dois grupos aplicam (tempo ÷ menor tempo elegível − 1) × 100.
 
@@ -82,7 +84,7 @@ APK: sem duas janelas/C10; C03 edita pelo botão e C08 usa controles de exclusã
 | Electron | 6,06 s | — | 4 min 16,62 s | — | 4 min 23,09 s |
 | APK Android | 4,17 s | 29,37 s | 19 min 2,47 s | 1,34 s | 19 min 38,05 s |
 
-**Tempo total da rodada:** 33 min 43,36 s. Intervalo (UTC): 2026-10-19T08:24:36.564Z → 2026-10-19T08:58:19.901Z. “Suíte/comando” inclui processo e sessões internos; o total da plataforma acrescenta build/preparação/limpeza externos e geração intermediária dos relatórios. Preparação Android inclui boot, instalação inicial do APK e Appium. “—” não significa zero. [Medições brutas](../../test-results/pocs/metrics-2026-10-19-run2/timing.json).
+**Tempo total da rodada:** 33 min 43,36 s. Intervalo (UTC): 2026-10-19T08:24:36.564Z → 2026-10-19T08:58:19.901Z. “Suíte/comando” inclui processo e sessões internos; o total da plataforma acrescenta build/preparação/limpeza externos e geração intermediária dos relatórios. Preparação Android inclui boot, instalação inicial do APK e Appium. “—” não significa zero. [Medições brutas](../../../test-results/pocs/metrics-2026-10-19-run2/timing.json).
 
 Uma tentativa por suíte, sequencial, um worker. Playwright/Selenium isolam/criam sessões por teste; WDIO compartilha sessão e limpa pela interface. Gestos/esperas diferem e falhas podem encurtar casos ou atingir timeout. São métricas destas implementações, sem ranking de velocidade ou medição de confiabilidade estatística. Builds podem aproveitar cache.
 

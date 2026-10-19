@@ -1,6 +1,6 @@
 # POCs de automação E2E
 
-Veja a [validação inicial realizada no deploy](RESULTADOS-WEB.md) e o
+Veja a [validação inicial realizada no deploy](old/RESULTADOS-WEB.md) e o
 [relatório atual por ferramenta e plataforma](RELATORIO.md).
 Há também uma [versão direta](RELATORIO-DIRETO.md), com sumário, matriz,
 tempos por plataforma, aumento percentual em relação ao menor tempo de cada
@@ -171,8 +171,8 @@ Para regenerar os relatórios da rodada final de 19/10/2026:
 node scripts/report-pocs.mjs test-results/pocs/final-2026-10-19
 ```
 
-A [versão completa anterior](RELATORIO-2026-10-19-ANTES-RODADA-FINAL.md) e a
-[versão direta anterior](RELATORIO-DIRETO-2026-10-19-ANTES-RODADA-FINAL.md) foram
+A [versão completa anterior](old/RELATORIO-2026-10-19-ANTES-RODADA-FINAL.md) e a
+[versão direta anterior](old/RELATORIO-DIRETO-2026-10-19-ANTES-RODADA-FINAL.md) foram
 preservadas. A rodada final não importa seus resultados.
 
 A correção posterior de WDIO/Electron é aplicada ao resumo, à tabela de tempos
@@ -181,8 +181,8 @@ e aos 13 testes individuais dos dois relatórios atuais. Os dados estão em
 inclui essa revalidação pelo manifesto `followup.json`. A rodada de 12
 combinações permanece separada, com seus tempos originais. Os relatórios de antes
 dessa correção também foram preservados em
-[completo](RELATORIO-2026-10-19-ANTES-CORRECAO-WDIO-ELECTRON.md) e
-[direto](RELATORIO-DIRETO-2026-10-19-ANTES-CORRECAO-WDIO-ELECTRON.md).
+[completo](old/RELATORIO-2026-10-19-ANTES-CORRECAO-WDIO-ELECTRON.md) e
+[direto](old/RELATORIO-DIRETO-2026-10-19-ANTES-CORRECAO-WDIO-ELECTRON.md).
 
 Quando existe `followup.json` no diretório informado, o gerador lê as raízes de
 resultados/timing listadas em `suites`, consolida a situação mais recente em todas as seções e mantém
@@ -234,8 +234,8 @@ node scripts/report-pocs.mjs test-results/pocs/final-2026-10-19
 ```
 
 Os resultados de antes desta etapa estão preservados em
-[completo anterior](RELATORIO-2026-10-19-ANTES-REVALIDACAO-WEB.md) e
-[direto anterior](RELATORIO-DIRETO-2026-10-19-ANTES-REVALIDACAO-WEB.md).
+[completo anterior](old/RELATORIO-2026-10-19-ANTES-REVALIDACAO-WEB.md) e
+[direto anterior](old/RELATORIO-DIRETO-2026-10-19-ANTES-REVALIDACAO-WEB.md).
 
 ## Leitura dos relatórios atuais
 
@@ -244,5 +244,32 @@ de cada combinação. A tabela de tempo de execução tem uma linha por platafor
 colunas Playwright, Selenium e WebdriverIO; cada célula mede o comando da suíte,
 sem build ou preparação externa. Os dados brutos usados estão vinculados no
 relatório. Resultados substituídos ficam no
-[histórico completo](RELATORIO-HISTORICO-2026-10-19.md) e no
-[histórico direto](RELATORIO-DIRETO-HISTORICO-2026-10-19.md).
+[histórico completo](old/RELATORIO-HISTORICO-2026-10-19.md) e no
+[histórico direto](old/RELATORIO-DIRETO-HISTORICO-2026-10-19.md).
+
+## Organização e auditoria dos relatórios
+
+Na pasta principal ficam somente os relatórios vigentes: `RELATORIO.md`,
+`RELATORIO-DIRETO.md` e `STATUS.md`. Os 11 arquivos anteriores ficam em
+[old/](old/README.md), identificados como históricos e com links para a situação
+atual. Os números antigos foram preservados para descrever suas próprias rodadas.
+
+As três versões atuais são geradas a partir do mesmo consolidado. Para regenerar
+e auditar os documentos, sem executar testes E2E:
+
+```bash
+npm run report:poc
+```
+
+Para somente conferir os arquivos existentes contra os resultados brutos:
+
+```bash
+npm run report:poc:check
+```
+
+A checagem valida as 12 combinações, o catálogo e os 150 resultados individuais,
+contagens, durações, percentuais, origens dos JSONs, links locais e sumários.
+Também confirma que os arquivos antigos estão em `old/` e que suas linhas
+individuais numéricas têm correspondência nos registros históricos. Se alguma
+verificação falhar, o comando retorna erro; a geração atual também executa essa
+auditoria automaticamente.

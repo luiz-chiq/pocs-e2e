@@ -1,6 +1,8 @@
-# Relatório direto das POCs E2E
+# Histórico — Relatório direto das POCs E2E
 
-[Relatório completo](RELATORIO-2026-10-19-ANTES-CORRECAO-WDIO-ELECTRON.md). Resultados: `../../test-results/pocs/final-2026-10-19`. Rodada encerrada.
+> **RELATÓRIO HISTÓRICO — RESULTADOS SUBSTITUÍDOS.** Os números abaixo descrevem a rodada indicada neste arquivo. Para a situação vigente, consulte o [relatório completo atual](../RELATORIO.md), a [versão direta atual](../RELATORIO-DIRETO.md) ou o [status atual](../STATUS.md).
+
+[Relatório completo](RELATORIO-2026-10-19-ANTES-CORRECAO-WDIO-ELECTRON.md). Resultados: `../../../test-results/pocs/final-2026-10-19`. Rodada encerrada.
 
 ## Sumário
 
@@ -51,7 +53,7 @@ APK: sem duas janelas/C10; C03 edita pelo botão e C08 usa controles de exclusã
 | Electron | 6,80 s | — | 4 min 28,33 s | — | 4 min 35,55 s |
 | APK Android | 4,39 s | 27,92 s | 21 min 11,28 s | 1,65 s | 21 min 46,06 s |
 
-**Tempo total da rodada:** 36 min 46,72 s. Intervalo (UTC): 2026-10-19T10:42:07.622Z → 2026-10-19T11:18:54.551Z. “Suíte/comando” inclui processo e sessões internos; o total da plataforma acrescenta build/preparação/limpeza externos e geração intermediária dos relatórios. Preparação Android inclui boot, instalação inicial do APK e Appium. “—” não significa zero. [Medições brutas](../../test-results/pocs/final-2026-10-19/timing.json).
+**Tempo total da rodada:** 36 min 46,72 s. Intervalo (UTC): 2026-10-19T10:42:07.622Z → 2026-10-19T11:18:54.551Z. “Suíte/comando” inclui processo e sessões internos; o total da plataforma acrescenta build/preparação/limpeza externos e geração intermediária dos relatórios. Preparação Android inclui boot, instalação inicial do APK e Appium. “—” não significa zero. [Medições brutas](../../../test-results/pocs/final-2026-10-19/timing.json).
 
 Uma tentativa por suíte, sequencial, um worker. Playwright/Selenium isolam/criam sessões por teste; WDIO compartilha sessão e limpa pela interface. Gestos/esperas diferem e falhas podem encurtar casos ou atingir timeout. São métricas destas implementações, sem ranking de velocidade ou medição de confiabilidade estatística. Builds podem aproveitar cache.
 

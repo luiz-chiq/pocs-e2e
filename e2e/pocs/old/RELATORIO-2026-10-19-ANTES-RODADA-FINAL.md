@@ -1,4 +1,6 @@
-# Relatório completo das POCs E2E
+# Histórico — Relatório completo das POCs E2E
+
+> **RELATÓRIO HISTÓRICO — RESULTADOS SUBSTITUÍDOS.** Os números abaixo descrevem a rodada indicada neste arquivo. Para a situação vigente, consulte o [relatório completo atual](../RELATORIO.md), a [versão direta atual](../RELATORIO-DIRETO.md) ou o [status atual](../STATUS.md).
 
 Atualizado em 19/10/2026, 06:53:58 (São Paulo). [Versão direta](RELATORIO-DIRETO-2026-10-19-ANTES-RODADA-FINAL.md).
 
@@ -26,11 +28,11 @@ Duas janelas: 12 aprovações e 0 falhas nas suítes reexecutadas; consolidado m
 
 | Ferramenta | Plataforma | Resultado atual | Tempo da nova suíte | Aumento na revalidação | Evidências |
 | --- | --- | --- | --- | --- | --- |
-| Playwright | APK Android | 9 passaram; 0 falharam; 0 sem validação | 5 min 56,29 s | 0,00% | [JSON](../../test-results/pocs/fixes-2026-10-19/playwright-verified/android/playwright/results.json) · [Log](../../test-results/pocs/fixes-2026-10-19/playwright-verified/android/playwright.log) |
-| Selenium | Web | 13 passaram; 2 falharam; 0 sem validação | 1 min 57,57 s | — | [JSON](../../test-results/pocs/fixes-2026-10-19/selenium-web-final/web/selenium/results.json) · [Log](../../test-results/pocs/fixes-2026-10-19/selenium-web-final/web/selenium.log) |
-| Selenium | PWA instalado | 13 passaram; 0 falharam; 0 sem validação | 1 min 43,87 s | — | [JSON](../../test-results/pocs/fixes-2026-10-19/selenium-pwa-final/pwa/selenium/results.json) · [Log](../../test-results/pocs/fixes-2026-10-19/selenium-pwa-final/pwa/selenium.log) |
-| Selenium | Electron | 13 passaram; 0 falharam; 0 sem validação | 1 min 21,97 s | — | [JSON](../../test-results/pocs/fixes-2026-10-19/selenium-electron-final/electron/selenium/results.json) · [Log](../../test-results/pocs/fixes-2026-10-19/selenium-electron-final/electron/selenium.log) |
-| Selenium | APK Android | 9 passaram; 0 falharam; 0 sem validação | 7 min 53,78 s | 32,98% | [JSON](../../test-results/pocs/fixes-2026-10-19/selenium-verified/android/selenium/results.json) · [Log](../../test-results/pocs/fixes-2026-10-19/selenium-verified/android/selenium.log) |
+| Playwright | APK Android | 9 passaram; 0 falharam; 0 sem validação | 5 min 56,29 s | 0,00% | [JSON](../../../test-results/pocs/fixes-2026-10-19/playwright-verified/android/playwright/results.json) · [Log](../../../test-results/pocs/fixes-2026-10-19/playwright-verified/android/playwright.log) |
+| Selenium | Web | 13 passaram; 2 falharam; 0 sem validação | 1 min 57,57 s | — | [JSON](../../../test-results/pocs/fixes-2026-10-19/selenium-web-final/web/selenium/results.json) · [Log](../../../test-results/pocs/fixes-2026-10-19/selenium-web-final/web/selenium.log) |
+| Selenium | PWA instalado | 13 passaram; 0 falharam; 0 sem validação | 1 min 43,87 s | — | [JSON](../../../test-results/pocs/fixes-2026-10-19/selenium-pwa-final/pwa/selenium/results.json) · [Log](../../../test-results/pocs/fixes-2026-10-19/selenium-pwa-final/pwa/selenium.log) |
+| Selenium | Electron | 13 passaram; 0 falharam; 0 sem validação | 1 min 21,97 s | — | [JSON](../../../test-results/pocs/fixes-2026-10-19/selenium-electron-final/electron/selenium/results.json) · [Log](../../../test-results/pocs/fixes-2026-10-19/selenium-electron-final/electron/selenium.log) |
+| Selenium | APK Android | 9 passaram; 0 falharam; 0 sem validação | 7 min 53,78 s | 32,98% | [JSON](../../../test-results/pocs/fixes-2026-10-19/selenium-verified/android/selenium/results.json) · [Log](../../../test-results/pocs/fixes-2026-10-19/selenium-verified/android/selenium.log) |
 
 **Comparação de tempos:** o aumento na tabela acima usa somente as ferramentas reexecutadas na mesma plataforma; “—” indica que só uma ferramenta foi reexecutada ou não há medição elegível. Os percentuais da matriz original abaixo usam somente a rodada contínua das três ferramentas. Os novos tempos acima pertencem à revalidação; não foram misturados ao total original de 33 min 43,36 s nem usados para recalcular seus percentuais. Os dois grupos aplicam (tempo ÷ menor tempo elegível − 1) × 100.
 
@@ -54,20 +56,20 @@ Estes registros pertencem à investigação e às execuções anteriores ao últ
 
 | Tentativa | Resultado registrado | Soma dos testes | Evidência |
 | --- | --- | --- | --- |
-| Playwright Android antes de mudar o toque: C02/C03/C08 isolados | 3 passaram; 0 falharam | 125,34 s | [JSON](../../test-results/pocs/fixes-2026-10-19/diagnostic/playwright/results.json) |
-| Selenium Android C05 — diagnostic-name | 0 passaram; 1 falharam | 34,56 s | [JSON](../../test-results/pocs/fixes-2026-10-19/diagnostic-name/selenium/results.json) |
-| Selenium Android C05 — diagnostic-name-fixed | 0 passaram; 1 falharam | 36,60 s | [JSON](../../test-results/pocs/fixes-2026-10-19/diagnostic-name-fixed/selenium/results.json) |
-| Selenium Android C05 — diagnostic-name-geometry | 0 passaram; 1 falharam | 71,66 s | [JSON](../../test-results/pocs/fixes-2026-10-19/diagnostic-name-geometry/selenium/results.json) |
-| Selenium Android C05 — diagnostic-name-no-context | 0 passaram; 1 falharam | 68,41 s | [JSON](../../test-results/pocs/fixes-2026-10-19/diagnostic-name-no-context/selenium/results.json) |
-| Selenium Android C05 — diagnostic-name-keys | 0 passaram; 1 falharam | 50,61 s | [JSON](../../test-results/pocs/fixes-2026-10-19/diagnostic-name-keys/selenium/results.json) |
-| Selenium Android C05 — diagnostic-name-ack | 1 passaram; 0 falharam | 93,33 s | [JSON](../../test-results/pocs/fixes-2026-10-19/diagnostic-name-ack/selenium/results.json) |
-| Selenium web antes do ajuste de hover | 14 passaram; 1 falharam | 93,37 s | [JSON](../../test-results/pocs/fixes-2026-10-19/selenium-verified/web/selenium/results.json) |
-| Selenium pwa antes do ajuste de hover | 12 passaram; 1 falharam | 129,97 s | [JSON](../../test-results/pocs/fixes-2026-10-19/selenium-verified/pwa/selenium/results.json) |
-| Selenium electron antes do ajuste de hover | 10 passaram; 3 falharam | 92,11 s | [JSON](../../test-results/pocs/fixes-2026-10-19/selenium-verified/electron/selenium/results.json) |
+| Playwright Android antes de mudar o toque: C02/C03/C08 isolados | 3 passaram; 0 falharam | 125,34 s | [JSON](../../../test-results/pocs/fixes-2026-10-19/diagnostic/playwright/results.json) |
+| Selenium Android C05 — diagnostic-name | 0 passaram; 1 falharam | 34,56 s | [JSON](../../../test-results/pocs/fixes-2026-10-19/diagnostic-name/selenium/results.json) |
+| Selenium Android C05 — diagnostic-name-fixed | 0 passaram; 1 falharam | 36,60 s | [JSON](../../../test-results/pocs/fixes-2026-10-19/diagnostic-name-fixed/selenium/results.json) |
+| Selenium Android C05 — diagnostic-name-geometry | 0 passaram; 1 falharam | 71,66 s | [JSON](../../../test-results/pocs/fixes-2026-10-19/diagnostic-name-geometry/selenium/results.json) |
+| Selenium Android C05 — diagnostic-name-no-context | 0 passaram; 1 falharam | 68,41 s | [JSON](../../../test-results/pocs/fixes-2026-10-19/diagnostic-name-no-context/selenium/results.json) |
+| Selenium Android C05 — diagnostic-name-keys | 0 passaram; 1 falharam | 50,61 s | [JSON](../../../test-results/pocs/fixes-2026-10-19/diagnostic-name-keys/selenium/results.json) |
+| Selenium Android C05 — diagnostic-name-ack | 1 passaram; 0 falharam | 93,33 s | [JSON](../../../test-results/pocs/fixes-2026-10-19/diagnostic-name-ack/selenium/results.json) |
+| Selenium web antes do ajuste de hover | 14 passaram; 1 falharam | 93,37 s | [JSON](../../../test-results/pocs/fixes-2026-10-19/selenium-verified/web/selenium/results.json) |
+| Selenium pwa antes do ajuste de hover | 12 passaram; 1 falharam | 129,97 s | [JSON](../../../test-results/pocs/fixes-2026-10-19/selenium-verified/pwa/selenium/results.json) |
+| Selenium electron antes do ajuste de hover | 10 passaram; 3 falharam | 92,11 s | [JSON](../../../test-results/pocs/fixes-2026-10-19/selenium-verified/electron/selenium/results.json) |
 
 ### Evidências e limites do diagnóstico
 
-A telemetria de Android registrou 35 pares de toque sem deslocamento no mapa em cada ferramenta. Duração máxima observada: Playwright 46,3 ms; Selenium 178,7 ms. Os dados anteriores não registravam pointerdown/timestamps suficientes para comprovar que um toque longo causou cada falha antiga. [Consolidação da telemetria](../../test-results/pocs/fixes-2026-10-19/tap-summary.json). Nas capturas da primeira revalidação Electron, o fundo OpenStreetMap mostrou HTTP 403/Access blocked. Isso comprova uma dependência externa afetada, sem demonstrar causa das falhas de hitTest/arraste; a suíte não valida a disponibilidade visual de todos os tiles. Não houve mudança de provedor nem tentativa de contornar o bloqueio.
+A telemetria de Android registrou 35 pares de toque sem deslocamento no mapa em cada ferramenta. Duração máxima observada: Playwright 46,3 ms; Selenium 178,7 ms. Os dados anteriores não registravam pointerdown/timestamps suficientes para comprovar que um toque longo causou cada falha antiga. [Consolidação da telemetria](../../../test-results/pocs/fixes-2026-10-19/tap-summary.json). Nas capturas da primeira revalidação Electron, o fundo OpenStreetMap mostrou HTTP 403/Access blocked. Isso comprova uma dependência externa afetada, sem demonstrar causa das falhas de hitTest/arraste; a suíte não valida a disponibilidade visual de todos os tiles. Não houve mudança de provedor nem tentativa de contornar o bloqueio.
 
 ### Testes individuais reexecutados
 
@@ -202,7 +204,7 @@ No Android, C03 inicia edição pelo botão e C08 usa os controles de exclusão;
 
 **Tempo total medido da rodada:** 33 min 43,36 s. **Início:** 2026-10-19T08:24:36.564Z. **Fim:** 2026-10-19T08:58:19.901Z.
 
-O total da plataforma inclui build, preparação, suítes, limpeza e geração intermediária dos relatórios. No Android, preparação externa agrupa boot/estabilização do emulador, instalação inicial do APK e início/espera do Appium. Preparação feita pela própria ferramenta, inclusive novas sessões e instalação/lançamento do PWA, fica dentro de suíte/comando. “—” indica etapa não aplicável ou medição indisponível, não zero. O total contínuo da rodada não inclui as investigações anteriores. [Medição por etapa](../../test-results/pocs/metrics-2026-10-19-run2/timing.json).
+O total da plataforma inclui build, preparação, suítes, limpeza e geração intermediária dos relatórios. No Android, preparação externa agrupa boot/estabilização do emulador, instalação inicial do APK e início/espera do Appium. Preparação feita pela própria ferramenta, inclusive novas sessões e instalação/lançamento do PWA, fica dentro de suíte/comando. “—” indica etapa não aplicável ou medição indisponível, não zero. O total contínuo da rodada não inclui as investigações anteriores. [Medição por etapa](../../../test-results/pocs/metrics-2026-10-19-run2/timing.json).
 
 ## Como interpretar os tempos
 
@@ -220,19 +222,19 @@ Web/PWA acessam o deploy https://poc-e2e.chiquetano.com.br/; não houve build ou
 
 ## Falhas desta rodada
 
-- **Playwright/Web — C10 mouse deve abrir as instruções de instalação:** Defeito intencional detectado: clique não abriu as instruções de instalação. A falha continua contada. [Log](../../test-results/pocs/metrics-2026-10-19-run2/web/playwright.log).
-- **Playwright/APK Android — C02 bloqueia desenhos vazios, incompletos e sem área:** O SDK confirmou um vértice quando a suíte aguardava dois; a preparação do desenho falhou e nem todas as validações do cenário foram concluídas. Causa não determinada. Error: expect(received).toBe(expected) // Object.is equality  Expected: 2 Received: 1  Call Log: - Timeout 5000ms exceeded while waiting on the predicate [Log](../../test-results/pocs/metrics-2026-10-19-run2/android/playwright.log).
-- **Playwright/APK Android — C03 seleciona sem editar e permite edição por Enter ou botão:** Falhou durante a criação; o SDK não confirmou um vértice. As etapas posteriores não foram alcançadas; causa não determinada. Error: O SDK não recebeu o vértice 3.  O SDK não recebeu o vértice 3.  expect(received).toBe(expected) // Object.is equality  Expected: 3 Received: 2  Call Log: - Timeout 5000ms exceeded while waiting on the predicate [Log](../../test-results/pocs/metrics-2026-10-19-run2/android/playwright.log).
-- **Playwright/APK Android — C08 confirma e cancela exclusões por Delete, individuais e de todos:** Falhou durante a criação; o SDK não confirmou um vértice. As etapas posteriores não foram alcançadas; causa não determinada. Error: O SDK não recebeu o vértice 2.  O SDK não recebeu o vértice 2.  expect(received).toBe(expected) // Object.is equality  Expected: 2 Received: 1  Call Log: - Timeout 5000ms exceeded while waiting on the predicate [Log](../../test-results/pocs/metrics-2026-10-19-run2/android/playwright.log).
-- **Selenium/Web — C10 mouse deve abrir as instruções de instalação:** Defeito intencional detectado: clique não abriu as instruções de instalação. A falha continua contada. [Log](../../test-results/pocs/metrics-2026-10-19-run2/web/selenium.log).
-- **Selenium/PWA instalado — D01 sincroniza seleção, criação, edição, cancelamento e exclusão em duas janelas:** Falha de automação: a referência DOM ficou obsoleta durante a leitura; a espera abortou sem tratar essa atualização transitória. Não é uma asserção demonstrando estado funcional incorreto. As etapas seguintes não foram concluídas. stale element reference: stale element not found in the current frame   (Session info: chrome=155.0.8059.82) [Log](../../test-results/pocs/metrics-2026-10-19-run2/pwa/selenium.log).
-- **Selenium/Electron — D01 sincroniza seleção, criação, edição, cancelamento e exclusão em duas janelas:** Falha de automação: a referência DOM ficou obsoleta durante a leitura; a espera abortou sem tratar essa atualização transitória. Não é uma asserção demonstrando estado funcional incorreto. As etapas seguintes não foram concluídas. stale element reference: stale element not found in the current frame   (Session info: chrome=152.0.7977.130) [Log](../../test-results/pocs/metrics-2026-10-19-run2/electron/selenium.log).
-- **Selenium/APK Android — C02 bloqueia desenhos vazios, incompletos e sem área:** Esgotou a espera de contagem de vértices durante a preparação do desenho. A mensagem não registra o valor observado; causa não determinada. Nem todas as validações do cenário foram concluídas. Wait timed out after 5195ms [Log](../../test-results/pocs/metrics-2026-10-19-run2/android/selenium.log).
-- **Selenium/APK Android — C05 valida nomes, acentos e limite de trinta caracteres:** Falha de interação automatizada: o driver rejeitou coordenadas fora da viewport aceita. O gesto e as verificações posteriores não foram concluídos; não comprova erro da regra de negócio. move target out of bounds   (Session info: chrome=133.0.6943.137) [Log](../../test-results/pocs/metrics-2026-10-19-run2/android/selenium.log).
-- **WebdriverIO/Web — D01 sincroniza seleção, criação, edição, cancelamento e exclusão em duas janelas:** Expect $(`[data-testid="polygon-map-label"].is-selected`) to have text  Expected: "Polígono 1" Received: "Polígono 2" [Log](../../test-results/pocs/metrics-2026-10-19-run2/web/webdriverio.log).
-- **WebdriverIO/Web — C10 mouse deve abrir as instruções de instalação:** Defeito intencional detectado: clique não abriu as instruções de instalação. A falha continua contada. [Log](../../test-results/pocs/metrics-2026-10-19-run2/web/webdriverio.log).
-- **WebdriverIO/PWA instalado — D01 sincroniza seleção, criação, edição, cancelamento e exclusão em duas janelas:** Expect $(`[data-testid="polygon-map-label"].is-selected`) to have text  Expected: "Polígono 1" Received: "Polígono 2" [Log](../../test-results/pocs/metrics-2026-10-19-run2/pwa/webdriverio.log).
-- **WebdriverIO/Electron — Preparação:** A ferramenta encerrou sem produzir relatório. DevToolsActivePort ausente; a sessão Electron não foi criada. Os cenários sem registro não foram executados. [Log](../../test-results/pocs/metrics-2026-10-19-run2/electron/webdriverio.log).
+- **Playwright/Web — C10 mouse deve abrir as instruções de instalação:** Defeito intencional detectado: clique não abriu as instruções de instalação. A falha continua contada. [Log](../../../test-results/pocs/metrics-2026-10-19-run2/web/playwright.log).
+- **Playwright/APK Android — C02 bloqueia desenhos vazios, incompletos e sem área:** O SDK confirmou um vértice quando a suíte aguardava dois; a preparação do desenho falhou e nem todas as validações do cenário foram concluídas. Causa não determinada. Error: expect(received).toBe(expected) // Object.is equality  Expected: 2 Received: 1  Call Log: - Timeout 5000ms exceeded while waiting on the predicate [Log](../../../test-results/pocs/metrics-2026-10-19-run2/android/playwright.log).
+- **Playwright/APK Android — C03 seleciona sem editar e permite edição por Enter ou botão:** Falhou durante a criação; o SDK não confirmou um vértice. As etapas posteriores não foram alcançadas; causa não determinada. Error: O SDK não recebeu o vértice 3.  O SDK não recebeu o vértice 3.  expect(received).toBe(expected) // Object.is equality  Expected: 3 Received: 2  Call Log: - Timeout 5000ms exceeded while waiting on the predicate [Log](../../../test-results/pocs/metrics-2026-10-19-run2/android/playwright.log).
+- **Playwright/APK Android — C08 confirma e cancela exclusões por Delete, individuais e de todos:** Falhou durante a criação; o SDK não confirmou um vértice. As etapas posteriores não foram alcançadas; causa não determinada. Error: O SDK não recebeu o vértice 2.  O SDK não recebeu o vértice 2.  expect(received).toBe(expected) // Object.is equality  Expected: 2 Received: 1  Call Log: - Timeout 5000ms exceeded while waiting on the predicate [Log](../../../test-results/pocs/metrics-2026-10-19-run2/android/playwright.log).
+- **Selenium/Web — C10 mouse deve abrir as instruções de instalação:** Defeito intencional detectado: clique não abriu as instruções de instalação. A falha continua contada. [Log](../../../test-results/pocs/metrics-2026-10-19-run2/web/selenium.log).
+- **Selenium/PWA instalado — D01 sincroniza seleção, criação, edição, cancelamento e exclusão em duas janelas:** Falha de automação: a referência DOM ficou obsoleta durante a leitura; a espera abortou sem tratar essa atualização transitória. Não é uma asserção demonstrando estado funcional incorreto. As etapas seguintes não foram concluídas. stale element reference: stale element not found in the current frame   (Session info: chrome=155.0.8059.82) [Log](../../../test-results/pocs/metrics-2026-10-19-run2/pwa/selenium.log).
+- **Selenium/Electron — D01 sincroniza seleção, criação, edição, cancelamento e exclusão em duas janelas:** Falha de automação: a referência DOM ficou obsoleta durante a leitura; a espera abortou sem tratar essa atualização transitória. Não é uma asserção demonstrando estado funcional incorreto. As etapas seguintes não foram concluídas. stale element reference: stale element not found in the current frame   (Session info: chrome=152.0.7977.130) [Log](../../../test-results/pocs/metrics-2026-10-19-run2/electron/selenium.log).
+- **Selenium/APK Android — C02 bloqueia desenhos vazios, incompletos e sem área:** Esgotou a espera de contagem de vértices durante a preparação do desenho. A mensagem não registra o valor observado; causa não determinada. Nem todas as validações do cenário foram concluídas. Wait timed out after 5195ms [Log](../../../test-results/pocs/metrics-2026-10-19-run2/android/selenium.log).
+- **Selenium/APK Android — C05 valida nomes, acentos e limite de trinta caracteres:** Falha de interação automatizada: o driver rejeitou coordenadas fora da viewport aceita. O gesto e as verificações posteriores não foram concluídos; não comprova erro da regra de negócio. move target out of bounds   (Session info: chrome=133.0.6943.137) [Log](../../../test-results/pocs/metrics-2026-10-19-run2/android/selenium.log).
+- **WebdriverIO/Web — D01 sincroniza seleção, criação, edição, cancelamento e exclusão em duas janelas:** Expect $(`[data-testid="polygon-map-label"].is-selected`) to have text  Expected: "Polígono 1" Received: "Polígono 2" [Log](../../../test-results/pocs/metrics-2026-10-19-run2/web/webdriverio.log).
+- **WebdriverIO/Web — C10 mouse deve abrir as instruções de instalação:** Defeito intencional detectado: clique não abriu as instruções de instalação. A falha continua contada. [Log](../../../test-results/pocs/metrics-2026-10-19-run2/web/webdriverio.log).
+- **WebdriverIO/PWA instalado — D01 sincroniza seleção, criação, edição, cancelamento e exclusão em duas janelas:** Expect $(`[data-testid="polygon-map-label"].is-selected`) to have text  Expected: "Polígono 1" Received: "Polígono 2" [Log](../../../test-results/pocs/metrics-2026-10-19-run2/pwa/webdriverio.log).
+- **WebdriverIO/Electron — Preparação:** A ferramenta encerrou sem produzir relatório. DevToolsActivePort ausente; a sessão Electron não foi criada. Os cenários sem registro não foram executados. [Log](../../../test-results/pocs/metrics-2026-10-19-run2/electron/webdriverio.log).
 
 ## Portabilidade
 
@@ -242,12 +244,12 @@ As três POCs têm **implementações de testes independentes**. Foram reaprovei
 
 | Camada | Como ficou nesta POC | Evidência no projeto |
 | --- | --- | --- |
-| Catálogo e critérios | Mesmos IDs C01–C10 e D01–D03, títulos e expectativas de negócio. C10 tem duas entradas e D02 duas variações. | [Catálogo e contratos](shared/fixtures.ts), [plano](README.md). |
-| Seletores e dados comuns | Seletores `data-testid`/CSS, triângulo inicial, viewport, tipos de coordenadas e configuração de ambiente compartilhados. Alguns dados, como listas de nomes inválidos, continuam escritos em cada suíte. | [Fixtures compartilhadas](shared/fixtures.ts). |
-| Infraestrutura | Instalação/lançamento do PWA, conexão CDP, obtenção de ChromeDriver do Electron, capabilities Android e orquestração têm módulos compartilhados. Isso não substitui os gestos de cada ferramenta. | [PWA](shared/pwa.ts), [conexão Chrome](shared/chrome-pipe.ts), [Electron](shared/electron.ts), [Android](shared/android.ts), [orquestrador](../../scripts/run-pocs.mjs). |
+| Catálogo e critérios | Mesmos IDs C01–C10 e D01–D03, títulos e expectativas de negócio. C10 tem duas entradas e D02 duas variações. | [Catálogo e contratos](../shared/fixtures.ts), [plano](../README.md). |
+| Seletores e dados comuns | Seletores `data-testid`/CSS, triângulo inicial, viewport, tipos de coordenadas e configuração de ambiente compartilhados. Alguns dados, como listas de nomes inválidos, continuam escritos em cada suíte. | [Fixtures compartilhadas](../shared/fixtures.ts). |
+| Infraestrutura | Instalação/lançamento do PWA, conexão CDP, obtenção de ChromeDriver do Electron, capabilities Android e orquestração têm módulos compartilhados. Isso não substitui os gestos de cada ferramenta. | [PWA](../shared/pwa.ts), [conexão Chrome](../shared/chrome-pipe.ts), [Electron](../shared/electron.ts), [Android](../shared/android.ts), [orquestrador](../../../scripts/run-pocs.mjs). |
 | Leitura do app | Mesmo contrato auxiliar de coordenadas, persistência, prontidão e contagem de vértices. Não injeta polígonos nem altera resultados para aprovar testes. | `polygonTestApi`, disponível na build E2E. |
-| Execução da interface | Cliques, preenchimento, desenho, arraste, esperas, asserções e troca entre janelas implementados separadamente. Helpers como `create`, `deselect` e `confirmName` existem em cada suíte, com assinaturas/implementações próprias. | [Playwright](playwright/web.spec.ts), [Selenium](selenium/web.test.ts), [WebdriverIO](webdriverio/web.e2e.ts). |
-| Sessões e evidências | Hooks, reinício/persistência, captura de screenshots, trace e gravação do resultado adaptados ao runner. As durações individuais vêm de pontos de medição diferentes. | [Fixtures Playwright](playwright/fixtures.ts), [reporter](playwright/reporter.ts), [Selenium](selenium/web.test.ts), [configuração WDIO](../../wdio.poc.conf.ts). |
+| Execução da interface | Cliques, preenchimento, desenho, arraste, esperas, asserções e troca entre janelas implementados separadamente. Helpers como `create`, `deselect` e `confirmName` existem em cada suíte, com assinaturas/implementações próprias. | [Playwright](../playwright/web.spec.ts), [Selenium](../selenium/web.test.ts), [WebdriverIO](../webdriverio/web.e2e.ts). |
+| Sessões e evidências | Hooks, reinício/persistência, captura de screenshots, trace e gravação do resultado adaptados ao runner. As durações individuais vêm de pontos de medição diferentes. | [Fixtures Playwright](../playwright/fixtures.ts), [reporter](../playwright/reporter.ts), [Selenium](../selenium/web.test.ts), [configuração WDIO](../../../wdio.poc.conf.ts). |
 
 Compartilhado não significa utilizado pelas três ferramentas em todos os ambientes: as capabilities Appium e parte da conexão Chrome atendem Selenium/WebdriverIO; Playwright usa seus próprios adaptadores de sessão para Android/Electron. Os helpers comuns de instalação do PWA são usados pelas três integrações.
 
@@ -317,7 +319,7 @@ O resultado funcional deveria convergir para o mesmo app, estado e interação. 
 
 O 9/9 do Selenium confirma que os cenários passaram naquela execução. Não prova que o app esteja livre de problemas intermitentes nem que os outros resultados sejam falsos positivos. **As duas falhas restantes estão inconclusivas quanto à causa**, apesar de suas asserções terem falhado. A falha anterior de C08 no WebdriverIO era uma transição não aguardada pela automação: o mapa faz `hitTest` assíncrono; depois de esperar o botão voltar ao modo de criação, a suíte completa passou por C08.
 
-As diferenças podem ser verificadas nos adaptadores de [Playwright](playwright/web.spec.ts), [Selenium](selenium/web.test.ts) e [WebdriverIO](webdriverio/web.e2e.ts). Para uma comparação de confiabilidade, falta igualar a política de isolamento e os contratos de gestos/esperas, registrar alvo/coordenadas/viewport e acionamento do botão, e repetir os cenários com o mesmo APK e emulador. Isso permitiria medir frequência de falhas, além do resultado de uma execução. A rodada comparativa de métricas repetiu as suítes existentes, sem normalizar essas diferenças entre adaptadores. A revalidação posterior do Selenium/Playwright ajusta alguns gestos e esperas; seus novos tempos são apresentados separadamente.
+As diferenças podem ser verificadas nos adaptadores de [Playwright](../playwright/web.spec.ts), [Selenium](../selenium/web.test.ts) e [WebdriverIO](../webdriverio/web.e2e.ts). Para uma comparação de confiabilidade, falta igualar a política de isolamento e os contratos de gestos/esperas, registrar alvo/coordenadas/viewport e acionamento do botão, e repetir os cenários com o mesmo APK e emulador. Isso permitiria medir frequência de falhas, além do resultado de uma execução. A rodada comparativa de métricas repetiu as suítes existentes, sem normalizar essas diferenças entre adaptadores. A revalidação posterior do Selenium/Playwright ajusta alguns gestos e esperas; seus novos tempos são apresentados separadamente.
 
 ### Limitações por ferramenta em Electron e Android
 
@@ -354,7 +356,7 @@ Comando usado nesta rodada (a partir da raiz do projeto):
 POC_FRAMEWORKS=playwright,selenium,webdriverio POC_RESULTS_DIR=test-results/pocs/metrics-2026-10-19-run2 npm run test:poc:all
 ```
 
-**Artefatos:** Electron em `release/electron/` e APK em `android/app/build/outputs/apk/debug/app-debug.apk`. Logs das builds: [Electron](../../test-results/pocs/metrics-2026-10-19-run2/electron/build.log) · [APK](../../test-results/pocs/metrics-2026-10-19-run2/android/build.log).
+**Artefatos:** Electron em `release/electron/` e APK em `android/app/build/outputs/apk/debug/app-debug.apk`. Logs das builds: [Electron](../../../test-results/pocs/metrics-2026-10-19-run2/electron/build.log) · [APK](../../../test-results/pocs/metrics-2026-10-19-run2/android/build.log).
 
 O PWA foi instalado em perfil de automação e teve `display-mode: standalone` verificado. O Electron foi empacotado para macOS, sem instalador Windows. Duas janelas simultâneas foram usadas; não foi avaliado o posicionamento em dois monitores físicos. A API auxiliar lê coordenadas, prontidão e quantidade de vértices e aguarda a persistência; os desenhos e edições usam gestos das ferramentas. Ambiente web/PWA: https://poc-e2e.chiquetano.com.br/.
 
@@ -362,7 +364,7 @@ O PWA foi instalado em perfil de automação e teve `display-mode: standalone` v
 
 ### Web
 
-[JSON com durações e evidências](../../test-results/pocs/metrics-2026-10-19-run2/web/playwright/results.json) · [Log completo](../../test-results/pocs/metrics-2026-10-19-run2/web/playwright.log)
+[JSON com durações e evidências](../../../test-results/pocs/metrics-2026-10-19-run2/web/playwright/results.json) · [Log completo](../../../test-results/pocs/metrics-2026-10-19-run2/web/playwright.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -384,7 +386,7 @@ O PWA foi instalado em perfil de automação e teve `display-mode: standalone` v
 
 ### PWA instalado
 
-[JSON com durações e evidências](../../test-results/pocs/metrics-2026-10-19-run2/pwa/playwright/results.json) · [Log completo](../../test-results/pocs/metrics-2026-10-19-run2/pwa/playwright.log)
+[JSON com durações e evidências](../../../test-results/pocs/metrics-2026-10-19-run2/pwa/playwright/results.json) · [Log completo](../../../test-results/pocs/metrics-2026-10-19-run2/pwa/playwright.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -404,7 +406,7 @@ O PWA foi instalado em perfil de automação e teve `display-mode: standalone` v
 
 ### Electron
 
-[JSON com durações e evidências](../../test-results/pocs/metrics-2026-10-19-run2/electron/playwright/results.json) · [Log completo](../../test-results/pocs/metrics-2026-10-19-run2/electron/playwright.log)
+[JSON com durações e evidências](../../../test-results/pocs/metrics-2026-10-19-run2/electron/playwright/results.json) · [Log completo](../../../test-results/pocs/metrics-2026-10-19-run2/electron/playwright.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -424,7 +426,7 @@ O PWA foi instalado em perfil de automação e teve `display-mode: standalone` v
 
 ### APK Android
 
-[JSON com durações e evidências](../../test-results/pocs/metrics-2026-10-19-run2/android/playwright/results.json) · [Log completo](../../test-results/pocs/metrics-2026-10-19-run2/android/playwright.log)
+[JSON com durações e evidências](../../../test-results/pocs/metrics-2026-10-19-run2/android/playwright/results.json) · [Log completo](../../../test-results/pocs/metrics-2026-10-19-run2/android/playwright.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -442,7 +444,7 @@ O PWA foi instalado em perfil de automação e teve `display-mode: standalone` v
 
 ### Web
 
-[JSON com durações e evidências](../../test-results/pocs/metrics-2026-10-19-run2/web/selenium/results.json) · [Log completo](../../test-results/pocs/metrics-2026-10-19-run2/web/selenium.log)
+[JSON com durações e evidências](../../../test-results/pocs/metrics-2026-10-19-run2/web/selenium/results.json) · [Log completo](../../../test-results/pocs/metrics-2026-10-19-run2/web/selenium.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -464,7 +466,7 @@ O PWA foi instalado em perfil de automação e teve `display-mode: standalone` v
 
 ### PWA instalado
 
-[JSON com durações e evidências](../../test-results/pocs/metrics-2026-10-19-run2/pwa/selenium/results.json) · [Log completo](../../test-results/pocs/metrics-2026-10-19-run2/pwa/selenium.log)
+[JSON com durações e evidências](../../../test-results/pocs/metrics-2026-10-19-run2/pwa/selenium/results.json) · [Log completo](../../../test-results/pocs/metrics-2026-10-19-run2/pwa/selenium.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -484,7 +486,7 @@ O PWA foi instalado em perfil de automação e teve `display-mode: standalone` v
 
 ### Electron
 
-[JSON com durações e evidências](../../test-results/pocs/metrics-2026-10-19-run2/electron/selenium/results.json) · [Log completo](../../test-results/pocs/metrics-2026-10-19-run2/electron/selenium.log)
+[JSON com durações e evidências](../../../test-results/pocs/metrics-2026-10-19-run2/electron/selenium/results.json) · [Log completo](../../../test-results/pocs/metrics-2026-10-19-run2/electron/selenium.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -504,7 +506,7 @@ O PWA foi instalado em perfil de automação e teve `display-mode: standalone` v
 
 ### APK Android
 
-[JSON com durações e evidências](../../test-results/pocs/metrics-2026-10-19-run2/android/selenium/results.json) · [Log completo](../../test-results/pocs/metrics-2026-10-19-run2/android/selenium.log)
+[JSON com durações e evidências](../../../test-results/pocs/metrics-2026-10-19-run2/android/selenium/results.json) · [Log completo](../../../test-results/pocs/metrics-2026-10-19-run2/android/selenium.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -522,7 +524,7 @@ O PWA foi instalado em perfil de automação e teve `display-mode: standalone` v
 
 ### Web
 
-[JSON com durações e evidências](../../test-results/pocs/metrics-2026-10-19-run2/web/webdriverio/results.json) · [Log completo](../../test-results/pocs/metrics-2026-10-19-run2/web/webdriverio.log)
+[JSON com durações e evidências](../../../test-results/pocs/metrics-2026-10-19-run2/web/webdriverio/results.json) · [Log completo](../../../test-results/pocs/metrics-2026-10-19-run2/web/webdriverio.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -544,7 +546,7 @@ O PWA foi instalado em perfil de automação e teve `display-mode: standalone` v
 
 ### PWA instalado
 
-[JSON com durações e evidências](../../test-results/pocs/metrics-2026-10-19-run2/pwa/webdriverio/results.json) · [Log completo](../../test-results/pocs/metrics-2026-10-19-run2/pwa/webdriverio.log)
+[JSON com durações e evidências](../../../test-results/pocs/metrics-2026-10-19-run2/pwa/webdriverio/results.json) · [Log completo](../../../test-results/pocs/metrics-2026-10-19-run2/pwa/webdriverio.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -564,7 +566,7 @@ O PWA foi instalado em perfil de automação e teve `display-mode: standalone` v
 
 ### Electron
 
-⛔ A ferramenta encerrou sem produzir relatório. ChromeDriver não encontrou DevToolsActivePort; a sessão Electron não foi criada. [Log](../../test-results/pocs/metrics-2026-10-19-run2/electron/webdriverio.log)
+⛔ A ferramenta encerrou sem produzir relatório. ChromeDriver não encontrou DevToolsActivePort; a sessão Electron não foi criada. [Log](../../../test-results/pocs/metrics-2026-10-19-run2/electron/webdriverio.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |
@@ -584,7 +586,7 @@ O PWA foi instalado em perfil de automação e teve `display-mode: standalone` v
 
 ### APK Android
 
-[JSON com durações e evidências](../../test-results/pocs/metrics-2026-10-19-run2/android/webdriverio/results.json) · [Log completo](../../test-results/pocs/metrics-2026-10-19-run2/android/webdriverio.log)
+[JSON com durações e evidências](../../../test-results/pocs/metrics-2026-10-19-run2/android/webdriverio/results.json) · [Log completo](../../../test-results/pocs/metrics-2026-10-19-run2/android/webdriverio.log)
 
 | Teste | Resultado | Duração | Observação |
 | --- | --- | --- | --- |

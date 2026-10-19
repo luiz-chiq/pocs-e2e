@@ -1,6 +1,6 @@
 # Relatório direto das POCs E2E — situação atual
 
-Atualizado em 19/10/2026, 09:45:09 (São Paulo). [Relatório completo](RELATORIO.md).
+Atualizado em 19/10/2026, 10:33:45 (São Paulo). [Relatório completo](RELATORIO.md).
 
 ## Sumário
 
@@ -85,4 +85,4 @@ A versão completa detalha limitações documentadas, configuração e evidênci
 
 ## Histórico separado
 
-[Relatório histórico completo](RELATORIO-HISTORICO-2026-10-19.md) · [Histórico direto](RELATORIO-DIRETO-HISTORICO-2026-10-19.md). Contêm as tentativas anteriores, as falhas já superadas e os tempos originais. Esses registros não são repetidos como resultados atuais.
+[Relatório histórico completo](old/RELATORIO-HISTORICO-2026-10-19.md) · [Histórico direto](old/RELATORIO-DIRETO-HISTORICO-2026-10-19.md). Contêm as tentativas anteriores, as falhas já superadas e os tempos originais. Esses registros não são repetidos como resultados atuais.

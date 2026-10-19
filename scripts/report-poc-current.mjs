@@ -25,6 +25,17 @@ export async function renderCurrentReport(config, helpers) {
   const entries = orderedEntries.map(entry => replacements.get(`${entry.tool}/${entry.platform}`) ?? { ...entry, root: directory, measurement: timing, revalidated: false })
   const stage = entry => entry.measurement?.stages.find(item => item.target === entry.platform && item.framework === entry.tool && item.stage === 'suite' && item.finishedAt)
   const suiteTime = entry => stage(entry)?.durationMs ?? entry.run?.durationMs
+  for (const entry of entries) {
+    if (!entry.report) continue
+    const { report, tool, platform } = entry
+    if (report.framework !== tool || report.target !== platform) throw new Error(`Origem incorreta: ${tool}/${platform}`)
+    const titles = report.tests.map(test => test.title)
+    if (new Set(titles).size !== titles.length || titles.some(title => !planned(platform).includes(title))) throw new Error(`Catálogo inconsistente: ${tool}/${platform}`)
+    if (report.tests.some(test => !Number.isFinite(test.durationMs) || test.durationMs < 0)) throw new Error(`Duração inválida: ${tool}/${platform}`)
+    if (entry.run?.report && JSON.stringify(entry.run.report) !== JSON.stringify(report)) throw new Error(`JSON e summary divergentes: ${tool}/${platform}`)
+    const sum = report.tests.reduce((total, test) => total + test.durationMs, 0)
+    if (Number.isFinite(suiteTime(entry)) && suiteTime(entry) + 1000 < sum) throw new Error(`Tempo do comando menor que os casos: ${tool}/${platform}`)
+  }
   const counts = (subset, filter = () => true) => {
     const count = { passed: 0, failed: 0, unavailable: 0 }
     for (const entry of subset) for (const title of planned(entry.platform).filter(filter)) {
@@ -117,5 +128,7 @@ export async function renderCurrentReport(config, helpers) {
   brief += `## Resumo atual\n\n${currentStatus}${overview}\n${provenance}\n## Tempo de execução por plataforma\n\n${platformTimes}\n## Tempos por ferramenta e plataforma\n\n${times}\n${percentages}\n${method}\n## Falhas atuais\n\n${failureList}\n\n${latestNotes}\n## Limitações e portabilidade\n\n${scope}\nReaproveitados: catálogo/critérios, seletores, dados e parte da infraestrutura. Reescritos por ferramenta: interação, esperas, asserções, sessões e evidências. Não houve conversão automática dos testes.\n\n- **Playwright:** Electron e Android experimentais; APIs para processo principal Electron e ações nativas Android existem, mas nossa cobertura se concentra na interface web.\n- **Selenium:** Electron via ChromeDriver; Android via Appium/UiAutomator2. Menus/diálogos nativos do desktop exigem integração adicional.\n- **WebdriverIO:** Electron via ChromeDriver direto nesta POC, com 13/13 aprovados; bridge do serviço Electron não utilizada. Android via Appium/UiAutomator2.\n\nA versão completa detalha limitações documentadas, configuração e evidências. Esta versão omite as 150 linhas individuais, erros completos, screenshots/traces e exemplos de migração.\n\n## Histórico separado\n\n${history}\n`
   full = full.replace('- [Totais por plataforma](#totais-por-plataforma)', '- [Tempo de execução por plataforma](#tempo-de-execução-por-plataforma)\n- [Etapas externas e totais contínuos](#etapas-externas-e-totais-contínuos)')
   brief = brief.replace('- [Totais por plataforma](#totais-por-plataforma)', '- [Tempo de execução por plataforma](#tempo-de-execução-por-plataforma)')
-  return { full, brief }
+  const status = header('Estado das POCs — situação atual', '[Relatório completo](RELATORIO.md) · [Versão direta](RELATORIO-DIRETO.md).')
+    + `## Resumo atual\n\n${currentStatus}${overview}\n${provenance}\n## Tempo de execução por plataforma\n\n${platformTimes}\n## Falhas atuais\n\n${failureList}\n\n## Escopo e observações\n\n${latestNotes}\n${scope}\nEste arquivo é gerado a partir dos mesmos resultados brutos das duas versões do relatório. As origens, as durações individuais e os percentuais estão no relatório completo.\n\n## Histórico separado\n\n${history}\n`
+  return { full, brief, status }
 }

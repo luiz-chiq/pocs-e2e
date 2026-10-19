@@ -1,7 +1,9 @@
-# Validação das POCs web
+# Histórico — Validação das POCs web
+
+> **RELATÓRIO HISTÓRICO — RESULTADOS SUBSTITUÍDOS.** Os números abaixo descrevem a rodada indicada neste arquivo. Para a situação vigente, consulte o [relatório completo atual](../RELATORIO.md), a [versão direta atual](../RELATORIO-DIRETO.md) ou o [status atual](../STATUS.md).
 
 Registro histórico da primeira etapa, anterior aos testes de duas janelas.
-O estado da suíte atual está em [STATUS.md](STATUS.md).
+O estado da suíte atual está em [STATUS.md](../STATUS.md).
 
 Data: 17/10/2026. Endereço: https://poc-e2e.chiquetano.com.br/.
 
@@ -28,10 +30,10 @@ C08 inclui as escolhas de restaurar e excluir após Delete durante a edição.
 
 ## Evidências locais
 
-- [Playwright: resultados](../../test-results/pocs/playwright/results.json).
-- [WebdriverIO: resultados](../../test-results/pocs/webdriverio/results.json).
-- [Selenium: resultados](../../test-results/pocs/selenium/results.json).
-- [Playwright: verificação do registro de entradas mouse/touch](../../test-results/pocs/report-validation/playwright/results.json).
+- [Playwright: resultados](../../../test-results/pocs/playwright/results.json).
+- [WebdriverIO: resultados](../../../test-results/pocs/webdriverio/results.json).
+- [Selenium: resultados](../../../test-results/pocs/selenium/results.json).
+- [Playwright: verificação do registro de entradas mouse/touch](../../../test-results/pocs/report-validation/playwright/results.json).
 
 Os relatórios JSON referenciam screenshots de falha; o Playwright também
 mantém traces. Os arquivos gerados em `test-results/` são locais e ignorados
@@ -49,7 +51,7 @@ do PWA instalado.
 npm run test:poc:web
 ```
 
-Consulte [as instruções das POCs](README.md) para execução por ferramenta,
+Consulte [as instruções das POCs](../README.md) para execução por ferramenta,
 mudança de URL e acompanhamento visual.
 
 A matriz foi ampliada posteriormente: D01–D03 também fazem parte do navegador,
