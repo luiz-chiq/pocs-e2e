@@ -6,7 +6,16 @@ import MapView from '@arcgis/core/views/MapView.js'
 import SketchViewModel from '@arcgis/core/widgets/Sketch/SketchViewModel.js'
 import Graphic from '@arcgis/core/Graphic.js'
 import Polygon from '@arcgis/core/geometry/Polygon.js'
-import { ChevronDown, PanelLeftClose, Plus, Trash2, createIcons } from 'lucide'
+import type Point from '@arcgis/core/geometry/Point.js'
+import * as labelPointOperator from '@arcgis/core/geometry/operators/labelPointOperator.js'
+import Viewpoint from '@arcgis/core/Viewpoint.js'
+import HighlightOptions from '@arcgis/core/views/support/HighlightOptions.js'
+import type GraphicsLayerView from '@arcgis/core/views/layers/GraphicsLayerView.js'
+import { watch } from '@arcgis/core/core/reactiveUtils.js'
+import { Capacitor } from '@capacitor/core'
+import { Check, ChevronRight, Download, ExternalLink, Focus, Minus, PanelsTopLeft, Pencil, Plus, Trash2, VectorPolygon, X, createIcons } from 'lucide'
+import { createId, DetachedMap } from './detached-map'
+import { attachCompass } from './compass'
 
 const layer = new GraphicsLayer({ title: 'Polígonos' })
 const map = new Map({
@@ -14,9 +23,11 @@ const map = new Map({
   layers: [layer]
 })
 const view = new MapView({ container: 'map', map, center: [-46.6333, -23.5505], zoom: 11, constraints: { snapToZoom: false } })
+view.highlights.push(new HighlightOptions({ name: 'polygon-selection', color: '#ffb020', haloOpacity: 1, fillOpacity: .25 }))
 const sketch = new SketchViewModel({
   view,
   layer,
+  updateOnGraphicClick: false,
   polygonSymbol: { type: 'simple-fill', color: [31, 119, 180, 0.25], outline: { color: '#1261a0', width: 2 } },
   defaultUpdateOptions: { tool: 'reshape', toggleToolOnClick: false }
 })
@@ -26,9 +37,10 @@ const finishButton = document.querySelector<HTMLButtonElement>('#finish-drawing'
 const cancelButton = document.querySelector<HTMLButtonElement>('#cancel-editing')!
 const clearButton = document.querySelector<HTMLButtonElement>('#clear-polygons')!
 const list = document.querySelector<HTMLUListElement>('#polygon-list')!
-const empty = document.querySelector<HTMLParagraphElement>('#empty-state')!
+const empty = document.querySelector<HTMLElement>('#empty-state')!
 const count = document.querySelector<HTMLSpanElement>('#polygon-count')!
 const message = document.querySelector<HTMLParagraphElement>('#map-instructions')!
+const mapStatus = document.querySelector<HTMLElement>('.map-status')!
 const lastEdit = document.querySelector<HTMLParagraphElement>('#last-edit')!
 const ready = document.querySelector<HTMLParagraphElement>('#map-ready')!
 const clearDialog = document.querySelector<HTMLDialogElement>('#clear-dialog')!
@@ -36,9 +48,33 @@ const clearDialogTitle = document.querySelector<HTMLHeadingElement>('#clear-dial
 const clearDialogDescription = document.querySelector<HTMLParagraphElement>('#clear-dialog-description')!
 const dismissClearButton = document.querySelector<HTMLButtonElement>('#dismiss-clear')!
 const confirmClearButton = document.querySelector<HTMLButtonElement>('#confirm-clear')!
-const workspace = document.querySelector<HTMLElement>('.workspace')!
-const sidebarToggle = document.querySelector<HTMLButtonElement>('#sidebar-toggle')!
-const sidebarClose = document.querySelector<HTMLButtonElement>('#sidebar-close')!
+const deletedEditDialog = document.querySelector<HTMLDialogElement>('#deleted-edit-dialog')!
+const restoreDeletedEditButton = document.querySelector<HTMLButtonElement>('#restore-deleted-edit')!
+const confirmDeletedEditButton = document.querySelector<HTMLButtonElement>('#confirm-deleted-edit')!
+const zoomInButton = document.querySelector<HTMLButtonElement>('#zoom-in')!
+const zoomOutButton = document.querySelector<HTMLButtonElement>('#zoom-out')!
+const northUpButton = document.querySelector<HTMLButtonElement>('#north-up')!
+const northIndicator = document.querySelector<SVGElement>('.north-indicator')!
+const detachButton = document.querySelector<HTMLButtonElement>('#detach-map')!
+const returnButton = document.querySelector<HTMLButtonElement>('#return-map')!
+const reuniteButton = document.querySelector<HTMLButtonElement>('#reunite-windows')!
+const polygonActions = document.querySelector<HTMLElement>('.polygon-actions')!
+const sidebarActions = document.querySelector<HTMLElement>('.sidebar-actions')!
+const mapWindowActions = document.querySelector<HTMLElement>('.map-window-actions')!
+const mapWindowMenu = document.querySelector<HTMLElement>('.map-window-menu')!
+const detachedTools = document.querySelector<HTMLElement>('#detached-tools')!
+const connectionStatus = document.querySelector<HTMLElement>('#connection-status')!
+const windowFeedback = document.querySelector<HTMLElement>('#window-feedback')!
+const nameEditor = document.querySelector<HTMLElement>('#polygon-name-editor')!
+const nameInput = document.querySelector<HTMLInputElement>('#polygon-name')!
+const nameError = document.querySelector<HTMLParagraphElement>('#polygon-name-error')!
+const mapLabels = document.querySelector<HTMLElement>('#polygon-map-labels')!
+const labelNodes = new globalThis.Map<string, HTMLSpanElement>()
+const labelAnchors = new WeakMap<Graphic, { geometry: Graphic['geometry']; point: Point }>()
+let labelFrame: number | null = null
+let draftName = ''
+let nameChangeId: string | null = null
+let pendingNameChangeId: string | null = null
 let activeAction: 'create' | 'update' | null = null
 let activeGraphic: Graphic | null = null
 let selectedGraphic: Graphic | null = null
@@ -46,11 +82,391 @@ let expandedGraphic: Graphic | null = null
 let committedPolygons: ReturnType<Graphic['toJSON']>[] = []
 let pendingDeletion: Graphic | 'all' | null = null
 let confirmingUpdate = false
+let pendingSketchUpdate: Promise<void> | null = null
 let cancellingUpdate = false
+let deletedEditId: string | null = null
+let confirmingDeletedEdit = false
 let pendingPersistence: Promise<void> = Promise.resolve()
 const storageDatabaseName = 'polygon-editor-poc'
 const storageStoreName = 'state'
 const storageKey = 'polygons'
+let windowMode: 'main' | 'detached' | 'map' = 'main'
+let windowConnected = false
+let mapInitialized = false
+let applyingWindowState = false
+let graphicsLayerView: GraphicsLayerView | null = null
+let selectionHighlight: { remove(): void } | null = null
+let highlightedGraphic: Graphic | null = null
+let validationWarning = false
+let draftVertices: number[][] = []
+let draftHistory: number[][][] = [[]]
+let draftHistoryIndex = 0
+
+type PolygonJSON = ReturnType<Graphic['toJSON']>
+type MapCommand =
+  | { type: 'draw' | 'finish' | 'cancel' | 'deselect' | 'confirm-edit-deletion' }
+  | { type: 'select' | 'edit' | 'expand'; id: string }
+  | { type: 'delete'; id: string | 'all' }
+  | { type: 'rename'; id: string; value: string; changeId: string }
+interface MapState {
+  polygons: PolygonJSON[]
+  committed: PolygonJSON[]
+  selectedId: string | null
+  expandedId: string | null
+  activeId: string | null
+  action: 'create' | 'update' | null
+  instructions: string
+  lastEdit: string
+  warning: boolean
+  deletedEditId: string | null
+  confirmingDeletedEdit: boolean
+  draftName: string
+  nameChangeId: string | null
+  viewpoint: ReturnType<Viewpoint['toJSON']> | null
+}
+
+const detachedMap = new DetachedMap<MapState, MapCommand>({
+  getState: () => ({
+    polygons: orderedGraphics().map((graphic) => graphic.toJSON()),
+    committed: committedPolygons,
+    selectedId: graphicId(selectedGraphic),
+    expandedId: graphicId(expandedGraphic),
+    activeId: graphicId(activeGraphic),
+    action: activeAction,
+    instructions: message.textContent ?? '',
+    lastEdit: lastEdit.textContent ?? '',
+    warning: validationWarning,
+    deletedEditId,
+    confirmingDeletedEdit,
+    draftName,
+    nameChangeId,
+    viewpoint: view.viewpoint?.toJSON() ?? null
+  }),
+  applyState: applyWindowState,
+  executeCommand: (command) => {
+    if (command.type === 'draw') void beginDrawing()
+    if (command.type === 'finish') finishButton.click()
+    if (command.type === 'cancel') cancelButton.click()
+    if (command.type === 'confirm-edit-deletion') confirmDeletedEditButton.click()
+    if (command.type === 'deselect') clearSelection()
+    if (command.type === 'rename' && command.id === graphicId(activeGraphic)) updateDraftName(command.value, command.changeId)
+    if (command.type === 'select') {
+      const graphic = findGraphic(command.id)
+      if (graphic) selectPolygon(graphic)
+    }
+    if (command.type === 'edit') {
+      const graphic = findGraphic(command.id)
+      if (graphic) void startEditing(graphic)
+    }
+    if (command.type === 'expand') {
+      const graphic = findGraphic(command.id)
+      if (graphic) toggleVertices(graphic)
+    }
+    if (command.type === 'delete') {
+      const target = command.id === 'all' ? 'all' : findGraphic(command.id)
+      if (target) deletePolygons(target)
+    }
+  },
+  onModeChange: (mode, connected) => {
+    windowMode = mode
+    windowConnected = connected
+    document.body.classList.toggle('map-window', mode === 'map')
+    document.body.classList.toggle('map-detached', mode === 'detached')
+    detachedTools.hidden = mode !== 'detached'
+    mapWindowMenu.hidden = mode !== 'map'
+    returnButton.hidden = mode !== 'map'
+    detachButton.hidden = mode !== 'main' || Capacitor.isNativePlatform() || location.protocol === 'file:'
+    // Os mesmos controles ficam acessíveis na janela que contém o mapa.
+    const actionsContainer = mode === 'map' ? mapWindowActions : sidebarActions
+    actionsContainer.append(polygonActions)
+    actionsContainer.prepend(nameEditor)
+    connectionStatus.textContent = connected ? 'Mapa conectado. Alterações sincronizadas.' : 'Conectando à janela do mapa…'
+    document.title = mode === 'map' ? 'Mapa — Polígonos' : 'Polígonos no mapa'
+    updateWindowControls()
+    scheduleMapLabels()
+  },
+  onReturn: () => {
+    // Uma edição ainda não confirmada segue a mesma regra do botão Cancelar.
+    setActiveAction(null)
+    forgetActiveEdit()
+    restoreCommittedPolygons()
+    pendingPersistence = persistPolygons(committedPolygons)
+    message.textContent = 'Mapa reunido à aplicação.'
+  },
+  onError: (text) => {
+    windowFeedback.textContent = text
+    windowFeedback.hidden = false
+  }
+})
+
+function graphicId(graphic: Graphic | null): string | null {
+  return graphic?.attributes?.polygonId ?? null
+}
+
+function ensureGraphicIds() {
+  layer.graphics.forEach((graphic) => {
+    if (!graphicId(graphic)) graphic.attributes = { ...graphic.attributes, polygonId: createId() }
+    if (typeof graphic.attributes?.name !== 'string' || validateName(graphic.attributes.name)) {
+      let number = 1
+      while (layer.graphics.some((item) => item.attributes?.name === `Polígono ${number}`)) number++
+      graphic.attributes = { ...graphic.attributes, name: `Polígono ${number}` }
+    }
+  })
+}
+
+function polygonName(graphic: Graphic) {
+  return graphic.attributes?.name ?? `Polígono ${layer.graphics.toArray().indexOf(graphic) + 1}`
+}
+
+function normalizeName(value: string) {
+  return value.normalize('NFC').trim().replace(/ +/g, ' ')
+}
+
+function validateName(value: string) {
+  const normalized = normalizeName(value)
+  if (!normalized) return 'Informe um nome para o polígono.'
+  if ([...normalized].length > 30) return 'O nome deve ter no máximo 30 caracteres.'
+  if (!/^[\p{L}\p{N}][\p{L}\p{M}\p{N} ]*$/u.test(normalized)) return 'Use apenas letras, números e espaços. Acentos são permitidos.'
+  return ''
+}
+
+function updateNameField() {
+  if (nameInput.value !== draftName) nameInput.value = draftName
+  const error = validateName(draftName)
+  nameError.textContent = error
+  nameError.hidden = !error
+  nameInput.setAttribute('aria-invalid', String(Boolean(error)))
+}
+
+function updateDraftName(value: string, changeId: string) {
+  if (activeAction !== 'update' || deletedEditId) return
+  draftName = value
+  nameChangeId = changeId
+  updateNameField()
+  scheduleMapLabels()
+  detachedMap.publish()
+}
+
+function findGraphic(id: string | null) {
+  return layer.graphics.find((graphic) => graphicId(graphic) === id) ?? null
+}
+
+function orderedGraphics() {
+  // O SDK traz a área editada para frente no mapa; a lista mantém a ordem salva.
+  const order = new globalThis.Map(committedPolygons.map((polygon, index) => [polygon.attributes?.polygonId, index]))
+  return layer.graphics.toArray().sort((a, b) =>
+    (order.get(graphicId(a)) ?? committedPolygons.length) - (order.get(graphicId(b)) ?? committedPolygons.length))
+}
+
+function scheduleMapLabels() {
+  if (labelFrame !== null) return
+  labelFrame = requestAnimationFrame(() => {
+    labelFrame = null
+    if (!mapInitialized || !view.ready || windowMode === 'detached') {
+      mapLabels.replaceChildren()
+      labelNodes.clear()
+      return
+    }
+    const ids = new Set<string>()
+    for (const graphic of orderedGraphics()) {
+      const id = graphicId(graphic)
+      const geometry = graphic.geometry
+      if (!id || !isValidPolygon(geometry)) continue
+      let anchor = labelAnchors.get(graphic)
+      if (!anchor || anchor.geometry !== geometry) {
+        anchor = { geometry, point: labelPointOperator.execute(geometry as Polygon) }
+        labelAnchors.set(graphic, anchor)
+      }
+      const point = view.toScreen(anchor.point)
+      if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) continue
+      ids.add(id)
+      let label = labelNodes.get(id)
+      if (!label) {
+        label = document.createElement('span')
+        label.className = 'polygon-map-label'
+        label.dataset.testid = 'polygon-map-label'
+        label.dataset.polygonId = id
+        labelNodes.set(id, label)
+        mapLabels.append(label)
+      }
+      label.textContent = activeAction === 'update' && graphic === activeGraphic
+        ? normalizeName(draftName) || polygonName(graphic) : polygonName(graphic)
+      label.classList.toggle('is-selected', graphic === selectedGraphic)
+      label.style.left = `${point.x}px`
+      label.style.top = `${point.y}px`
+      label.hidden = point.x < 0 || point.y < 0 || point.x > view.width || point.y > view.height
+    }
+    for (const [id, label] of labelNodes) {
+      if (ids.has(id)) continue
+      label.remove()
+      labelNodes.delete(id)
+    }
+  })
+}
+
+function updateWindowControls() {
+  detachButton.disabled = !mapInitialized || activeAction !== null
+  detachButton.title = activeAction ? 'Conclua ou cancele a ação atual antes de separar o mapa' : 'Abrir o mapa em outra janela'
+  const waiting = windowMode === 'detached' && !windowConnected
+  clearButton.hidden = activeAction !== null
+  const mapWaiting = !mapInitialized || (windowMode !== 'main' && !windowConnected)
+  drawButton.disabled = mapWaiting
+  finishButton.disabled = mapWaiting
+  cancelButton.disabled = mapWaiting
+  returnButton.disabled = activeAction !== null
+  reuniteButton.disabled = activeAction !== null
+  returnButton.title = reuniteButton.title = activeAction ? 'Conclua ou cancele a ação atual antes de reunir as telas' : 'Trazer o mapa de volta'
+  list.inert = waiting
+  clearButton.disabled = waiting || layer.graphics.length === 0
+  updatePolygonButton()
+  updateNavigationControls()
+}
+
+function updatePolygonButton() {
+  const mode = selectedGraphic ? 'edit' : 'create'
+  if (drawButton.dataset.mode !== mode) {
+    drawButton.dataset.mode = mode
+    drawButton.innerHTML = `<i data-lucide="vector-polygon" aria-hidden="true"></i><i data-lucide="${mode === 'edit' ? 'pencil' : 'plus'}" aria-hidden="true"></i><span>${mode === 'edit' ? 'Editar' : 'Criar'}</span>`
+    renderIcons()
+  }
+  const label = selectedGraphic ? 'Editar polígono selecionado' : 'Criar um novo polígono'
+  drawButton.setAttribute('aria-label', label)
+  drawButton.title = selectedGraphic ? `${label} ou use Enter. Clique no mapa vazio ou use Esc para limpar a seleção.` : label
+}
+
+function setWarning(warning: boolean) {
+  validationWarning = warning
+  mapStatus.classList.toggle('is-warning', warning)
+  if (warning) message.setAttribute('role', 'alert')
+  else message.removeAttribute('role')
+}
+
+function showDrawingWarning() {
+  setWarning(true)
+  message.textContent = 'Desenhe pelo menos 3 pontos diferentes formando uma área antes de concluir.'
+  detachedMap.publish()
+}
+
+function isValidVertices(vertices: number[][]) {
+  const unique = [...new globalThis.Map<string, number[]>(vertices.filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y))
+    .map((point) => [`${point[0]},${point[1]}`, point] as const)).values()]
+  if (unique.length < 3) return false
+  const [originX, originY] = unique[0]
+  const area = unique.reduce((sum, [x, y], index) => {
+    const [nextX, nextY] = unique[(index + 1) % unique.length]
+    return sum + (x - originX) * (nextY - originY) - (nextX - originX) * (y - originY)
+  }, 0)
+  // Pontos alinhados podem ter pequenas diferenças numéricas após a projeção.
+  const span = unique.reduce((max, [x, y]) => Math.max(max, Math.abs(x - originX), Math.abs(y - originY)), 0)
+  return Math.abs(area) > span * span * 1e-10
+}
+
+function isValidPolygon(geometry: Graphic['geometry']) {
+  return geometry?.type === 'polygon' && geometry.rings.length > 0 && geometry.rings.every(isValidVertices)
+}
+
+async function finishActiveAction() {
+  if (activeAction === null) return
+  if (activeAction === 'update' && pendingSketchUpdate) {
+    const graphic = activeGraphic
+    while (pendingSketchUpdate) {
+      try { await pendingSketchUpdate } catch { return }
+      if (activeAction !== 'update' || activeGraphic !== graphic) return
+    }
+  }
+  if (activeAction === 'update' && deletedEditId) {
+    setDeletedEditConfirmation(true)
+    detachedMap.publish()
+    return
+  }
+  if (activeAction === 'update') {
+    const error = validateName(draftName)
+    if (error) {
+      setWarning(true)
+      message.textContent = error
+      updateNameField()
+      if (!nameEditor.hidden) nameInput.focus()
+      detachedMap.publish()
+      return
+    }
+  }
+  if (activeAction === 'create' && !isValidVertices(draftVertices)) {
+    showDrawingWarning()
+    return
+  }
+  if (activeAction === 'update' && !isValidPolygon(activeGraphic?.geometry ?? null)) {
+    showDrawingWarning()
+    return
+  }
+  if (activeAction === 'update' && activeGraphic) {
+    activeGraphic.attributes = { ...activeGraphic.attributes, name: normalizeName(draftName) }
+    confirmingUpdate = true
+  }
+  sketch.complete()
+}
+
+function updateNavigationControls() {
+  const waiting = !mapInitialized || (windowMode === 'map' && !windowConnected)
+  zoomInButton.disabled = waiting || !view.canZoomIn
+  zoomOutButton.disabled = waiting || !view.canZoomOut
+  northUpButton.disabled = waiting
+  northIndicator.style.transform = `rotate(${view.rotation}deg)`
+}
+
+async function navigateMap(action: 'zoom-in' | 'zoom-out' | 'north-up') {
+  try {
+    if (action === 'zoom-in') await view.zoomIn()
+    if (action === 'zoom-out') await view.zoomOut()
+    if (action === 'north-up' && view.viewpoint) {
+      const viewpoint = view.viewpoint.clone()
+      viewpoint.rotation = 0
+      await view.goTo(viewpoint)
+    }
+  } catch (error) {
+    // Outro gesto ou clique pode interromper uma animação de navegação.
+    if (error instanceof Error && error.name === 'AbortError') return
+    message.textContent = 'Não foi possível ajustar o mapa. Tente novamente.'
+    detachedMap.publish()
+  }
+}
+
+async function applyWindowState(state: MapState) {
+  applyingWindowState = true
+  try {
+    // Uma resposta anterior do mapa não pode apagar letras digitadas mais recentemente.
+    const keepLocalName = pendingNameChangeId && state.action === 'update' &&
+      state.activeId === graphicId(activeGraphic) && !state.deletedEditId && state.nameChangeId !== pendingNameChangeId
+    sketch.cancel()
+    layer.removeAll()
+    state.polygons.forEach((polygon) => layer.add(Graphic.fromJSON(polygon)))
+    committedPolygons = state.committed
+    selectedGraphic = findGraphic(state.selectedId)
+    expandedGraphic = findGraphic(state.expandedId)
+    activeGraphic = findGraphic(state.activeId)
+    deletedEditId = state.deletedEditId
+    if (!keepLocalName) {
+      draftName = state.draftName
+      nameChangeId = state.nameChangeId
+      pendingNameChangeId = null
+    }
+    if (state.viewpoint) view.viewpoint = Viewpoint.fromJSON(state.viewpoint)
+    setActiveAction(state.action)
+    message.textContent = state.instructions
+    setWarning(state.warning)
+    lastEdit.textContent = state.lastEdit
+    render()
+    setDeletedEditConfirmation(state.confirmingDeletedEdit)
+    if (detachedMap.isMapWindow && state.action === 'update' && activeGraphic) {
+      await activateSketchUpdate(activeGraphic)
+    } else if (detachedMap.isMapWindow && state.action === 'create') {
+      // O rascunho incompleto não sobrevive ao recarregamento da janela.
+      setActiveAction(null)
+      message.textContent = 'Rascunho cancelado após recarregar. Pronto para desenhar.'
+    }
+  } finally {
+    applyingWindowState = false
+  }
+}
 
 function localStorageFallbackLoad(): ReturnType<Graphic['toJSON']>[] {
   try {
@@ -101,9 +517,11 @@ async function persistPolygons(polygons: ReturnType<Graphic['toJSON']>[]) {
   try {
     const database = await openStorageDatabase()
     await new Promise<void>((resolve, reject) => {
-      const request = database.transaction(storageStoreName, 'readwrite').objectStore(storageStoreName).put(polygons, storageKey)
-      request.onsuccess = () => resolve()
-      request.onerror = () => reject(request.error)
+      const transaction = database.transaction(storageStoreName, 'readwrite')
+      transaction.objectStore(storageStoreName).put(polygons, storageKey)
+      transaction.oncomplete = () => resolve()
+      transaction.onerror = () => reject(transaction.error)
+      transaction.onabort = () => reject(transaction.error)
     })
     database.close()
   } catch {
@@ -112,24 +530,29 @@ async function persistPolygons(polygons: ReturnType<Graphic['toJSON']>[]) {
 }
 
 function renderIcons() {
-  createIcons({ icons: { ChevronDown, PanelLeftClose, Plus, Trash2 } })
+  createIcons({ icons: { Check, ChevronRight, Download, ExternalLink, Focus, Minus, PanelsTopLeft, Pencil, Plus, Trash2, VectorPolygon, X } })
+}
+
+function updateSelectionHighlight() {
+  if (!graphicsLayerView || highlightedGraphic === selectedGraphic) return
+  selectionHighlight?.remove()
+  selectionHighlight = selectedGraphic
+    ? graphicsLayerView.highlight(selectedGraphic, { name: 'polygon-selection' })
+    : null
+  highlightedGraphic = selectedGraphic
 }
 
 function setActiveAction(action: 'create' | 'update' | null) {
+  setWarning(false)
   activeAction = action
   drawButton.hidden = action !== null
   finishButton.hidden = action === null
   cancelButton.hidden = action === null
-  if (action === 'create') finishButton.textContent = 'Concluir desenho'
-  if (action === 'update') finishButton.textContent = 'Concluir edição'
-}
-
-function setSidebarCollapsed(collapsed: boolean) {
-  workspace.classList.toggle('sidebar-collapsed', collapsed)
-  sidebarToggle.setAttribute('aria-expanded', String(!collapsed))
-  sidebarClose.setAttribute('aria-expanded', String(!collapsed))
-  sidebarToggle.setAttribute('aria-label', collapsed ? 'Abrir lista de polígonos' : 'Recolher lista de polígonos')
-  sidebarToggle.title = collapsed ? 'Abrir lista de polígonos' : 'Recolher lista de polígonos'
+  if (action) {
+    finishButton.innerHTML = `<i data-lucide="check" aria-hidden="true"></i><span>${action === 'create' ? 'Concluir desenho' : 'Concluir edição'}</span>`
+    renderIcons()
+  }
+  updateWindowControls()
 }
 
 function requestDeletion(target: Graphic | 'all') {
@@ -138,28 +561,42 @@ function requestDeletion(target: Graphic | 'all') {
   clearDialogTitle.textContent = isAll ? 'Apagar todos os polígonos?' : 'Apagar este polígono?'
   clearDialogDescription.textContent = isAll
     ? 'Essa ação removerá todos os polígonos desenhados no mapa.'
-    : 'Essa ação removerá o polígono selecionado do mapa.'
+    : `Essa ação removerá “${polygonName(target)}” do mapa.`
+  confirmClearButton.textContent = isAll ? 'Apagar todos' : 'Excluir polígono'
   clearDialog.showModal()
 }
 
 function forgetActiveEdit() {
   activeGraphic = null
+  pendingSketchUpdate = null
+  draftName = ''
+  nameChangeId = null
+  pendingNameChangeId = null
+  nameEditor.hidden = true
+  deletedEditId = null
+  setDeletedEditConfirmation(false)
+}
+
+function setDeletedEditConfirmation(open: boolean) {
+  confirmingDeletedEdit = open
+  if (open && !deletedEditDialog.open) deletedEditDialog.showModal()
+  if (!open && deletedEditDialog.open) deletedEditDialog.close()
 }
 
 function syncCommittedPolygons() {
-  committedPolygons = layer.graphics.toArray().map((graphic) => graphic.toJSON())
+  ensureGraphicIds()
+  committedPolygons = orderedGraphics().map((graphic) => graphic.toJSON())
   pendingPersistence = persistPolygons(committedPolygons)
   return pendingPersistence
 }
 
 function restoreCommittedPolygons() {
-  const selectedIndex = selectedGraphic ? layer.graphics.toArray().indexOf(selectedGraphic) : -1
-  const expandedIndex = expandedGraphic ? layer.graphics.toArray().indexOf(expandedGraphic) : -1
+  const selectedId = graphicId(selectedGraphic)
+  const expandedId = graphicId(expandedGraphic)
   layer.removeAll()
   committedPolygons.forEach((polygon) => layer.add(Graphic.fromJSON(polygon)))
-  const restored = layer.graphics.toArray()
-  selectedGraphic = selectedIndex >= 0 ? restored[selectedIndex] ?? null : null
-  expandedGraphic = expandedIndex >= 0 ? restored[expandedIndex] ?? null : null
+  selectedGraphic = findGraphic(selectedId)
+  expandedGraphic = findGraphic(expandedId)
   render()
 }
 
@@ -180,12 +617,116 @@ function commitActiveEdit() {
   forgetActiveEdit()
 }
 
+async function activateSketchUpdate(graphic: Graphic) {
+  const update = sketch.update(graphic, { tool: 'reshape', toggleToolOnClick: false })
+  pendingSketchUpdate = update
+  try {
+    await update
+  } catch (error) {
+    if (!(error instanceof Error && error.name === 'AbortError')) throw error
+  } finally {
+    if (pendingSketchUpdate === update) pendingSketchUpdate = null
+  }
+}
+
+async function startEditing(graphic: Graphic) {
+  if (detachedMap.command({ type: 'edit', id: graphicId(graphic)! })) return
+  // Clicar novamente no card mantém os detalhes abertos, inclusive durante uma edição.
+  selectedGraphic = graphic
+  expandedGraphic = graphic
+  render()
+  if (activeAction === 'create') return
+  if (activeAction === 'update' && activeGraphic === graphic) return
+  if (activeAction === 'update' && activeGraphic !== graphic) {
+    message.textContent = 'Conclua ou cancele a edição atual antes de editar outro polígono.'
+    detachedMap.publish()
+    return
+  }
+  confirmingUpdate = false
+  activeGraphic = graphic
+  draftName = polygonName(graphic)
+  nameChangeId = null
+  pendingNameChangeId = null
+  setActiveAction('update')
+  message.textContent = 'Modo de edição ativo: altere o nome ou arraste vértices e arestas. Use “Concluir edição” para salvar.'
+  render()
+  await activateSketchUpdate(graphic)
+}
+
+function selectPolygon(graphic: Graphic) {
+  if (detachedMap.command({ type: 'select', id: graphicId(graphic)! })) return
+  selectedGraphic = graphic
+  expandedGraphic = graphic
+  if (activeAction === null) {
+    setWarning(false)
+    message.textContent = 'Polígono selecionado. Use Enter ou o botão Editar para alterar o nome e o desenho.'
+  }
+  render()
+}
+
+function clearSelection() {
+  if (activeAction !== null || detachedMap.command({ type: 'deselect' })) return
+  selectedGraphic = null
+  expandedGraphic = null
+  setWarning(false)
+  message.textContent = 'Seleção limpa. Pronto para desenhar um novo polígono.'
+  render()
+}
+
+function toggleVertices(graphic: Graphic) {
+  if (detachedMap.command({ type: 'expand', id: graphicId(graphic)! })) return
+  const closing = expandedGraphic === graphic
+  selectedGraphic = closing ? null : graphic
+  expandedGraphic = closing ? null : graphic
+  if (activeAction === null) {
+    setWarning(false)
+    message.textContent = closing
+      ? 'Seleção limpa. Pronto para desenhar um novo polígono.'
+      : 'Polígono selecionado. Use Enter ou o botão Editar para alterar o nome e o desenho.'
+  }
+  render()
+}
+
+function deletePolygons(target: Graphic | 'all') {
+  const targetId = target === 'all' ? 'all' : graphicId(target)!
+  if (detachedMap.command({ type: 'delete', id: targetId })) return
+  // Descartar outras alterações ainda não confirmadas antes de excluir.
+  applyingWindowState = true
+  sketch.cancel()
+  setActiveAction(null)
+  forgetActiveEdit()
+  const polygonNumber = target === 'all' ? 0 : committedPolygons.findIndex((polygon) => polygon.attributes?.polygonId === targetId) + 1
+  restoreCommittedPolygons()
+  if (target === 'all') {
+    layer.removeAll()
+    selectedGraphic = null
+    expandedGraphic = null
+    message.textContent = 'Polígonos removidos.'
+  } else {
+    const graphic = findGraphic(targetId)
+    if (graphic) layer.remove(graphic)
+    if (graphicId(selectedGraphic) === targetId) selectedGraphic = null
+    if (graphicId(expandedGraphic) === targetId) expandedGraphic = null
+    message.textContent = `Polígono ${polygonNumber} removido.`
+  }
+  applyingWindowState = false
+  syncCommittedPolygons()
+  render()
+}
+
 function render() {
+  const nameFocused = document.activeElement === nameInput
+  const selectionStart = nameInput.selectionStart
+  const selectionEnd = nameInput.selectionEnd
+  const actionsContainer = windowMode === 'map' ? mapWindowActions : sidebarActions
+  actionsContainer.prepend(nameEditor)
+  nameEditor.hidden = activeAction !== 'update' || !activeGraphic || Boolean(deletedEditId)
+  updateNameField()
   list.replaceChildren()
   empty.hidden = layer.graphics.length > 0
   count.textContent = String(layer.graphics.length)
   clearButton.disabled = layer.graphics.length === 0
-  layer.graphics.forEach((graphic, index) => {
+  orderedGraphics().forEach((graphic) => {
     const item = document.createElement('li')
     item.dataset.testid = 'polygon-item'
     item.className = 'pin'
@@ -193,22 +734,21 @@ function render() {
     const label = document.createElement('span')
     label.className = 'polygon-label'
     label.tabIndex = 0
-    label.textContent = `Polígono ${index + 1}`
-    const startEditing = async () => {
-      selectedGraphic = graphic
-      confirmingUpdate = false
-      const polygon = graphic.geometry as Polygon
-      activeGraphic = graphic
-      setActiveAction('update')
-      render()
-      await sketch.update(graphic, { tool: 'reshape', toggleToolOnClick: false })
-      message.textContent = 'Modo de edição ativo: arraste um vértice ou clique na alça de uma aresta.'
-    }
-    label.addEventListener('click', startEditing)
+    label.setAttribute('role', 'button')
+    label.setAttribute('aria-expanded', String(graphic === expandedGraphic))
+    const name = polygonName(graphic)
+    label.textContent = name
+    item.addEventListener('click', (event) => {
+      if ((event.target as Element).closest('button, .polygon-name-editor')) return
+      selectPolygon(graphic)
+    })
     label.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault()
-        void startEditing()
+        event.stopPropagation()
+        if (event.repeat) return
+        if (event.key === 'Enter' && activeAction === null && selectedGraphic === graphic) void startEditing(graphic)
+        else selectPolygon(graphic)
       }
     })
     const expand = document.createElement('button')
@@ -216,24 +756,36 @@ function render() {
     expand.dataset.testid = 'expand-polygon'
     expand.className = 'icon-button expand-polygon'
     expand.setAttribute('aria-expanded', String(graphic === expandedGraphic))
-    expand.setAttribute('aria-label', graphic === expandedGraphic ? `Ocultar vértices do Polígono ${index + 1}` : `Mostrar vértices do Polígono ${index + 1}`)
-    expand.innerHTML = '<i data-lucide="chevron-down" aria-hidden="true"></i>'
+    expand.setAttribute('aria-label', graphic === expandedGraphic ? `Ocultar vértices de ${name}` : `Mostrar vértices de ${name}`)
+    expand.innerHTML = '<i data-lucide="chevron-right" aria-hidden="true"></i>'
     expand.addEventListener('click', () => {
-      selectedGraphic = graphic
-      expandedGraphic = expandedGraphic === graphic ? null : graphic
-      render()
+      toggleVertices(graphic)
     })
     const remove = document.createElement('button')
     remove.type = 'button'
     remove.dataset.testid = 'delete-polygon'
     remove.className = 'icon-button delete-polygon'
-    remove.title = `Excluir Polígono ${index + 1}`
-    remove.setAttribute('aria-label', `Excluir Polígono ${index + 1}`)
+    remove.title = `Excluir ${name}`
+    remove.setAttribute('aria-label', `Excluir ${name}`)
     remove.innerHTML = '<i data-lucide="trash-2" aria-hidden="true"></i>'
     remove.addEventListener('click', () => {
       requestDeletion(graphic)
     })
-    item.append(label, expand, remove)
+    const editingName = windowMode !== 'map' && activeAction === 'update' && graphic === activeGraphic
+    item.append(expand, editingName ? nameEditor : label, remove)
+    const metadata = document.createElement('div')
+    metadata.className = 'polygon-meta'
+    const vertexCount = (graphic.geometry as Polygon).rings.reduce((total, ring) => total + Math.max(0, ring.length - 1), 0)
+    const details = document.createElement('span')
+    details.textContent = `${vertexCount} vértices`
+    metadata.append(details)
+    if (graphic === selectedGraphic || graphic === activeGraphic) {
+      const status = document.createElement('span')
+      status.className = 'polygon-badge'
+      status.textContent = activeAction === 'update' && graphic === activeGraphic ? 'Em edição' : 'Selecionado'
+      metadata.append(status)
+    }
+    item.append(metadata)
     if (graphic === expandedGraphic) {
       const vertices = document.createElement('ul')
       vertices.className = 'vertex-list'
@@ -247,20 +799,57 @@ function render() {
     }
     list.append(item)
   })
+  updateSelectionHighlight()
   renderIcons()
+  updateWindowControls()
+  scheduleMapLabels()
+  if (nameFocused && !nameEditor.hidden) {
+    nameInput.focus({ preventScroll: true })
+    nameInput.setSelectionRange(selectionStart, selectionEnd)
+  }
+  if (!applyingWindowState) detachedMap.publish()
 }
 
-drawButton.addEventListener('click', async () => {
+async function beginDrawing() {
+  if (activeAction !== null) return
+  selectedGraphic = null
+  expandedGraphic = null
+  draftVertices = []
+  draftHistory = [[]]
+  draftHistoryIndex = 0
   forgetActiveEdit()
   setActiveAction('create')
   message.textContent = 'Clique para criar vértices; dê dois cliques ou use “Concluir desenho” para finalizar.'
+  render()
   await sketch.create('polygon', { mode: 'click' })
+}
+drawButton.addEventListener('click', () => {
+  if (selectedGraphic) {
+    void startEditing(selectedGraphic)
+    return
+  }
+  if (!detachedMap.command({ type: 'draw' })) void beginDrawing()
+})
+nameInput.addEventListener('input', () => {
+  draftName = nameInput.value
+  nameChangeId = createId()
+  pendingNameChangeId = nameChangeId
+  updateNameField()
+  scheduleMapLabels()
+  if (detachedMap.command({ type: 'rename', id: graphicId(activeGraphic)!, value: draftName, changeId: nameChangeId })) return
+  pendingNameChangeId = null
+  updateDraftName(draftName, nameChangeId)
+})
+nameInput.addEventListener('keydown', (event) => {
+  // As teclas de texto não devem acionar atalhos de edição do mapa.
+  event.stopPropagation()
 })
 finishButton.addEventListener('click', () => {
-  if (activeAction === 'update') confirmingUpdate = true
-  sketch.complete()
+  if (detachedMap.command({ type: 'finish' })) return
+  finishActiveAction()
 })
 cancelButton.addEventListener('click', () => {
+  if (detachedMap.command({ type: 'cancel' })) return
   confirmingUpdate = false
   cancelActiveAction()
   message.textContent = 'Desenho ou edição cancelado.'
@@ -273,35 +862,103 @@ dismissClearButton.addEventListener('click', () => {
 confirmClearButton.addEventListener('click', () => {
   const target = pendingDeletion
   if (!target) return
-  sketch.cancel()
-  setActiveAction(null)
-  forgetActiveEdit()
-  if (target === 'all') {
-    layer.removeAll()
-    selectedGraphic = null
-    expandedGraphic = null
-    message.textContent = 'Polígonos removidos.'
-  } else {
-    const polygonNumber = layer.graphics.toArray().indexOf(target) + 1
-    layer.remove(target)
-    if (selectedGraphic === target) selectedGraphic = null
-    if (expandedGraphic === target) expandedGraphic = null
-    message.textContent = `Polígono ${polygonNumber} removido.`
-  }
-  syncCommittedPolygons()
-  render()
+  deletePolygons(target)
   pendingDeletion = null
   clearDialog.close()
 })
-sidebarClose.addEventListener('click', () => setSidebarCollapsed(true))
-sidebarToggle.addEventListener('click', () => setSidebarCollapsed(false))
+restoreDeletedEditButton.addEventListener('click', () => cancelButton.click())
+deletedEditDialog.addEventListener('cancel', (event) => {
+  event.preventDefault()
+  cancelButton.click()
+})
+confirmDeletedEditButton.addEventListener('click', () => {
+  if (detachedMap.command({ type: 'confirm-edit-deletion' })) return
+  if (activeAction !== 'update' || !deletedEditId) return
+  const polygon = committedPolygons.find((item) => item.attributes?.polygonId === deletedEditId)
+  if (polygon) deletePolygons(Graphic.fromJSON(polygon))
+})
+zoomInButton.addEventListener('click', () => void navigateMap('zoom-in'))
+zoomOutButton.addEventListener('click', () => void navigateMap('zoom-out'))
+attachCompass(northUpButton, {
+  getRotation: () => view.rotation,
+  setRotation: (rotation) => { view.rotation = rotation },
+  resetNorth: () => void navigateMap('north-up'),
+  stopAnimation: () => view.animation?.stop(),
+  onChange: () => detachedMap.publish()
+})
+detachButton.addEventListener('click', () => {
+  windowFeedback.hidden = true
+  detachedMap.open()
+})
+returnButton.addEventListener('click', () => detachedMap.reunite())
+reuniteButton.addEventListener('click', () => detachedMap.reunite())
+document.querySelector('#focus-map')!.addEventListener('click', () => detachedMap.focus())
 sketch.on('create', (event) => {
+  if (applyingWindowState) return
   if (event.state === 'start') setActiveAction('create')
-  if (event.state === 'complete') { setActiveAction(null); forgetActiveEdit(); syncCommittedPolygons(); render(); message.textContent = 'Polígono criado. Clique nele para editar vértices e arestas.' }
+  const info = event.toolEventInfo
+  if (info?.type === 'vertex-add' || info?.type === 'vertex-remove') {
+    const vertices = [...info.vertices].sort((a, b) => info.type === 'vertex-add'
+      ? a.vertexIndex - b.vertexIndex : b.vertexIndex - a.vertexIndex)
+    for (const vertex of vertices) {
+      if (info.type === 'vertex-add') draftVertices.splice(vertex.vertexIndex, 0, vertex.coordinates.slice())
+      else draftVertices.splice(vertex.vertexIndex, 1)
+    }
+    draftHistory = draftHistory.slice(0, draftHistoryIndex + 1)
+    draftHistory.push(draftVertices.map((point) => point.slice()))
+    draftHistoryIndex = draftHistory.length - 1
+    if (validationWarning) {
+      setWarning(false)
+      message.textContent = 'Continue adicionando pontos e use “Concluir desenho” para salvar.'
+    }
+  }
+  if (event.state === 'complete') {
+    setActiveAction(null)
+    forgetActiveEdit()
+    if (!isValidPolygon(event.graphic?.geometry ?? null)) {
+      restoreCommittedPolygons()
+      showDrawingWarning()
+      return
+    }
+    syncCommittedPolygons()
+    message.textContent = 'Polígono criado. Selecione o card e use Editar para alterar o desenho.'
+    render()
+  }
   if (event.state === 'cancel') setActiveAction(null)
+  detachedMap.publish()
+})
+sketch.on('undo', () => {
+  if (activeAction !== 'create') return
+  draftHistoryIndex = Math.max(0, draftHistoryIndex - 1)
+  draftVertices = draftHistory[draftHistoryIndex].map((point) => point.slice())
+})
+sketch.on('redo', () => {
+  if (activeAction !== 'create') return
+  draftHistoryIndex = Math.min(draftHistory.length - 1, draftHistoryIndex + 1)
+  draftVertices = draftHistory[draftHistoryIndex].map((point) => point.slice())
+})
+sketch.on('delete', (event) => {
+  if (applyingWindowState || activeAction !== 'update') return
+  const deleted = event.graphics.find((graphic) => graphicId(graphic) === graphicId(activeGraphic))
+  if (!deleted) return
+  deletedEditId = graphicId(deleted)
+  if (graphicId(selectedGraphic) === deletedEditId) selectedGraphic = null
+  if (graphicId(expandedGraphic) === deletedEditId) expandedGraphic = null
+  setWarning(false)
+  message.textContent = 'Polígono apagado nesta edição. Use “Concluir edição” para confirmar a exclusão ou Cancelar para restaurá-lo.'
+  render()
 })
 sketch.on('update', (event) => {
-  if (event.state === 'start') setActiveAction('update')
+  if (applyingWindowState) return
+  event.graphics.forEach((graphic) => labelAnchors.delete(graphic))
+  scheduleMapLabels()
+  if (event.state === 'start') {
+    activeGraphic = event.graphics[0] ?? null
+    selectedGraphic = activeGraphic
+    expandedGraphic = activeGraphic
+    setActiveAction('update')
+    render()
+  }
   const type = event.toolEventInfo?.type
   if (type === 'move-stop') lastEdit.textContent = 'Polígono movido.'
   if (type === 'reshape-stop') lastEdit.textContent = 'Vértice ou aresta arrastada.'
@@ -309,32 +966,74 @@ sketch.on('update', (event) => {
   if (type === 'move-stop' || type === 'reshape-stop' || type === 'vertex-add') render()
   if (event.state === 'complete') {
     if (cancellingUpdate) return
+    // Delete encerra a operação do SDK, mas a exclusão ainda precisa ser confirmada.
+    if (activeAction === 'update' && activeGraphic && !layer.graphics.includes(activeGraphic)) return
     if (activeAction === 'update' && !confirmingUpdate && activeGraphic) {
       message.textContent = 'Edição mantida ativa. Use Enter ou “Concluir edição” para confirmar.'
-      void sketch.update(activeGraphic, { tool: 'reshape', toggleToolOnClick: false })
+      void activateSketchUpdate(activeGraphic)
       return
     }
     confirmingUpdate = false
     commitActiveEdit()
     setActiveAction(null)
-    render()
     message.textContent = 'Polígono editado.'
+    render()
   }
+})
+view.on('click', async (event) => {
+  if (activeAction !== null) return
+  const result = await view.hitTest(event, { include: [layer] })
+  if (activeAction !== null) return
+  const hit = result.results.find((item) => item.type === 'graphic' && item.graphic.layer === layer)
+  if (hit?.type === 'graphic') selectPolygon(hit.graphic)
+  else clearSelection()
 })
 window.addEventListener('keydown', (event) => {
-  if (activeAction === 'update' && event.key === 'Enter') {
+  const target = event.target instanceof Element ? event.target : null
+  if (target?.closest('dialog') || event.isComposing) return
+  const control = target?.closest('button, a, input, textarea, select, [contenteditable]:not([contenteditable="false"])')
+  if (event.key === 'Enter' && (!control || target === nameInput) && (activeAction !== null || (selectedGraphic && !target?.closest('.polygon-label')))) {
     event.preventDefault()
-    confirmingUpdate = true
-    sketch.complete()
+    event.stopPropagation()
+    if (event.repeat) return
+    if (activeAction === null && selectedGraphic) {
+      void startEditing(selectedGraphic)
+      return
+    }
+    if (detachedMap.command({ type: 'finish' })) return
+    finishActiveAction()
   }
-})
+  if (event.key === 'Escape') {
+    if (activeAction !== null) {
+      event.preventDefault()
+      event.stopPropagation()
+      cancelButton.click()
+    } else clearSelection()
+  }
+}, { capture: true })
+renderIcons()
 view.when(async () => {
-  view.ui.move('zoom', 'bottom-left')
-  committedPolygons = await loadPersistedPolygons()
+  view.ui.remove('zoom')
+  graphicsLayerView = await view.whenLayerView(layer) as GraphicsLayerView
+  const stored = await loadPersistedPolygons()
+  committedPolygons = stored.filter((polygon) => {
+    try { return isValidPolygon(Graphic.fromJSON(polygon).geometry) } catch { return false }
+  })
+  if (committedPolygons.length !== stored.length) pendingPersistence = persistPolygons(committedPolygons)
   committedPolygons.forEach((polygon) => layer.add(Graphic.fromJSON(polygon)))
+  ensureGraphicIds()
+  committedPolygons = layer.graphics.toArray().map((graphic) => graphic.toJSON())
+  pendingPersistence = persistPolygons(committedPolygons)
+  mapInitialized = true
   ready.hidden = false
   render()
+  detachedMap.start()
 })
+watch(() => view.stationary, (stationary) => {
+  if (stationary && !applyingWindowState) detachedMap.publish()
+})
+watch(() => [view.canZoomIn, view.canZoomOut, view.rotation], updateNavigationControls)
+watch(() => [view.extent, view.rotation, view.width, view.height], scheduleMapLabels)
 
 // Disponível somente no servidor de desenvolvimento ou na build temporária de E2E.
 // A API apenas lê coordenadas de tela para que o WebDriver reproduza gestos reais.

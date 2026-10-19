@@ -84,6 +84,11 @@ async function createPolygon(points: Array<[number, number]>) {
 }
 
 async function clearPolygonsWithConfirmation() {
+  const cancel = $('[data-testid="cancel-editing"]')
+  if (await cancel.isDisplayed()) {
+    await cancel.click()
+    await $('[data-testid="draw-polygon"]').waitForDisplayed()
+  }
   const clear = $('[data-testid="clear-polygons"]')
   if (await clear.isEnabled()) {
     await clear.click()
@@ -112,6 +117,8 @@ describe('Editor de polígonos', () => {
     await browser.waitUntil(async () => await (await $$('.vertex-list li')).length === 3)
 
     await $('.polygon-label').click()
+    await expect($('[data-testid="finish-drawing"]')).not.toBeDisplayed()
+    await $('[data-testid="draw-polygon"]').click()
     await expect($('[data-testid="draw-polygon"]')).not.toBeDisplayed()
     await expect($('[data-testid="finish-drawing"]')).toBeDisplayed()
     await expect($('[data-testid="cancel-editing"]')).toBeDisplayed()
@@ -135,6 +142,7 @@ describe('Editor de polígonos', () => {
     const originalCoordinates = await $('.vertex-list').getText()
 
     await $('.polygon-label').click()
+    await $('[data-testid="draw-polygon"]').click()
     await $('[data-testid="cancel-editing"]').waitForDisplayed()
     const points = await selectedScreenPoints()
     await dragMapPoint(points.vertices[0], 90, 50)
@@ -149,6 +157,7 @@ describe('Editor de polígonos', () => {
     await createPolygon([[-120, -50], [0, -50], [-60, 50]])
     await $('[data-testid="expand-polygon"]').click()
     await $('.polygon-label').click()
+    await $('[data-testid="draw-polygon"]').click()
     await $('[data-testid="cancel-editing"]').waitForDisplayed()
 
     await dragMapPoint((await selectedScreenPoints()).center, 70, 40)
@@ -204,19 +213,6 @@ describe('Editor de polígonos', () => {
     await $('#confirm-clear').click()
     await browser.waitUntil(async () => await (await polygonItems()).length === 0)
     await expect($('[data-testid="clear-polygons"]')).toBeDisabled()
-  })
-
-  it('recolhe o painel e exibe o controle de abrir no menu do mapa', async () => {
-    await expect($('#sidebar-close')).toBeDisplayed()
-    await expect($('[data-testid="sidebar-toggle"]')).not.toBeDisplayed()
-
-    await $('#sidebar-close').click()
-    await browser.waitUntil(async () => await browser.execute(() => document.querySelector('.workspace')?.classList.contains('sidebar-collapsed')))
-    await expect($('[data-testid="sidebar-toggle"]')).toBeDisplayed()
-
-    await $('[data-testid="sidebar-toggle"]').click()
-    await browser.waitUntil(async () => !(await browser.execute(() => document.querySelector('.workspace')?.classList.contains('sidebar-collapsed'))))
-    await expect($('#sidebar-close')).toBeDisplayed()
   })
 
   after(async () => {

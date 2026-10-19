@@ -69,8 +69,10 @@ async function clickMapPoint(page: Page, point: ScreenPoint) {
 async function createPolygon(page: Page, points: Array<[number, number]>) {
   const map = page.getByTestId('arcgis-map')
   const box = await mapBox(map)
+  const previousCount = await polygonItems(page).count()
   await page.getByTestId('draw-polygon').click()
-  await page.waitForTimeout(100)
+  // O SDK ativa a ferramenta de forma assíncrona antes de receber o primeiro ponto.
+  await page.waitForTimeout(300)
   for (const [x, y] of points) {
     // A suíte WebdriverIO usa coordenadas em relação ao centro do mapa.
     await page.mouse.click(box.x + box.width / 2 + x, box.y + box.height / 2 + y)
@@ -78,7 +80,8 @@ async function createPolygon(page: Page, points: Array<[number, number]>) {
     await page.waitForTimeout(100)
   }
   await page.getByTestId('finish-drawing').click()
-  await expect(polygonItems(page)).not.toHaveCount(0)
+  await expect(polygonItems(page)).toHaveCount(previousCount + 1)
+  await expect(page.getByTestId('finish-drawing')).toBeHidden()
 }
 
 async function clearPolygonsWithConfirmation(page: Page) {
@@ -109,9 +112,15 @@ test.describe('Editor de polígonos', () => {
     await createPolygon(page, [[-120, -50], [0, -50], [-60, 50]])
     await expect(page.locator('#polygon-count')).toHaveText('1')
     await expect(page.getByTestId('clear-polygons')).toBeEnabled()
-    await page.getByTestId('expand-polygon').click()
+    await page.getByTestId('polygon-item').click()
     await expect(page.locator('.vertex-list li')).toHaveCount(3)
+    await expect(page.getByTestId('expand-polygon')).toHaveAttribute('aria-expanded', 'true')
+    await expect(page.getByTestId('polygon-item')).toHaveClass(/selected/)
     await page.locator('.polygon-label').click()
+    await expect(page.locator('.vertex-list li')).toHaveCount(3)
+    await expect(page.getByTestId('finish-drawing')).toBeHidden()
+    await expect(page.getByTestId('draw-polygon')).toHaveAttribute('data-mode', 'edit')
+    await page.getByTestId('draw-polygon').click()
     await expect(page.getByTestId('draw-polygon')).toBeHidden()
     await expect(page.getByTestId('finish-drawing')).toBeVisible()
     await expect(page.getByTestId('cancel-editing')).toBeVisible()
@@ -129,6 +138,7 @@ test.describe('Editor de polígonos', () => {
     const vertices = page.locator('.vertex-list')
     const originalCoordinates = await vertices.innerText()
     await page.locator('.polygon-label').click()
+    await page.getByTestId('draw-polygon').click()
     await expect(page.getByTestId('cancel-editing')).toBeVisible()
     await waitForSketchEditing(page)
     await dragMapPoint(page, (await selectedScreenPoints(page)).vertices[0], 90, 50)
@@ -142,6 +152,7 @@ test.describe('Editor de polígonos', () => {
     await createPolygon(page, [[-120, -50], [0, -50], [-60, 50]])
     await page.getByTestId('expand-polygon').click()
     await page.locator('.polygon-label').click()
+    await page.getByTestId('draw-polygon').click()
     await expect(page.getByTestId('cancel-editing')).toBeVisible()
     await waitForSketchEditing(page)
     await dragMapPoint(page, (await selectedScreenPoints(page)).center, 70, 40)
@@ -191,14 +202,4 @@ test.describe('Editor de polígonos', () => {
     await expect(page.getByTestId('clear-polygons')).toBeDisabled()
   })
 
-  test('recolhe o painel e exibe o controle de abrir no menu do mapa', async ({ page }) => {
-    await expect(page.locator('#sidebar-close')).toBeVisible()
-    await expect(page.getByTestId('sidebar-toggle')).toBeHidden()
-    await page.locator('#sidebar-close').click()
-    await expect(page.locator('.workspace')).toHaveClass(/sidebar-collapsed/)
-    await expect(page.getByTestId('sidebar-toggle')).toBeVisible()
-    await page.getByTestId('sidebar-toggle').click()
-    await expect(page.locator('.workspace')).not.toHaveClass(/sidebar-collapsed/)
-    await expect(page.locator('#sidebar-close')).toBeVisible()
-  })
 })

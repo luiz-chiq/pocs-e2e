@@ -3,8 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#183b62" />
-    <meta name="description" content="POC de polígonos no mapa" />
+    <meta name="theme-color" content="#123c34" />
+    <meta name="description" content="Desenhe, organize e edite suas áreas no mapa." />
+    <meta name="apple-mobile-web-app-title" content="Polígonos" />
+    <link rel="apple-touch-icon" href="%BASE_URL%icons/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" href="%BASE_URL%icons/pwa-192.png" />
     <link rel="stylesheet" href="/src/styles.css" />
     <title>Polígonos no mapa</title>
   </head>
@@ -12,42 +15,90 @@
     <main class="shell" aria-labelledby="page-title">
       <div class="workspace">
         <aside class="polygon-sidebar" aria-label="Polígonos salvos">
-          <div class="sidebar-heading">
-            <button id="sidebar-close" class="icon-button sidebar-close" type="button" aria-expanded="true" aria-label="Recolher lista de polígonos" title="Recolher lista de polígonos">
-              <i data-lucide="panel-left-close" aria-hidden="true"></i>
-            </button>
-            <h1 id="page-title">Polígonos</h1>
-            <span id="polygon-count" class="polygon-count" aria-live="polite">0</span>
+          <header class="sidebar-header">
+            <div class="sidebar-brand"><span class="brand-mark" aria-hidden="true"><i data-lucide="vector-polygon"></i></span>Editor de mapas</div>
+            <div class="sidebar-heading">
+              <h1 id="page-title">Polígonos</h1>
+              <span id="polygon-count" class="polygon-count" aria-live="polite">0</span>
+              <button id="install-app" data-testid="install-app" class="icon-button install-app-button" type="button" hidden aria-label="Instalar aplicativo" title="Instalar aplicativo">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 16v5h14v-5" /></svg>
+              </button>
+            </div>
+            <p class="sidebar-description">Desenhe suas áreas. Explore cada detalhe.</p>
+          </header>
+          <p class="collection-heading">Áreas desenhadas</p>
+          <div id="empty-state" class="empty-state">
+            <span class="empty-symbol" aria-hidden="true"><i data-lucide="vector-polygon"></i></span>
+            <h2>Seu mapa começa aqui</h2>
+            <p>Crie um polígono para delimitar<br />sua primeira área.</p>
           </div>
-          <p id="empty-state" class="empty-state">Nenhum polígono por enquanto.</p>
           <ul id="polygon-list" data-testid="polygon-list" class="polygon-list"></ul>
-          <div class="sidebar-actions" aria-label="Ações dos polígonos">
-            <button id="clear-polygons" data-testid="clear-polygons" class="clear-all-button danger" title="Remover todos os polígonos">
-              <i data-lucide="trash-2" aria-hidden="true"></i>
-              Apagar todos
-            </button>
+          <div class="sidebar-actions" aria-label="Ações da aplicação">
+            <button id="detach-map" data-testid="detach-map" class="secondary detach-button" type="button" disabled><i data-lucide="external-link" aria-hidden="true"></i><span>Separar mapa</span></button>
+            <div id="detached-tools" class="detached-tools" hidden>
+              <p id="connection-status" role="status">Conectando à janela do mapa…</p>
+              <p class="window-hint">Arraste a janela do mapa para o outro monitor. As ações nas duas telas ficam sincronizadas.</p>
+              <div class="detached-actions">
+                <button id="focus-map" type="button" class="secondary"><i data-lucide="focus" aria-hidden="true"></i><span>Focar mapa</span></button>
+                <button id="reunite-windows" data-testid="reunite-windows" type="button" class="secondary"><i data-lucide="panels-top-left" aria-hidden="true"></i><span>Reunir telas</span></button>
+              </div>
+            </div>
+            <div class="polygon-actions" role="group" aria-label="Ações dos polígonos">
+              <button id="clear-polygons" data-testid="clear-polygons" class="clear-all-button danger" type="button" title="Remover todos os polígonos">
+                <i data-lucide="trash-2" aria-hidden="true"></i>
+                Apagar todos
+              </button>
+              <button id="draw-polygon" data-testid="draw-polygon" data-mode="create" class="icon-button add-polygon-button" type="button" title="Criar um novo polígono" aria-label="Criar um novo polígono">
+                <i data-lucide="vector-polygon" aria-hidden="true"></i>
+                <i data-lucide="plus" aria-hidden="true"></i>
+                <span>Criar</span>
+              </button>
+              <button id="finish-drawing" data-testid="finish-drawing" type="button" hidden title="Concluir a ação atual">Concluir</button>
+              <button id="cancel-editing" data-testid="cancel-editing" class="secondary" type="button" hidden title="Cancelar desenho ou edição atual"><i data-lucide="x" aria-hidden="true"></i><span>Cancelar</span></button>
+            </div>
+            <div id="polygon-name-editor" class="polygon-name-editor" hidden>
+              <label for="polygon-name">Nome do polígono</label>
+              <input id="polygon-name" data-testid="polygon-name" type="text" maxlength="30" required autocomplete="off" spellcheck="false" aria-describedby="polygon-name-hint polygon-name-error" />
+              <p id="polygon-name-hint">De 1 a 30 caracteres. Use letras, números e espaços; acentos são permitidos.</p>
+              <p id="polygon-name-error" class="name-error" hidden></p>
+            </div>
           </div>
         </aside>
 
         <section class="map-panel" aria-label="Editor de polígonos">
           <div id="map" data-testid="arcgis-map" aria-label="Mapa para desenhar polígonos"></div>
-          <div class="map-controls" aria-label="Ferramentas de desenho">
-            <button id="sidebar-toggle" data-testid="sidebar-toggle" class="icon-button sidebar-toggle" type="button" aria-expanded="false" aria-label="Abrir lista de polígonos" title="Abrir lista de polígonos">
-              <i data-lucide="panel-left-close" aria-hidden="true"></i>
-            </button>
-            <button id="draw-polygon" data-testid="draw-polygon" class="icon-button" title="Criar um novo polígono" aria-label="Criar um novo polígono"><i data-lucide="plus" aria-hidden="true"></i></button>
-            <button id="finish-drawing" data-testid="finish-drawing" hidden title="Concluir a ação atual">Concluir</button>
-            <button id="cancel-editing" data-testid="cancel-editing" class="secondary" hidden title="Cancelar desenho ou edição atual">Cancelar</button>
+          <div id="polygon-map-labels" class="polygon-map-labels" role="group" aria-label="Nomes dos polígonos no mapa"></div>
+          <div class="map-controls" aria-label="Ferramentas do mapa">
+            <div class="map-navigation" role="group" aria-label="Navegação do mapa">
+              <button id="zoom-in" data-testid="zoom-in" class="icon-button secondary" type="button" disabled aria-label="Aumentar zoom" title="Aumentar zoom"><i data-lucide="plus" aria-hidden="true"></i></button>
+              <button id="zoom-out" data-testid="zoom-out" class="icon-button secondary" type="button" disabled aria-label="Diminuir zoom" title="Diminuir zoom"><i data-lucide="minus" aria-hidden="true"></i></button>
+              <button id="north-up" data-testid="north-up" class="icon-button secondary compass-button" type="button" disabled aria-label="Bússola: arraste para girar ou clique para retornar o norte para cima" title="Arraste para girar; clique para retornar o norte para cima. Use ← e → para girar pelo teclado.">
+                <svg class="compass-dial" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle class="compass-ring" cx="12" cy="12" r="10" />
+                  <g class="north-indicator">
+                    <path class="compass-north" d="M12 3 16 12H8Z" />
+                    <path class="compass-south" d="m12 21-4-9h8Z" />
+                  </g>
+                  <circle class="compass-pivot" cx="12" cy="12" r="1.5" />
+                </svg>
+              </button>
+            </div>
           </div>
-          <div class="map-status" aria-live="polite">
-            <p id="map-instructions">Pronto para desenhar.</p>
-            <p id="last-edit" data-testid="last-edit" class="last-edit">Nenhuma edição executada.</p>
+          <div class="map-window-menu" aria-label="Ações do mapa separado" hidden>
+            <button id="return-map" data-testid="return-map" class="secondary" type="button" hidden><i data-lucide="panels-top-left" aria-hidden="true"></i><span>Reunir telas</span></button>
+            <div class="map-window-actions"></div>
           </div>
-          <p id="map-ready" data-testid="map-ready" hidden>Mapa carregado</p>
+          <p id="map-ready" data-testid="map-ready" hidden>Mapa ativo</p>
         </section>
+      </div>
+      <div class="map-status" aria-live="polite">
+        <p id="window-feedback" class="window-feedback" role="alert" hidden></p>
+        <p id="map-instructions">Pronto para desenhar.</p>
+        <p id="last-edit" data-testid="last-edit" class="last-edit">Nenhuma edição executada.</p>
       </div>
     </main>
     <dialog id="clear-dialog" aria-labelledby="clear-dialog-title">
+      <div class="dialog-symbol is-danger" aria-hidden="true"><i data-lucide="trash-2"></i></div>
       <h2 id="clear-dialog-title">Confirmar remoção</h2>
       <p id="clear-dialog-description"></p>
       <div class="dialog-actions">
@@ -55,6 +106,24 @@
         <button id="confirm-clear" type="button" class="danger">Apagar todos</button>
       </div>
     </dialog>
+    <dialog id="deleted-edit-dialog" aria-labelledby="deleted-edit-title" aria-describedby="deleted-edit-description">
+      <div class="dialog-symbol is-danger" aria-hidden="true"><i data-lucide="trash-2"></i></div>
+      <h2 id="deleted-edit-title">Excluir este polígono?</h2>
+      <p id="deleted-edit-description">O polígono foi apagado durante a edição. Deseja confirmar a exclusão ou cancelar a edição e restaurar o desenho original?</p>
+      <div class="dialog-actions">
+        <button id="restore-deleted-edit" type="button" class="secondary">Cancelar edição</button>
+        <button id="confirm-deleted-edit" type="button" class="danger">Excluir polígono</button>
+      </div>
+    </dialog>
+    <dialog id="install-dialog" aria-labelledby="install-dialog-title" aria-describedby="install-dialog-description">
+      <div class="dialog-symbol" aria-hidden="true"><i data-lucide="download"></i></div>
+      <h2 id="install-dialog-title">Instalar Polígonos</h2>
+      <p id="install-dialog-description"></p>
+      <form method="dialog" class="dialog-actions">
+        <button type="submit">Entendi</button>
+      </form>
+    </dialog>
+    <script type="module" src="/src/pwa.ts"></script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

@@ -3,6 +3,19 @@ dist/
 test-results/
 playwright-report/
 blob-report/
+coverage/
+release/
+out/
+.cache/
+*.log
+*.tsbuildinfo
+*.zip
+*.apk
+*.aab
+*.dmg
+*.exe
+*.app/
+*.asar
 .codex-finalizer/
 .pptx-build/
 .pptx-output/
@@ -11,6 +24,29 @@ blob-report/
 .env
 .env.*
 !.env.example
+
+# Credenciais e material criptográfico local
+.npmrc
+.netrc
+.ssh/
+.aws/
+secrets/
+credentials/
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa
+id_ecdsa
+id_ed25519
+*.mobileprovision
+
+# Perfis e caches locais de automação
+.chrome-profile/
+.playwright/
+.appium/
 
 android/.gradle/
 android/.idea/
