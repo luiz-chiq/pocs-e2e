@@ -74,7 +74,7 @@ test('três pontos em linha não formam um polígono válido', async ({ page }) 
   await page.getByTestId('cancel-editing').click()
 })
 
-test('selecionar um card ou desenho só permite editar após clicar no botão', async ({ page }) => {
+test('card seleciona sem editar e toque no desenho inicia edição imediatamente', async ({ page }) => {
   await page.getByTestId('draw-polygon').click()
   for (const point of triangle) await clickPoint(page, point)
   await page.getByTestId('finish-drawing').click()
@@ -89,7 +89,8 @@ test('selecionar um card ou desenho só permite editar após clicar no botão', 
   await expect(page.getByTestId('draw-polygon')).toHaveAttribute('data-mode', 'create')
   await clickPoint(page, [-30, 0])
   await expect(page.getByTestId('draw-polygon')).toHaveAttribute('data-mode', 'edit')
-  await expect(page.getByTestId('finish-drawing')).toBeHidden()
+  await expect(page.getByTestId('finish-drawing')).toBeVisible()
+  await page.getByTestId('cancel-editing').click()
   await clickPoint(page, [-300, -150])
   await expect(page.getByTestId('draw-polygon')).toHaveAttribute('data-mode', 'create')
 })

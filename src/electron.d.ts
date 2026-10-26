@@ -1,5 +1,7 @@
 interface PolygonFileData {
   name: string
+  locked?: boolean
+  color?: string
   geometry: { rings: number[][][]; spatialReference: { wkid: number } }
 }
 type PolygonFileResult =

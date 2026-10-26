@@ -19,6 +19,8 @@ function validateDocument(value) {
   const polygons = value.polygons.map((polygon, index) => {
     const prefix = `Polígono ${index + 1}: `
     if (!polygon || typeof polygon.name !== 'string') invalid(prefix + 'nome inválido.')
+    if ('locked' in polygon && typeof polygon.locked !== 'boolean') invalid(prefix + 'bloqueio inválido.')
+    if ('color' in polygon && (typeof polygon.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(polygon.color))) invalid(prefix + 'cor inválida.')
     const name = polygon.name.normalize('NFC').trim().replace(/ +/g, ' ')
     if (!name || [...name].length > 30 || !/^[\p{L}\p{N}][\p{L}\p{M}\p{N} ]*$/u.test(name)) {
       invalid(prefix + 'use de 1 a 30 letras, números ou espaços no nome; acentos são permitidos.')
@@ -51,7 +53,7 @@ function validateDocument(value) {
       if (!Number.isFinite(area) || Math.abs(area) <= span * span * 1e-10) invalid(prefix + 'os pontos devem formar uma área.')
       return points
     })
-    return { name, geometry: { rings, spatialReference: { wkid } } }
+    return { name, geometry: { rings, spatialReference: { wkid } }, ...(polygon.locked === true ? { locked: true } : {}), ...(polygon.color ? { color: polygon.color.toLowerCase() } : {}) }
   })
   return { format: 'poligonos', version: 1, polygons }
 }

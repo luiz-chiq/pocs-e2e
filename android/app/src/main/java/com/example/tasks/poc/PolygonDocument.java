@@ -64,6 +64,8 @@ final class PolygonDocument {
             JSONObject polygon = input.optJSONObject(i);
             String prefix = "Polígono " + (i + 1) + ": ";
             if (polygon == null || !(polygon.opt("name") instanceof String)) throw invalid(prefix + "nome inválido.");
+            if (polygon.has("locked") && !(polygon.opt("locked") instanceof Boolean)) throw invalid(prefix + "bloqueio inválido.");
+            if (polygon.has("color") && (!(polygon.opt("color") instanceof String) || !polygon.getString("color").matches("^#[0-9a-fA-F]{6}$"))) throw invalid(prefix + "cor inválida.");
             String name = Normalizer.normalize(polygon.getString("name"), Normalizer.Form.NFC).trim().replaceAll(" +", " ");
             if (name.isEmpty() || name.codePointCount(0, name.length()) > 30 || !name.matches("^[\\p{L}\\p{N}][\\p{L}\\p{M}\\p{N} ]*$")) {
                 throw invalid(prefix + "use de 1 a 30 letras, números ou espaços no nome; acentos são permitidos.");
@@ -114,7 +116,10 @@ final class PolygonDocument {
                 if (!Double.isFinite(area) || Math.abs(area) <= span * span * 1e-10) throw invalid(prefix + "os pontos devem formar uma área.");
                 rings.put(outputRing);
             }
-            polygons.put(new JSONObject().put("name", name).put("geometry", new JSONObject().put("rings", rings).put("spatialReference", new JSONObject().put("wkid", wkid))));
+            JSONObject outputPolygon = new JSONObject().put("name", name).put("geometry", new JSONObject().put("rings", rings).put("spatialReference", new JSONObject().put("wkid", wkid)));
+            if (polygon.optBoolean("locked", false)) outputPolygon.put("locked", true);
+            if (polygon.has("color")) outputPolygon.put("color", polygon.getString("color").toLowerCase(java.util.Locale.ROOT));
+            polygons.put(outputPolygon);
         }
         return new JSONObject().put("format", "poligonos").put("version", 1).put("polygons", polygons);
     }

@@ -16,7 +16,6 @@
       <div class="workspace">
         <aside class="polygon-sidebar" aria-label="Polígonos salvos">
           <header class="sidebar-header">
-            <div class="sidebar-brand"><span class="brand-mark" aria-hidden="true"><i data-lucide="vector-polygon"></i></span>Editor de mapas</div>
             <div class="sidebar-heading">
               <h1 id="page-title">Polígonos</h1>
               <span id="polygon-count" class="polygon-count" aria-live="polite">0</span>
@@ -24,8 +23,9 @@
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 16v5h14v-5" /></svg>
               </button>
             </div>
-            <p class="sidebar-description">Desenhe suas áreas. Explore cada detalhe.</p>
           </header>
+          <div class="sidebar-scroll-area">
+          <div id="sidebar-scroll-content" class="sidebar-scroll" aria-label="Conteúdo do menu lateral" tabindex="0">
           <p class="collection-heading">Áreas desenhadas</p>
           <div id="empty-state" class="empty-state">
             <span class="empty-symbol" aria-hidden="true"><i data-lucide="vector-polygon"></i></span>
@@ -33,6 +33,10 @@
             <p>Crie um polígono para delimitar<br />sua primeira área.</p>
           </div>
           <ul id="polygon-list" data-testid="polygon-list" class="polygon-list"></ul>
+          <div class="sidebar-editor" hidden></div>
+          </div>
+          <div class="sidebar-scrollbar" role="scrollbar" tabindex="-1" aria-controls="sidebar-scroll-content" aria-label="Rolar menu lateral" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0" aria-disabled="true"><div class="sidebar-scrollbar-thumb"></div></div>
+          </div>
           <div class="sidebar-actions" aria-label="Ações da aplicação">
             <div id="polygon-file-actions" class="polygon-file-actions" role="group" aria-label="Arquivos de polígonos" hidden>
               <button id="import-polygons" data-testid="import-polygons" class="secondary" type="button" title="Acrescentar polígonos de um arquivo JSON"><i data-lucide="folder-open" aria-hidden="true"></i><span>Importar</span></button>
@@ -61,11 +65,17 @@
               <button id="cancel-editing" data-testid="cancel-editing" class="secondary" type="button" hidden title="Cancelar desenho ou edição atual"><i data-lucide="x" aria-hidden="true"></i><span>Cancelar</span></button>
             </div>
             <div id="polygon-name-editor" class="polygon-name-editor" hidden>
-              <label for="polygon-name">Nome do polígono</label>
-              <input id="polygon-name" data-testid="polygon-name" type="text" maxlength="30" required autocomplete="off" spellcheck="false" aria-describedby="polygon-name-hint polygon-name-error" />
-              <p id="polygon-name-hint">De 1 a 30 caracteres. Use letras, números e espaços; acentos são permitidos.</p>
-              <p id="polygon-name-error" class="name-error" hidden></p>
+              <input id="polygon-name" data-testid="polygon-name" type="text" maxlength="30" required autocomplete="off" spellcheck="false" aria-label="Nome do polígono" placeholder="Nome" />
             </div>
+            <div id="polygon-color-editor" class="polygon-color-editor" role="group" aria-label="Cor do polígono" hidden>
+              <span>Cor</span>
+              <div id="polygon-color-options" class="polygon-color-options"></div>
+              <input id="polygon-color" data-testid="polygon-color" type="color" value="#1261a0" aria-label="Escolher outra cor para o polígono" title="Escolher outra cor" />
+            </div>
+            <label id="polygon-lock-editor" class="polygon-lock-editor" hidden>
+              <input id="polygon-locked" data-testid="polygon-locked" type="checkbox" />
+              <span>Travar ao salvar<small>Para editar novamente, destrave pelo cadeado na lista.</small></span>
+            </label>
           </div>
         </aside>
 
@@ -101,6 +111,7 @@
         <p id="last-edit" data-testid="last-edit" class="last-edit">Nenhuma edição executada.</p>
       </div>
     </main>
+    <div id="polygon-name-error" class="name-tooltip" role="tooltip" hidden></div>
     <dialog id="clear-dialog" aria-labelledby="clear-dialog-title">
       <div class="dialog-symbol is-danger" aria-hidden="true"><i data-lucide="trash-2"></i></div>
       <h2 id="clear-dialog-title">Confirmar remoção</h2>
@@ -117,6 +128,16 @@
       <div class="dialog-actions">
         <button id="restore-deleted-edit" type="button" class="secondary">Cancelar edição</button>
         <button id="confirm-deleted-edit" type="button" class="danger">Excluir polígono</button>
+      </div>
+    </dialog>
+    <dialog id="switch-edit-dialog" aria-labelledby="switch-edit-title" aria-describedby="switch-edit-description">
+      <div class="dialog-symbol" aria-hidden="true"><i data-lucide="pencil"></i></div>
+      <h2 id="switch-edit-title">Trocar de polígono?</h2>
+      <p id="switch-edit-description"></p>
+      <div class="dialog-actions switch-edit-actions">
+        <button id="save-and-switch" type="button">Salvar e trocar</button>
+        <button id="discard-and-switch" type="button" class="secondary">Cancelar edição e trocar</button>
+        <button id="dismiss-switch" type="button" class="secondary">Continuar editando</button>
       </div>
     </dialog>
     <dialog id="install-dialog" aria-labelledby="install-dialog-title" aria-describedby="install-dialog-description">

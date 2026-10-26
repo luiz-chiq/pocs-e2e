@@ -16,7 +16,11 @@ test('valida formato, nome, referência e geometria antes de aceitar um lote', (
     value => { value.polygons[0].geometry.rings[0].pop() },
     value => { value.polygons[0].geometry.rings = [[[0, 0], [1, 1], [2, 2], [0, 0]]] },
     value => { value.polygons[0].geometry.rings[0][1] = [NaN, 1] },
-    value => { value.polygons[0].geometry.rings[0][1] = [0, 91] }
+    value => { value.polygons[0].geometry.rings[0][1] = [0, 91] },
+    value => { value.polygons[0].locked = 'true' },
+    value => { value.polygons[0].color = 'red' },
+    value => { value.polygons[0].color = '#12345g' },
+    value => { value.polygons[0].color = null }
   ]) {
     const invalid = document()
     mutation(invalid)
@@ -33,11 +37,16 @@ test('exporta e importa em disco real, normaliza dados e remove propriedades ext
       showOpenDialog: async () => ({ canceled: false, filePaths: [file] })
     } })
     const polygons = document().polygons
+    polygons[0].locked = true
+    polygons[0].color = '#CF4949'
     polygons[0].extra = 'ignorar'
     assert.equal((await service.exportPolygons(null, polygons)).status, 'success')
     const result = await service.importPolygons(null)
     assert.equal(result.status, 'success')
-    assert.deepEqual(result.polygons, validateDocument(document()).polygons)
+    const expected = document()
+    expected.polygons[0].locked = true
+    expected.polygons[0].color = '#cf4949'
+    assert.deepEqual(result.polygons, validateDocument(expected).polygons)
     assert.equal(JSON.parse(await fs.readFile(file, 'utf8')).version, 1)
     assert.deepEqual(await fs.readdir(directory), ['areas.json'])
   } finally { await fs.rm(directory, { recursive: true, force: true }) }

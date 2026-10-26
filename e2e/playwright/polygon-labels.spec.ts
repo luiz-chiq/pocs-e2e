@@ -52,7 +52,7 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByTestId('map-ready')).toBeVisible()
 })
 
-test('Enter edita a seleção do card ou do mapa, e o nome central acompanha edição e recarregamento', async ({ page }) => {
+test('Enter edita a seleção do card, toque edita o mapa e o nome acompanha edição e recarregamento', async ({ page }) => {
   await createPolygon(page)
   await expect(page.getByTestId('polygon-map-label')).toHaveText('Polígono 1')
   await page.getByTestId('polygon-item').click()
@@ -74,8 +74,7 @@ test('Enter edita a seleção do card ou do mapa, e o nome central acompanha edi
   const point = await labelCenter(page)
   await page.mouse.click(point.x, point.y)
   await expect(page.getByTestId('polygon-item')).toHaveClass(/selected/)
-  await expect(page.getByTestId('finish-drawing')).toBeHidden()
-  await page.keyboard.press('Enter')
+  await expect(page.getByTestId('finish-drawing')).toBeVisible()
   await expect(page.getByTestId('polygon-name')).toHaveValue('Área São José')
   await page.getByTestId('cancel-editing').click()
   await page.evaluate(async () => {
@@ -170,7 +169,6 @@ test('Enter e nomes funcionam nas duas janelas, incluindo exclusão e restauraç
   await expect(page.getByTestId('finish-drawing')).toBeHidden()
   const point = await labelCenter(popup)
   await popup.mouse.click(point.x, point.y)
-  await popup.keyboard.press('Enter')
   await expect(popup.getByTestId('polygon-name')).toBeVisible()
   await popup.waitForTimeout(500)
   await popup.locator('#map .esri-view-surface').focus()

@@ -2,10 +2,18 @@
 
 Editor de polígonos usando o ArcGIS Maps SDK for JavaScript, com versões web/PWA, Electron e Android via Capacitor. O projeto compara automação E2E com Playwright e Selenium. A versão com as três ferramentas está preservada na branch `codex/poc-tres-ferramentas` (commit `98f49f5`).
 
-A interface usa verde profundo, superfícies claras e âmbar para a área selecionada.
+A interface usa verde profundo, superfícies claras e âmbar no card selecionado.
+No mapa, a seleção recebe brilho branco e a edição usa contorno branco, preservando
+a cor do preenchimento. Ao salvar ou cancelar, o contorno da cor original é restaurado.
 Os cards mostram a quantidade de vértices e o estado de seleção ou edição.
 No computador, a lista tem rolagem própria e mantém as ações no rodapé; no celular,
 o mapa aparece acima da coleção. As duas janelas compartilham o mesmo visual.
+O cabeçalho contém apenas **Polígonos**, o contador e o botão de instalação.
+Durante a criação ou edição, o menu lateral mostra apenas o polígono atual e
+seus controles em um formulário que ocupa o painel, sem aparência de card.
+As outras áreas e ações gerais voltam ao concluir ou cancelar. A barra de rolagem
+do conteúdo fica sempre visível, com cabeçalho e ações fixos. A contagem de
+vértices aparece em um badge redondo, como uma notificação, ao lado do nome.
 
 ## Execução
 
@@ -50,9 +58,12 @@ retornar ao norte. O gesto de arrastar o mapa com o botão direito continua disp
 
 No rodapé da barra lateral, **Adicionar polígono** fica à direita de **Apagar todos**.
 Os dois botões têm o mesmo tamanho. Clicar em um card abre seus vértices e
-destaca o polígono em amarelo no mapa; a seta à esquerda do nome permite recolher os detalhes.
-Selecionar não inicia a edição: o botão de criar passa a **Editar polígono selecionado**.
-Clique nesse botão para editar. Clique no mapa vazio, recolha o card ou use **Esc**
+destaca o polígono com um brilho branco no mapa; a seta à esquerda do nome permite recolher os detalhes.
+Selecionar um card não inicia a edição: o botão de criar passa a **Editar polígono selecionado**.
+Toque ou clique diretamente no polígono no mapa para entrar na edição imediatamente.
+Se outro polígono estiver em edição, escolha **Salvar e trocar**, **Cancelar edição e trocar**
+ou **Continuar editando**. Nomes e desenhos inválidos impedem salvar a edição.
+Também é possível usar o botão Editar. Clique no mapa vazio, recolha o card ou use **Esc**
 para limpar a seleção e voltar a criar polígonos.
 Com um polígono selecionado, **Enter** inicia a edição; durante a edição,
 **Enter** conclui. O atalho mantém a ação normal dos botões de navegação e diálogos.
@@ -62,7 +73,21 @@ posicionado dentro do polígono. Os rótulos não bloqueiam os cliques no mapa.
 Durante a edição, o nome do card vira um campo de texto. O nome é obrigatório,
 aceita de 1 a 30 caracteres e permite apenas letras (incluindo acentos), números
 e espaços. Espaços nas extremidades e espaços repetidos são removidos ao salvar.
-**Concluir edição** salva nome e desenho; **Cancelar** restaura ambos.
+O campo não mostra rótulo nem instruções fixas. Um tooltip avisa sobre nomes
+inválidos ou ao atingir 24 dos 30 caracteres; desaparece ao corrigir o nome
+ou ficar abaixo desse limite.
+Durante a criação e edição, escolha a cor na paleta ou no seletor de cor livre.
+A prévia aparece no mapa. **Concluir edição** salva nome, desenho e cor;
+**Cancelar** restaura os valores anteriores. A cor persiste após recarregar,
+fica sincronizada nas duas telas e acompanha os arquivos importados/exportados.
+Durante a criação ou edição, **Travar ao salvar** impede novas edições do desenho
+e do nome após a confirmação. O ícone de cadeado indica o bloqueio e a borda
+do card indica a seleção, sem tags adicionais. Polígonos travados só podem ser
+selecionados pela lista lateral; cliques e toques neles no mapa são ignorados.
+Enter também não inicia a edição enquanto o polígono estiver travado.
+Destrave pelo cadeado no menu lateral para editar novamente. Cancelar descarta
+também a mudança de bloqueio. O bloqueio persiste após recarregar e fica
+sincronizado nas duas janelas; importação e exportação preservam esse estado.
 Os nomes ficam salvos após recarregar. Na janela do mapa separado, o mesmo campo
 aparece no menu inferior e fica sincronizado com o card da janela principal.
 Durante a criação ou edição, essa mesma linha mostra **Concluir** e **Cancelar**.
@@ -104,7 +129,7 @@ No app Electron, os botões **Importar** e **Exportar** ficam no rodapé do menu
 lateral. A importação acrescenta áreas sem apagar as existentes; a exportação
 salva todas as áreas confirmadas em JSON. Conclua ou cancele a edição antes de
 usar os botões. Os arquivos usam o formato próprio `poligonos`, versão `1`, com
-nome, anéis de coordenadas e referência espacial ArcGIS; não são GeoJSON.
+nome, anéis de coordenadas, referência espacial ArcGIS e cor opcional `#RRGGBB`; não são GeoJSON.
 
 Os diálogos nativos, a validação e a leitura/gravação acontecem no processo
 principal do Electron. O preload expõe apenas essas duas operações por IPC,
@@ -126,7 +151,7 @@ O SDK apresenta os créditos dos fornecedores na atribuição do mapa. O acesso
 público não elimina as condições de licença: consulte o
 [item oficial e seus termos](https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9).
 Usamos a camada online, sem exportação ou pré-download de imagens para uso
-offline. A exportação de polígonos contém apenas nomes e coordenadas.
+offline. A exportação de polígonos contém nomes, coordenadas, cor e o bloqueio opcional `locked`.
 
 A [verificação do satélite](e2e/pocs/MAPA-SATELITE.md) conferiu imagens reais,
 atribuição, desenho e edição em duas janelas no Chrome e no Electron. Para
