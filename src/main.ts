@@ -962,6 +962,19 @@ async function startEditing(graphic: Graphic) {
   await activateSketchUpdate(graphic)
 }
 
+async function framePolygon(graphic: Graphic) {
+  const extent = graphic.geometry?.extent
+  if (!extent || !view.ready) return
+  try {
+    await view.goTo({ target: extent.clone().expand(1.7), rotation: view.rotation }, { duration: 400 })
+  } catch (error) {
+    // Um novo card ou gesto pode interromper o enquadramento anterior.
+    if (error instanceof Error && error.name === 'AbortError') return
+    message.textContent = 'Não foi possível enquadrar o polígono. Tente selecionar o card novamente.'
+    detachedMap.publish()
+  }
+}
+
 function selectPolygon(graphic: Graphic) {
   if (detachedMap.command({ type: 'select', id: graphicId(graphic)! })) return
   selectedGraphic = graphic
@@ -973,6 +986,7 @@ function selectPolygon(graphic: Graphic) {
       : 'Polígono selecionado. Toque nele no mapa, use Enter ou o botão Editar.'
   }
   render()
+  if (activeAction === null) void framePolygon(graphic)
 }
 
 function clearSelection() {
@@ -996,6 +1010,7 @@ function toggleVertices(graphic: Graphic) {
       : 'Polígono selecionado. Use Enter ou o botão Editar para alterar o nome e o desenho.'
   }
   render()
+  if (!closing && activeAction === null) void framePolygon(graphic)
 }
 
 function deletePolygons(target: Graphic | 'all') {

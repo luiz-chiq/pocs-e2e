@@ -59,6 +59,9 @@ retornar ao norte. O gesto de arrastar o mapa com o botão direito continua disp
 No rodapé da barra lateral, **Adicionar polígono** fica à direita de **Apagar todos**.
 Os dois botões têm o mesmo tamanho. Clicar em um card abre seus vértices e
 destaca o polígono com um brilho branco no mapa; a seta à esquerda do nome permite recolher os detalhes.
+Ao clicar no card, o mapa centraliza a área e ajusta o zoom com margem ao redor,
+mantendo a rotação da bússola. O enquadramento também funciona com o mapa separado
+e com polígonos travados selecionados pela lista.
 Selecionar um card não inicia a edição: o botão de criar passa a **Editar polígono selecionado**.
 Toque ou clique diretamente no polígono no mapa para entrar na edição imediatamente.
 Se outro polígono estiver em edição, escolha **Salvar e trocar**, **Cancelar edição e trocar**
