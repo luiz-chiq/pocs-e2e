@@ -26,10 +26,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  const fileDialog = require('../package.json').polygonE2E === true && process.env.POLYGON_E2E_DIALOG_PLAN
-    ? require('./testing/dialogs.cjs')(dialog, process.env.POLYGON_E2E_DIALOG_PLAN)
-    : dialog
-  registerPolygonFiles({ ipcMain, BrowserWindow, dialog: fileDialog, origin })
+  registerPolygonFiles({ ipcMain, BrowserWindow, dialog, origin })
   protocol.handle('poligonos', (request) => {
     const url = new URL(request.url)
     if (url.host !== 'app') return new Response('Not found', { status: 404 })

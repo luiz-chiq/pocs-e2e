@@ -76,11 +76,10 @@ encerra com código 2. O bootstrap Mac2 ainda não implementa os cenários visua
 completos. A escolha do caminho nos cinco cenários Playwright é simulada; IPC,
 validação e leitura/gravação dos arquivos são reais.
 
-A modalidade anterior com ChromeDriver é explícita:
-
-```bash
-npm run test:poc:electron:files:chromedriver
-```
+A modalidade antiga de arquivos Electron com ChromeDriver foi removida da main.
+A implementação anterior permanece na branch `codex/poc-tres-ferramentas`.
+Isso não altera a suíte comparativa C/D Selenium no Electron, que ainda usa
+um ChromeDriver compatível.
 
 ## Protótipo Android: Playwright + Appium
 

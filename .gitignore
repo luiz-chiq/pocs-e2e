@@ -23,7 +23,6 @@ out/
 .DS_Store
 .env
 .env.*
-!.env.example
 
 # Credenciais e material criptográfico local
 .npmrc

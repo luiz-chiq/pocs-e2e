@@ -17,7 +17,7 @@ em `e2e/pocs/`, com duas execuções para C10 (mouse e touch). Consulte
 | --- | --- | --- |
 | C01 | Criar polígono válido | Desenhar pelo mapa com pelo menos três vértices, concluir e conferir card, contagem, vértices e nome no mapa. |
 | C02 | Impedir desenho inválido | Tentar concluir com zero, um ou dois vértices e com pontos colineares; mostrar alerta e não salvar um polígono inválido. |
-| C03 | Selecionar e iniciar edição | Selecionar pelo card e pelo mapa; abrir detalhes e destacar a área sem editar automaticamente. Iniciar edição pelo botão ou Enter, onde houver teclado. |
+| C03 | Selecionar e iniciar edição | Selecionar pelo card sem editar automaticamente; tocar no desenho no mapa inicia edição. Também permitir botão ou Enter, onde houver teclado. |
 | C04 | Editar geometria | Mover a área, arrastar um vértice e inserir outro; concluir e conferir as coordenadas resultantes. |
 | C05 | Renomear e validar nome | Aceitar letras com acentos, números e espaços; validar nome vazio, símbolos e limite de 30 caracteres. Conferir nome no card e no mapa. |
 | C06 | Cancelar edição | Alterar nome e geometria, cancelar e conferir que ambos voltam ao último estado salvo. |
@@ -41,7 +41,8 @@ Android nativo fica fora desta cobertura adicional, pois não oferece separar ma
 2. Conferir que a lista permanece na janela principal e o mapa aparece na
    auxiliar, preservando o polígono existente.
 3. Selecionar o card na principal: destacar a mesma área na auxiliar sem
-   iniciar edição. Selecionar outra área no mapa: atualizar o card selecionado.
+   iniciar edição. Tocar em outra área no mapa: atualizar o card e iniciar a edição;
+   cancelar essa edição antes da próxima criação.
 4. Iniciar a criação pela principal, desenhar na auxiliar e concluir pela
    principal. Conferir o novo card e o rótulo no mapa.
 5. Editar pela principal, alterar nome e geometria na auxiliar e salvar.

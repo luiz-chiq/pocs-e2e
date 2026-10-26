@@ -6,7 +6,6 @@ export const isWeb = target === 'web'
 export const isPwa = target === 'pwa'
 export const isElectron = target === 'electron'
 export const isAndroid = target === 'android'
-export const nativeUrl = isElectron ? 'poligonos://app/' : appUrl
 export const viewport = { width: 1280, height: 800 }
 export const triangle: Array<[number, number]> = [[-120, -50], [0, -50], [-60, 50]]
 export const cases = {

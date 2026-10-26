@@ -175,7 +175,8 @@ npm run test:e2e
 
 `test:e2e` executa a suíte Playwright de desenvolvimento e inicia o Vite quando
 necessário. Para depurar, use `npm run test:e2e:watch` ou
-`npm run test:e2e:visual`.
+`npm run test:e2e:visual`. As evidências dessa suíte ficam em
+`test-results/development/`, separadas das POCs em `test-results/pocs/`.
 
 As POCs comparativas usam uma build E2E, gestos reais e uma API auxiliar somente
 de leitura. O plano está em [E2E-POCS.md](E2E-POCS.md) e a execução em
@@ -215,8 +216,8 @@ npm run test:poc:electron:files
 O segundo comando testa Playwright direto no Electron e tenta o bootstrap nativo
 Selenium/Appium Mac2 no macOS. Mac2 exige Xcode completo. Cenários indisponíveis
 ficam registrados e o comando retorna código 2; não há fallback para ChromeDriver.
-A modalidade explícita com ChromeDriver continua disponível em
-`npm run test:poc:electron:files:chromedriver`.
+A modalidade antiga de arquivos Electron com ChromeDriver foi removida da main;
+a implementação anterior está na branch `codex/poc-tres-ferramentas`.
 
 ## Android
 

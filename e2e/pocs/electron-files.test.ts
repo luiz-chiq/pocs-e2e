@@ -4,12 +4,8 @@ import { mkdtemp, readFile, writeFile, rm, mkdir, readdir } from 'node:fs/promis
 import { tmpdir } from 'node:os'
 import { resolve, join } from 'node:path'
 import { _electron } from '@playwright/test'
-import { Builder, By } from 'selenium-webdriver'
-import chrome from 'selenium-webdriver/chrome.js'
-import { electronDriver } from './shared/electron.ts'
 import { electronFileCases } from './shared/electron-file-cases.ts'
 
-type Tool = 'playwright' | 'selenium'
 type Adapter = {
   click(selector: string): Promise<void>
   snapshot(): Promise<Snapshot>
@@ -17,11 +13,10 @@ type Adapter = {
   switchTo(handle: string): Promise<void>
   reload(): Promise<void>
   close(): Promise<void>
-  chooseDialog?(kind: 'open' | 'save', path?: string): Promise<void>
-  dialogAudit?(): Promise<unknown[]>
-  transport?: string
+  chooseDialog(kind: 'open' | 'save', path?: string): Promise<void>
+  dialogAudit(): Promise<unknown[]>
+  transport: string
 }
-const directMain = process.env.POC_ELECTRON_DIRECT_MAIN === 'true'
 type Snapshot = ReturnType<typeof snapshot>
 function snapshot() {
   const visible = (selector: string) => {
@@ -54,76 +49,56 @@ async function wait<T>(read: () => Promise<T>, accept: (value: T) => boolean, me
   assert.fail(`${message}: ${JSON.stringify(value!)}`)
 }
 
-async function launch(tool: Tool, profile: string): Promise<Adapter> {
-  if (directMain && tool !== 'playwright') throw new Error('Sem ChromeDriver, Selenium precisa de automação nativa. Nenhum fallback é permitido nesta modalidade.')
+async function launch(profile: string): Promise<Adapter> {
   const binary = process.env.ELECTRON_APP_PATH ?? resolve('release/electron/mac-arm64/Poligonos POC.app/Contents/MacOS/Poligonos POC')
-  if (tool === 'playwright') {
-    const env: Record<string, string | undefined> = { ...process.env, POLYGON_USER_DATA_DIR: profile }
-    delete env.ELECTRON_RUN_AS_NODE
-    const app = await _electron.launch({ executablePath: binary, env: Object.fromEntries(Object.entries(env).filter((entry): entry is [string, string] => entry[1] !== undefined)), timeout: 45000 })
-    if (directMain) await app.evaluate(({ dialog }) => {
-      type MainState = typeof globalThis & {
-        polygonDialogChoice?: { kind: 'open' | 'save'; path?: string }
-        polygonDialogAudit: { kind: string; pid: number; processType: string }[]
-      }
-      const state = globalThis as MainState
-      state.polygonDialogAudit = []
-      const choose = (kind: 'open' | 'save') => {
-        if (state.polygonDialogChoice?.kind !== kind) throw new Error(`Escolha de diálogo ausente: ${kind}`)
-        const path = state.polygonDialogChoice.path
-        delete state.polygonDialogChoice
-        state.polygonDialogAudit.push({ kind, pid: process.pid, processType: process.type })
-        return path
-      }
-      dialog.showOpenDialog = async () => {
-        const path = choose('open')
-        return { canceled: !path, filePaths: path ? [path] : [] }
-      }
-      dialog.showSaveDialog = async () => {
-        const path = choose('save')
-        return { canceled: !path, filePath: path ?? '' }
-      }
-    })
-    let page = await app.firstWindow()
-    const pages = new Map([[String(page.mainFrame()), page]])
-    const refreshHandles = () => {
-      for (const candidate of app.windows()) if (![...pages.values()].includes(candidate)) pages.set(`window-${pages.size}`, candidate)
-      return [...pages].filter(([, candidate]) => !candidate.isClosed()).map(([key]) => key)
+  const env: Record<string, string | undefined> = { ...process.env, POLYGON_USER_DATA_DIR: profile }
+  delete env.ELECTRON_RUN_AS_NODE
+  const app = await _electron.launch({ executablePath: binary, env: Object.fromEntries(Object.entries(env).filter((entry): entry is [string, string] => entry[1] !== undefined)), timeout: 45000 })
+  await app.evaluate(({ dialog }) => {
+    type MainState = typeof globalThis & {
+      polygonDialogChoice?: { kind: 'open' | 'save'; path?: string }
+      polygonDialogAudit: { kind: string; pid: number; processType: string }[]
     }
-    return {
-      transport: 'playwright-electron-direct',
-      ...(directMain ? {
-        chooseDialog: async (kind: 'open' | 'save', path?: string) => { await app.evaluate((_electron, choice) => {
-          (globalThis as typeof globalThis & { polygonDialogChoice?: typeof choice }).polygonDialogChoice = choice
-        }, { kind, path }) },
-        dialogAudit: async () => app.evaluate(() => {
-          const state = globalThis as typeof globalThis & { polygonDialogAudit: unknown[]; polygonDialogChoice?: unknown }
-          if (state.polygonDialogChoice) throw new Error('Escolha de diálogo não foi consumida pelo main')
-          return state.polygonDialogAudit
-        })
-      } : {}),
-      click: async selector => { await page.locator(selector).click() },
-      snapshot: () => page.evaluate(snapshot),
-      handles: async () => refreshHandles(),
-      switchTo: async handle => { page = pages.get(handle)!; await page.bringToFront() },
-      reload: async () => { await page.reload() }, close: () => app.close()
+    const state = globalThis as MainState
+    state.polygonDialogAudit = []
+    const choose = (kind: 'open' | 'save') => {
+      if (state.polygonDialogChoice?.kind !== kind) throw new Error(`Escolha de diálogo ausente: ${kind}`)
+      const path = state.polygonDialogChoice.path
+      delete state.polygonDialogChoice
+      state.polygonDialogAudit.push({ kind, pid: process.pid, processType: process.type })
+      return path
     }
+    dialog.showOpenDialog = async () => {
+      const path = choose('open')
+      return { canceled: !path, filePaths: path ? [path] : [] }
+    }
+    dialog.showSaveDialog = async () => {
+      const path = choose('save')
+      return { canceled: !path, filePath: path ?? '' }
+    }
+  })
+  let page = await app.firstWindow()
+  const pages = new Map([[String(page.mainFrame()), page]])
+  const refreshHandles = () => {
+    for (const candidate of app.windows()) if (![...pages.values()].includes(candidate)) pages.set(`window-${pages.size}`, candidate)
+    return [...pages].filter(([, candidate]) => !candidate.isClosed()).map(([key]) => key)
   }
-  const driverPath = await electronDriver()
-  if (tool === 'selenium') {
-    const options = new chrome.Options().setChromeBinaryPath(binary)
-    options.addArguments(`--user-data-dir=${profile}`)
-    options.set('goog:chromeOptions', { ...options.get('goog:chromeOptions'), windowTypes: ['app', 'webview'] })
-    const driver = await new Builder().forBrowser('chrome').setChromeOptions(options).setChromeService(new chrome.ServiceBuilder(driverPath)).build()
-    return {
-      click: async selector => { await driver.findElement(By.css(selector)).click() },
-      snapshot: () => driver.executeScript<Snapshot>(snapshot),
-      handles: () => driver.getAllWindowHandles(),
-      switchTo: async handle => { await driver.switchTo().window(handle) },
-      reload: () => driver.navigate().refresh(), close: () => driver.quit()
-    }
+  return {
+    transport: 'playwright-electron-direct',
+    chooseDialog: async (kind: 'open' | 'save', path?: string) => { await app.evaluate((_electron, choice) => {
+      (globalThis as typeof globalThis & { polygonDialogChoice?: typeof choice }).polygonDialogChoice = choice
+    }, { kind, path }) },
+    dialogAudit: async () => app.evaluate(() => {
+      const state = globalThis as typeof globalThis & { polygonDialogAudit: unknown[]; polygonDialogChoice?: unknown }
+      if (state.polygonDialogChoice) throw new Error('Escolha de diálogo não foi consumida pelo main')
+      return state.polygonDialogAudit
+    }),
+    click: async selector => { await page.locator(selector).click() },
+    snapshot: () => page.evaluate(snapshot),
+    handles: async () => refreshHandles(),
+    switchTo: async handle => { page = pages.get(handle)!; await page.bringToFront() },
+    reload: async () => { await page.reload() }, close: () => app.close()
   }
-  throw new Error(`Ferramenta não suportada: ${tool}`)
 }
 
 const directory = resolve(process.env.POC_NATIVE_RESULTS_DIR ?? 'test-results/pocs/electron-files')
@@ -133,7 +108,7 @@ const expected = {
   polygons: [{ name: 'Reserva São José', geometry: { rings: [[[-46.64, -23.55], [-46.63, -23.54], [-46.62, -23.56], [-46.64, -23.55]]], spatialReference: { wkid: 4326 } } }]
 }
 const selectors = { import: '#import-polygons', export: '#export-polygons' }
-const results: { tool: Tool; title: string; status: string; durationMs: number; error?: string; audit?: unknown; transport?: string; mainControl?: boolean }[] = []
+const results: { tool: 'playwright'; title: string; status: string; durationMs: number; error?: string; audit?: unknown; transport?: string; mainControl?: boolean }[] = []
 const startedAt = new Date().toISOString()
 type Context = {
   app: Adapter; folder: string
@@ -224,67 +199,46 @@ const cases: [string, (context: Context) => Promise<void>][] = [
     await c.completed(s => s.ready && s.count === '2' && s.mapNames.length === 2, 'Dados não persistiram ao reunir/recarregar')
   }]
 ]
-const selected = (process.env.POC_FRAMEWORKS ?? 'playwright,selenium').split(',')
-if (new Set(selected).size !== selected.length || selected.some(tool => !['playwright', 'selenium'].includes(tool))) {
-  throw new Error('POC_FRAMEWORKS inválido. Use playwright,selenium, sem repetições.')
-}
-for (const tool of ['playwright', 'selenium'] as Tool[]) {
-  if (!selected.includes(tool)) continue
-  for (const [title, body] of cases) test(`${tool} / ${title}`, { timeout: 90000 }, async () => {
-    const started = performance.now()
-    const folder = await mkdtemp(join(tmpdir(), `polygon-native-${tool}-`))
-    const plan = join(folder, 'dialog-plan.json')
-    const input = join(folder, 'entrada.json')
-    const oldProfile = process.env.POLYGON_USER_DATA_DIR
-    const oldPlan = process.env.POLYGON_E2E_DIALOG_PLAN
-    const oldRunAsNode = process.env.ELECTRON_RUN_AS_NODE
-    const profile = join(folder, 'profile')
-    process.env.POLYGON_USER_DATA_DIR = profile
-    if (directMain) delete process.env.POLYGON_E2E_DIALOG_PLAN
-    else process.env.POLYGON_E2E_DIALOG_PLAN = plan
-    delete process.env.ELECTRON_RUN_AS_NODE
-    let app: Adapter | undefined
-    const result: typeof results[number] = { tool, title, status: 'passed', durationMs: 0 }
-    try {
-      await writeFile(plan, '[]')
-      await writeFile(input, JSON.stringify(expected))
-      app = await launch(tool, profile)
-      result.transport = app.transport ?? 'chromedriver'
-      result.mainControl = directMain
-      await wait(() => app!.snapshot(), state => state.ready, 'Mapa não iniciou')
-      const completed: Context['completed'] = (accept, message) => wait(() => app!.snapshot(), state => !state.pending && accept(state), message)
-      const choose: Context['choose'] = app.chooseDialog ?? ((kind, path) => writeFile(plan, JSON.stringify([{ kind, path }])))
-      await body({ app, folder, choose, state: () => app!.snapshot(), completed,
-        load: async (path = input) => {
-          const previous = (await app!.snapshot()).count
-          await choose('open', path)
-          await app!.click(selectors.import)
-          await completed(s => s.count === String(Number(previous) + 1), 'Importação não acrescentou a área')
-        }
-      })
-      const audit = app.dialogAudit ? await app.dialogAudit() as { processType: string; pid: number }[]
-        : (await readFile(`${plan}.audit.jsonl`, 'utf8')).trim().split('\n').map(line => JSON.parse(line))
-      assert(audit.length > 0)
-      assert(audit.every(entry => entry.processType === 'browser' && entry.pid > 0), 'Diálogos não foram chamados no processo principal')
-      result.audit = audit
-      assert.deepEqual(JSON.parse(await readFile(plan, 'utf8')), [], 'Plano de diálogo não foi consumido')
-    } catch (error) {
-      result.status = 'failed'
-      result.error = error instanceof Error ? error.stack : String(error)
-      throw error
-    } finally {
-      try { await app?.close() } catch (error) { result.status = 'failed'; result.error ??= String(error); throw error }
-      finally {
-        result.durationMs = Math.round(performance.now() - started)
-        results.push(result)
-        await writeFile(join(directory, 'results.json'), JSON.stringify({ startedAt, finishedAt: new Date().toISOString(), platform: 'electron', dialogSelection: 'simulated', tests: results }, null, 2))
-        await rm(folder, { recursive: true, force: true })
-        for (const [key, value] of [['POLYGON_USER_DATA_DIR', oldProfile], ['POLYGON_E2E_DIALOG_PLAN', oldPlan], ['ELECTRON_RUN_AS_NODE', oldRunAsNode]]) {
-          if (value === undefined) delete process.env[key!]
-          else process.env[key!] = value
-        }
+const tool = 'playwright'
+for (const [title, body] of cases) test(`${tool} / ${title}`, { timeout: 90000 }, async () => {
+  const started = performance.now()
+  const folder = await mkdtemp(join(tmpdir(), `polygon-native-${tool}-`))
+  const input = join(folder, 'entrada.json')
+  const profile = join(folder, 'profile')
+  let app: Adapter | undefined
+  const result: typeof results[number] = { tool, title, status: 'passed', durationMs: 0 }
+  try {
+    await writeFile(input, JSON.stringify(expected))
+    app = await launch(profile)
+    result.transport = app.transport
+    result.mainControl = true
+    await wait(() => app!.snapshot(), state => state.ready, 'Mapa não iniciou')
+    const completed: Context['completed'] = (accept, message) => wait(() => app!.snapshot(), state => !state.pending && accept(state), message)
+    const choose: Context['choose'] = app.chooseDialog
+    await body({ app, folder, choose, state: () => app!.snapshot(), completed,
+      load: async (path = input) => {
+        const previous = (await app!.snapshot()).count
+        await choose('open', path)
+        await app!.click(selectors.import)
+        await completed(s => s.count === String(Number(previous) + 1), 'Importação não acrescentou a área')
       }
+    })
+    const audit = await app.dialogAudit() as { processType: string; pid: number }[]
+    assert(audit.length > 0)
+    assert(audit.every(entry => entry.processType === 'browser' && entry.pid > 0), 'Diálogos não foram chamados no processo principal')
+    result.audit = audit
+  } catch (error) {
+    result.status = 'failed'
+    result.error = error instanceof Error ? error.stack : String(error)
+    throw error
+  } finally {
+    try { await app?.close() } catch (error) { result.status = 'failed'; result.error ??= String(error); throw error }
+    finally {
+      result.durationMs = Math.round(performance.now() - started)
+      results.push(result)
+      await writeFile(join(directory, 'results.json'), JSON.stringify({ startedAt, finishedAt: new Date().toISOString(), platform: 'electron', dialogSelection: 'simulated', tests: results }, null, 2))
+      await rm(folder, { recursive: true, force: true })
     }
-  })
-}
-after(() => { assert.equal(results.length, selected.length * cases.length, 'Nem todos os cenários foram executados') })
+  }
+})
+after(() => { assert.equal(results.length, cases.length, 'Nem todos os cenários foram executados') })

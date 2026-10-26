@@ -36,7 +36,6 @@ try {
         profile = await mkdtemp(join(tmpdir(), 'satellite-electron-'))
         const env = { ...process.env, POLYGON_USER_DATA_DIR: profile }
         delete env.ELECTRON_RUN_AS_NODE
-        delete env.POLYGON_E2E_DIALOG_PLAN
         const binary = process.env.ELECTRON_APP_PATH ?? (process.platform === 'darwin'
           ? resolve(`release/electron/mac${process.arch === 'arm64' ? '-arm64' : ''}/Poligonos POC.app/Contents/MacOS/Poligonos POC`)
           : process.platform === 'win32' ? resolve('release/electron/win-unpacked/Poligonos POC.exe') : resolve('release/electron/linux-unpacked/poligonos-poc'))

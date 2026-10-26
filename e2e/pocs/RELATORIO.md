@@ -453,7 +453,7 @@ APPIUM_HOME="$PWD/test-results/appium-mac2" npx appium driver doctor mac2
 
 Para repetir a rodada: npm run electron:build:poc e npm run test:poc:electron:files. O comando termina com código 2 se houver cenários sem execução, em vez de apresentar uma rodada incompleta como aprovada.
 
-[Rodada histórica das três ferramentas](old/ELECTRON-ARQUIVOS-COM-CHROMEDRIVER.md): preservada como evidência anterior, em outra modalidade. Esses resultados não são aprovações da tentativa nativa atual. A implementação completa está na branch codex/poc-tres-ferramentas. O comando antigo está disponível explicitamente como npm run test:poc:electron:files:chromedriver.
+[Rodada histórica das três ferramentas](old/ELECTRON-ARQUIVOS-COM-CHROMEDRIVER.md): preservada como evidência anterior, em outra modalidade. Esses resultados não são aprovações da tentativa nativa atual. A implementação completa está na branch codex/poc-tres-ferramentas. A implementação antiga de arquivos com ChromeDriver está preservada nessa branch.
 
 ## Histórico separado
 
