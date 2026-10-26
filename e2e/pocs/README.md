@@ -12,6 +12,7 @@ ignorados pelo Git não fazem parte do snapshot.
 - [Relatório direto](RELATORIO-DIRETO.md)
 - [Estado atual](STATUS.md)
 - [Comparativo para decisão](COMPARATIVO-PLAYWRIGHT-SELENIUM.md)
+- [Diagnóstico com falha real: Playwright e Selenium](DIAGNOSTICO.md)
 - [Limitações](LIMITACOES.md)
 - [Portabilidade](PORTABILIDADE.md)
 - [Arquivos Electron](ELECTRON-ARQUIVOS.md)
