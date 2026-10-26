@@ -10,17 +10,16 @@ Executado de 2026-10-20T16:58:50.469Z a 2026-10-20T16:59:07.587Z. Evidência: [r
 
 ## Resumo
 
-**Modalidade atual: sem ChromeDriver.** Playwright controla o Electron diretamente; Selenium e WebdriverIO tentam uma sessão nativa Appium/Mac2. Não há fallback para ChromeDriver. Sessão indisponível não é aprovação nem falha funcional dos cenários.
+**Modalidade atual: sem ChromeDriver.** Playwright controla o Electron diretamente; Selenium tenta uma sessão nativa Appium/Mac2. Não há fallback para ChromeDriver. Sessão indisponível não é aprovação nem falha funcional dos cenários.
 
-N01–N05 têm contagem própria, separada dos 150 casos C/D anteriores. Esta rodada não reexecuta web, PWA, Android ou o catálogo C/D.
+N01–N05 têm contagem própria, separada dos 100 casos C/D anteriores. Esta rodada não reexecuta web, PWA, Android ou o catálogo C/D.
 
 | Ferramenta | Passou | Falhou | Não executado | Soma das durações | Aumento sobre o menor tempo |
 | --- | --- | --- | --- | --- | --- |
 | Playwright | 5 | 0 | 0 | 8.46 s | — |
 | Selenium | 0 | 0 | 5 | — | — |
-| WebdriverIO | 0 | 0 | 5 | — | — |
 
-Cada duração executada inclui lançamento com perfil novo, cenário e encerramento; exclui build e preparação externa. Cenários não executados não recebem duração zero. O tempo da tentativa de criar a sessão Mac2 aparece separadamente abaixo, sem ser confundido com execução dos cinco testes. Não há percentual comparativo com duas ferramentas sem execução.
+Cada duração executada inclui lançamento com perfil novo, cenário e encerramento; exclui build e preparação externa. Cenários não executados não recebem duração zero. O tempo da tentativa de criar a sessão Mac2 aparece separadamente abaixo, sem ser confundido com execução dos cinco testes. Não há percentual comparativo com uma ferramenta sem execução.
 
 ## Testes por ferramenta
 
@@ -50,27 +49,11 @@ Preparação nativa: **sessão indisponível**, em 1.04 s. Os cinco cenários fi
 'GET /status' cannot be proxied to Mac2 Driver server because its process is not running (probably crashed). Check the Appium log for more details
 ```
 
-### WebdriverIO
-
-| Cenário | Resultado | Duração |
-| --- | --- | --- |
-| N01 importa e exporta nomes e coordenadas usando IPC e disco real | Não executado | — |
-| N02 cancelar abertura e salvamento preserva os polígonos e não cria arquivos | Não executado | — |
-| N03 rejeita JSON, nomes e geometrias inválidos sem importar parcialmente | Não executado | — |
-| N04 informa erros de leitura e escrita sem perder dados nem deixar temporários | Não executado | — |
-| N05 importa com duas janelas, acrescenta áreas, exporta e reúne sem perder dados | Não executado | — |
-
-Preparação nativa: **sessão indisponível**, em 1.04 s. Os cinco cenários ficaram sem execução. [Log Appium](../../test-results/pocs/electron-direct-final/appium-mac2.log) · [diagnóstico dos clientes](../../test-results/pocs/electron-direct-final/mac2-bootstrap.json).
-
-```text
-WebDriverError: 'GET /status' cannot be proxied to Mac2 Driver server because its process is not running (probably crashed). Check the Appium log for more details when running "http://127.0.0.1:4725/session" with method "POST"
-```
-
 ## Implementação e limites
 
 - **Playwright:** `_electron.launch` abre o app empacotado. `electronApplication.evaluate` configura somente a resposta dos diálogos no processo principal e lê a auditoria. Não usa ChromeDriver nem POLYGON_E2E_DIALOG_PLAN. Os cliques da interface, preload, IPC, validação e operações de disco são reais. O seletor visual do sistema continua simulado.
-- **Selenium e WDIO:** ambos os clientes tentaram criar uma sessão Appium Mac2/WebDriverAgentMac nativa. O Mac2 foi instalado em `test-results/appium-mac2`, separado do Android. O Xcode completo está ausente: o doctor indicou caminho inválido e xcodebuild indisponível; o WebDriverAgentMac encerrou com código 1. Nenhum N01–N05 rodou nessas duas integrações. O bootstrap não é uma implementação E2E completa: após destravar a sessão, os cenários ainda precisam ser adaptados e validados com seletores de acessibilidade. [Requisitos Mac2](https://appium.github.io/appium-mac2-driver/latest/getting-started/).
-- O [serviço Electron do WDIO](https://webdriver.io/docs/desktop-testing/electron/) também usa ChromeDriver. Appium é o servidor, Mac2 é seu driver nativo de macOS, e Selenium/WDIO são clientes. Usar Appium não elimina automaticamente ChromeDriver em outros contextos: no Android/WebView ele pode continuar necessário.
+- **Selenium:** a tentativa nativa Appium Mac2/WebDriverAgentMac não iniciou por falta de Xcode completo. Nenhum N01–N05 nativo foi validado nessa integração. O bootstrap é diagnóstico de sessão; os cenários ainda precisam ser adaptados e validados com seletores de acessibilidade. O Mac2 está separado do Android em `test-results/appium-mac2`. [Requisitos Mac2](https://appium.github.io/appium-mac2-driver/latest/getting-started/).
+- Appium é o servidor e Mac2 é seu driver nativo macOS. Usar Appium não elimina automaticamente ChromeDriver: no Android/WebView ele pode continuar necessário.
 - O [Playwright](https://playwright.dev/docs/api/class-electron) não oferece Appium como backend. Pode-se combinar bibliotecas no mesmo runner, usando Playwright para renderer/main e outro cliente para ações nativas via Appium. Os cinco testes atuais não usam Appium.
 - Os mesmos cenários TypeScript verificam JSON com nomes/coordenadas, persistência após reload, cancelamento, rejeição atômica de arquivos inválidos, erros de disco/limpeza e duas janelas. O main continua lendo/gravando os arquivos reais. A rodada atual usa o novo fundo World Imagery. Não foram testados Windows/Linux, instalador nem o seletor nativo visual.
 
@@ -93,4 +76,4 @@ APPIUM_HOME="$PWD/test-results/appium-mac2" npx appium driver doctor mac2
 
 Para repetir a rodada: npm run electron:build:poc e npm run test:poc:electron:files. O comando termina com código 2 se houver cenários sem execução, em vez de apresentar uma rodada incompleta como aprovada.
 
-[Rodada anterior com ChromeDriver em Selenium/WDIO](old/ELECTRON-ARQUIVOS-COM-CHROMEDRIVER.md): 15/15 aprovados, em outra modalidade. Esses resultados não são aprovações da tentativa nativa atual. O comando antigo está disponível explicitamente como npm run test:poc:electron:files:chromedriver.
+[Rodada histórica das três ferramentas](old/ELECTRON-ARQUIVOS-COM-CHROMEDRIVER.md): preservada como evidência anterior, em outra modalidade. Esses resultados não são aprovações da tentativa nativa atual. A implementação completa está na branch codex/poc-tres-ferramentas. O comando antigo está disponível explicitamente como npm run test:poc:electron:files:chromedriver.

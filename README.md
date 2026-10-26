@@ -1,6 +1,6 @@
 # Polígonos no mapa — POCs E2E
 
-Editor de polígonos usando o ArcGIS Maps SDK for JavaScript, com versões web/PWA, Electron e Android via Capacitor. O projeto compara automação E2E com WebdriverIO, Selenium e Playwright.
+Editor de polígonos usando o ArcGIS Maps SDK for JavaScript, com versões web/PWA, Electron e Android via Capacitor. O projeto compara automação E2E com Playwright e Selenium. A versão com as três ferramentas está preservada na branch `codex/poc-tres-ferramentas` (commit `98f49f5`).
 
 A interface usa verde profundo, superfícies claras e âmbar para a área selecionada.
 Os cards mostram a quantidade de vértices e o estado de seleção ou edição.
@@ -112,66 +112,7 @@ mantendo o renderer sem acesso ao Node. Arquivos inválidos são rejeitados por
 inteiro. Limites por arquivo: 10 MB, 1.000 polígonos e 100.000 pontos. As áreas
 importadas também são sincronizadas quando o mapa está separado.
 
-Testes e tempos nas três ferramentas: [Electron — arquivos](e2e/pocs/ELECTRON-ARQUIVOS.md).
-
-## Teste E2E
-
-As três POCs (WebdriverIO, Selenium e Playwright) estão documentadas em
-[`e2e/pocs/README.md`](e2e/pocs/README.md). Execute com
-`npm run test:poc:web`: C01–C10, com mouse e touch separados em C10,
-e quatro verificações de duas janelas (D01, D02 em duas variações e D03).
-O teste de mouse do botão de instalação exige que o
-controle funcione e deve falhar enquanto o defeito intencional estiver presente.
-
-A expansão para os quatro ambientes está em desenvolvimento; confira
-[`e2e/pocs/STATUS.md`](e2e/pocs/STATUS.md) antes de interpretar os resultados.
-O plano completo está em [`E2E-POCS.md`](E2E-POCS.md).
-
-Para gerar uma build com a API auxiliar de leitura usada pelos testes:
-
-```bash
-npm run build:e2e
-npm run preview
-```
-
-Esse comando habilita `VITE_E2E=true` sem exigir arquivos de ambiente locais.
-A API fornece coordenadas e espera pela persistência; os testes desenham e
-editam com gestos reais. `npm run build` gera a versão normal de produção.
-
-Em um terminal, execute `npm run preview`. Em outro:
-
-```bash
-npm run test:e2e
-```
-
-Para acompanhar a execução no Chrome, em vez do modo headless:
-
-```bash
-HEADLESS=false npm run test:e2e
-```
-
-## Comparação: WebdriverIO e Playwright
-
-As duas stacks executam os mesmos seis cenários de negócio — criação, edição,
-cancelamento, persistência e exclusão — contra a mesma PWA e
-os mesmos atributos `data-testid`.
-
-| Stack | Arquivo | Comando |
-| --- | --- | --- |
-| WebdriverIO | `e2e/cancel-edit.e2e.ts` | `npm run test:e2e` |
-| Playwright | `e2e/playwright/cancel-edit.spec.ts` | `npm run test:e2e:playwright` |
-
-O Playwright inicia o Vite automaticamente; a suíte WebdriverIO continua
-esperando que `npm run preview` ou `npm run dev` esteja ativo em outro terminal.
-Para acompanhar a execução do Playwright no navegador, use:
-
-```bash
-npm run test:e2e:playwright:visual
-```
-
-As suítes de regressão anteriores continuam disponíveis nesses comandos.
-Os atributos `data-testid` são contratos de automação próprios; as POCs
-comparativas ficam separadas em `e2e/pocs/`.
+Testes e tempos nas duas ferramentas: [Electron — arquivos](e2e/pocs/ELECTRON-ARQUIVOS.md).
 
 ## ArcGIS
 
@@ -191,75 +132,83 @@ A [verificação do satélite](e2e/pocs/MAPA-SATELITE.md) conferiu imagens reais
 atribuição, desenho e edição em duas janelas no Chrome e no Electron. Para
 repetir, execute `npm run electron:build:poc` e `npm run check:satellite`.
 
-## A mesma suíte nos três alvos
 
-Os cenários de negócio ficam em um único arquivo: `e2e/cancel-edit.e2e.ts`.
-Ele valida criar, mover, editar vértices, inserir vértice, cancelar, persistir,
-excluir polígonos. As configurações abaixo só definem em qual
-embalagem essa mesma suíte será executada:
+## Testes E2E — Playwright e Selenium
 
-| Alvo | Comando |
+A `main` contém somente Playwright e Selenium. A POC completa das três ferramentas,
+incluindo o WebdriverIO e o trabalho Android em andamento, está preservada em
+`codex/poc-tres-ferramentas`, commit `98f49f5`.
+
+```bash
+npm ci
+npx playwright install chromium
+npm run test:e2e
+```
+
+`test:e2e` executa a suíte Playwright de desenvolvimento e inicia o Vite quando
+necessário. Para depurar, use `npm run test:e2e:watch` ou
+`npm run test:e2e:visual`.
+
+As POCs comparativas usam uma build E2E, gestos reais e uma API auxiliar somente
+de leitura. O plano está em [E2E-POCS.md](E2E-POCS.md) e a execução em
+[e2e/pocs/README.md](e2e/pocs/README.md).
+
+| Plataforma | Comando — Playwright e Selenium em sequência |
 | --- | --- |
-| Site/PWA (Chrome) | `npm run test:e2e` |
-| Electron (macOS ou Windows) | `npm run test:e2e:electron` |
-| Android (Capacitor WebView) | `npm run test:e2e:android` |
+| Web | `npm run test:poc:web` |
+| PWA instalado | `npm run test:poc:pwa` |
+| Electron empacotado | `npm run test:poc:electron` |
+| APK Android | `npm run test:poc:android` |
+| Todas | `npm run test:poc:all` |
+
+Para selecionar uma ferramenta, defina `POC_FRAMEWORKS=playwright` ou
+`POC_FRAMEWORKS=selenium`. O padrão é `playwright,selenium`. O cenário C10 mouse
+continua falhando de propósito para detectar o defeito de instalação; touch deve passar.
+
+Resultados, tempos por ferramenta/plataforma e limites:
+[relatório completo](e2e/pocs/RELATORIO.md),
+[versão direta](e2e/pocs/RELATORIO-DIRETO.md),
+[comparativo para decisão](e2e/pocs/COMPARATIVO-PLAYWRIGHT-SELENIUM.md).
 
 ## Electron
 
-Electron para Windows:
-
 ```bash
-npm run electron:build
+npm run build
+npm run electron:dev
 ```
 
-Teste Electron local (macOS ou Windows):
+Para empacotar no sistema local e testar a feature de arquivos:
 
 ```bash
-npm run test:e2e:electron
+npm run electron:build:poc
+npm run test:poc:electron:files
 ```
 
-No macOS, esse comando usa o Electron local. O aplicativo serve `dist/`
-na origem estável `poligonos://app/`, preservando IndexedDB entre reinícios.
-O instalador Windows e sua suíte ainda precisam de validação própria.
+O segundo comando testa Playwright direto no Electron e tenta o bootstrap nativo
+Selenium/Appium Mac2 no macOS. Mac2 exige Xcode completo. Cenários indisponíveis
+ficam registrados e o comando retorna código 2; não há fallback para ChromeDriver.
+A modalidade explícita com ChromeDriver continua disponível em
+`npm run test:poc:electron:files:chromedriver`.
 
 ## Android
 
-Para o teste E2E Android, instale Android Studio/SDK, crie ou inicie um
-emulador (ou conecte um dispositivo com depuração USB), e instale Appium e o
-driver UiAutomator2 uma vez na máquina:
-
-```bash
-npm install --global appium
-appium driver install uiautomator2
-```
-
-Gere e instale a versão atual do app:
+Instale Android SDK, JDK 21 e configure um emulador de testes ou `ANDROID_SERIAL`.
+O orquestrador prepara o APK e inicia o Appium quando necessário.
 
 ```bash
 npm run test:e2e:android:build
+npm run test:poc:android
 ```
 
-Em um terminal, inicie o servidor Appium. Em outro, execute a mesma suíte:
+O APK também oferece importar/exportar JSON por código nativo Capacitor.
+Na exportação, escolha uma pasta e confirme o acesso solicitado pelo Android;
+a autorização é limitada à pasta escolhida, sem permissão ampla de armazenamento.
 
-```bash
-appium
-npm run test:e2e:android
-```
+O protótipo `npm run test:poc:android:hybrid` combina Playwright na WebView e
+Appium/UiAutomator2 com cliente Selenium JS nas telas nativas. O cliente tem
+verificações de contrato em `npm run test:appium:native`. **A migração do cliente
+não significa validação dos fluxos completos no APK**; veja as pendências no relatório.
 
-Caso o nome do emulador não seja `Android Emulator`, informe-o com
-`ANDROID_DEVICE_NAME="nome exibido pelo adb" npm run test:e2e:android`.
-O diretório `android/` é a embalagem nativa; código de negócio, interface e
-casos de E2E continuam compartilhados.
-
-## Publicação e arquivos locais
-
-O site é estático e não exige API. Gere `npm run build` (ou `build:e2e` para
-o deploy de testes) e publique o conteúdo de `dist/` em HTTPS. O deploy de
-testes usa `https://poc-e2e.chiquetano.com.br/`; no servidor, o diretório é
-`/opt/projects/poligon/dist`. O Nginx deve servir os arquivos e usar
-`try_files $uri $uri/ /index.html` na rota principal.
-
-O Git ignora dependências, builds, APKs, arquivos compactados, relatórios,
-perfis de navegador, `.env*` locais e material de chave privada. A exceção
-`.env.example` contém somente configuração de exemplo. Ícones, lockfile e o
-Gradle Wrapper são fontes necessárias e permanecem versionados.
+Builds, perfis, resultados brutos e dependências são ignorados pelo Git e não
+fazem parte do snapshot da branch. Use `npm ci` ao trocar de branch para alinhar
+as dependências à versão escolhida.

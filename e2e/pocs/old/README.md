@@ -23,3 +23,7 @@ Estes arquivos preservam resultados de rodadas anteriores. Falhas e impedimentos
 - [RELATORIO-ANTES-SEM-CHROMEDRIVER.md](RELATORIO-ANTES-SEM-CHROMEDRIVER.md)
 
 - [RELATORIO-DIRETO-ANTES-SEM-CHROMEDRIVER.md](RELATORIO-DIRETO-ANTES-SEM-CHROMEDRIVER.md)
+
+A main mantém apenas Playwright e Selenium. O código completo das três POCs e os
+links originais destes documentos estão na branch `codex/poc-tres-ferramentas`
+(commit `98f49f5`). Os valores históricos das tabelas foram preservados.

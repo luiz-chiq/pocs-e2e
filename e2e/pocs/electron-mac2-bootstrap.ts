@@ -1,6 +1,5 @@
 // Diagnóstico de sessão nativa. Não conta o bootstrap como teste de importação/exportação.
 import { Builder } from 'selenium-webdriver'
-import { remote } from 'webdriverio'
 import { spawn } from 'node:child_process'
 import { mkdir, mkdtemp, writeFile, rm, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -28,7 +27,7 @@ try {
     if (Date.now() > deadline) throw new Error('Appium Mac2 não respondeu em 20 s.')
     await new Promise(resolve => setTimeout(resolve, 100))
   }
-  for (const tool of ['selenium', 'webdriverio']) {
+  for (const tool of ['selenium']) {
     const started = performance.now()
     const profile = await mkdtemp(join(tmpdir(), `polygon-mac2-${tool}-`))
     const capabilities = {
@@ -41,15 +40,9 @@ try {
     let close: (() => Promise<unknown>) | undefined
     let status = 'session-ready', error: string | undefined
     try {
-      if (tool === 'selenium') {
-        // Servidor explícito e capabilities nativas: não chama Selenium Manager nem ChromeDriver.
-        const client = await new Builder().usingServer(address).withCapabilities(capabilities).build()
-        close = () => client.quit()
-      } else {
-        const client = await remote({ hostname: '127.0.0.1', port, path: '/', logLevel: 'error',
-          connectionRetryCount: 0, connectionRetryTimeout: 30000, capabilities })
-        close = () => client.deleteSession()
-      }
+      // Servidor explícito e capabilities nativas: não chama Selenium Manager nem ChromeDriver.
+      const client = await new Builder().usingServer(address).withCapabilities(capabilities).build()
+      close = () => client.quit()
     } catch (failure) { status = 'unavailable'; error = failure instanceof Error ? failure.message : String(failure) }
     finally {
       await close?.()

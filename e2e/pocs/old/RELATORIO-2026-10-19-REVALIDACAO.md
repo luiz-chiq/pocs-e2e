@@ -50,7 +50,7 @@ O resultado funcional deveria convergir para o mesmo app, estado e interação. 
 
 O 9/9 do Selenium confirma que os cenários passaram naquela execução. Não prova que o app esteja livre de problemas intermitentes nem que os outros resultados sejam falsos positivos. **As duas falhas restantes estão inconclusivas quanto à causa**, apesar de suas asserções terem falhado. A falha anterior de C08 no WebdriverIO era uma transição não aguardada pela automação: o mapa faz `hitTest` assíncrono; depois de esperar o botão voltar ao modo de criação, a suíte completa passou por C08.
 
-As diferenças podem ser verificadas nos adaptadores de [Playwright](../playwright/web.spec.ts), [Selenium](../selenium/web.test.ts) e [WebdriverIO](../webdriverio/web.e2e.ts). Para uma comparação de confiabilidade, falta igualar a política de isolamento e os contratos de gestos/esperas, registrar alvo/coordenadas/viewport e acionamento do botão, e repetir os cenários com o mesmo APK e emulador. Isso permitiria medir frequência de falhas, além do resultado de uma execução. Esses passos não foram executados nesta atualização do relatório.
+As diferenças podem ser verificadas nos adaptadores de [Playwright](../playwright/web.spec.ts), [Selenium](../selenium/web.test.ts) e WebdriverIO (fonte na branch `codex/poc-tres-ferramentas`: `e2e/pocs/webdriverio/web.e2e.ts`). Para uma comparação de confiabilidade, falta igualar a política de isolamento e os contratos de gestos/esperas, registrar alvo/coordenadas/viewport e acionamento do botão, e repetir os cenários com o mesmo APK e emulador. Isso permitiria medir frequência de falhas, além do resultado de uma execução. Esses passos não foram executados nesta atualização do relatório.
 
 ## Limitações por ferramenta em Electron e Android
 

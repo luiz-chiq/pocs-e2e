@@ -4,7 +4,7 @@ import { resolve, join, relative, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { cases, dualCases } from '../e2e/pocs/shared/fixtures.ts'
 
-const tools = { playwright: 'Playwright', selenium: 'Selenium', webdriverio: 'WebdriverIO' }
+const tools = { playwright: 'Playwright', selenium: 'Selenium' }
 const platforms = { web: 'Web', pwa: 'PWA instalado', electron: 'Electron', android: 'APK Android' }
 const planned = platform => [...Object.values(cases).filter(title => platform === 'web' || !title.startsWith('C10')), ...(platform === 'android' ? [] : Object.values(dualCases))]
 const json = async path => JSON.parse(await readFile(path, 'utf8'))
@@ -18,9 +18,9 @@ const headers = text => new Set([...text.matchAll(/^#{1,6} (.+)$/gm)].map(match 
 export async function verifyPocReports(resultsDirectory = 'test-results/pocs/final-2026-10-19') {
   const root = resolve(resultsDirectory)
   const [summary, followup, originalTiming] = await Promise.all([json(join(root, 'summary.json')), json(join(root, 'followup.json')), json(join(root, 'timing.json'))])
-  const selected = new Map(summary.map(run => [`${run.framework}/${run.target}`, { root, run, report: run.report, timing: originalTiming }]))
+  const selected = new Map(summary.filter(run => run.framework in tools).map(run => [`${run.framework}/${run.target}`, { root, run, report: run.report, timing: originalTiming }]))
   const seen = new Set()
-  for (const suite of followup.suites) {
+  for (const suite of followup.suites.filter(suite => suite.tool in tools)) {
     const key = `${suite.tool}/${suite.platform}`
     assert(!seen.has(key), `Suíte repetida no manifesto: ${key}`); seen.add(key)
     const currentRoot = resolve(suite.root)
@@ -28,7 +28,7 @@ export async function verifyPocReports(resultsDirectory = 'test-results/pocs/fin
     const run = currentSummary.find(run => run.framework === suite.tool && run.target === suite.platform)
     selected.set(key, { root: currentRoot, report, timing, run })
   }
-  assert.equal(selected.size, 12, 'A matriz deve ter 12 combinações')
+  assert.equal(selected.size, 8, 'A matriz deve ter 8 combinações')
   let passed = 0, failed = 0, dualPassed = 0, dualFailed = 0
   for (const [key, entry] of selected) {
     const [tool, platform] = key.split('/')
@@ -57,9 +57,9 @@ export async function verifyPocReports(resultsDirectory = 'test-results/pocs/fin
   for (const name of versions) {
     const text = await readFile(join(reportsRoot, name), 'utf8')
     assert(text.includes(`${passed} aprovações, ${failed} falhas e 0 sem validação concluída`), `Contagem incorreta: ${name}`)
-    assert(text.includes(`Duas janelas: ${dualPassed}/36 aprovados`) && text.includes(`${dualFailed} falhas e 0 sem validação`), `Duas janelas divergentes: ${name}`)
+    assert(text.includes(`Duas janelas: ${dualPassed}/24 aprovados`) && text.includes(`${dualFailed} falhas e 0 sem validação`), `Duas janelas divergentes: ${name}`)
     const overview = rows(section(text, 'Resumo atual'))
-    assert.equal(overview.length, 3)
+    assert.equal(overview.length, 2)
     for (const [index, tool] of Object.keys(tools).entries()) {
       assert.deepEqual(overview[index], [tools[tool], ...Object.keys(platforms).map(platform => selected.get(`${tool}/${platform}`).result)], `Matriz divergente: ${name}`)
     }
@@ -74,7 +74,7 @@ export async function verifyPocReports(resultsDirectory = 'test-results/pocs/fin
     for (const anchor of [...text.matchAll(/\]\(#([^)]*)\)/g)].map(match => match[1])) assert(headers(text).has(anchor), `Sumário quebrado: ${name}#${anchor}`)
     if (name !== 'STATUS.md') {
       const detailed = rows(section(text, 'Tempos por ferramenta e plataforma'))
-      assert.equal(detailed.length, 12)
+      assert.equal(detailed.length, 8)
       for (const [tool, toolName] of Object.entries(tools)) for (const [platform, platformName] of Object.entries(platforms)) {
         const entry = selected.get(`${tool}/${platform}`)
         const row = detailed.find(row => row[0] === toolName && row[1] === platformName)
@@ -89,7 +89,7 @@ export async function verifyPocReports(resultsDirectory = 'test-results/pocs/fin
       }
     }
     if (name === 'RELATORIO.md') {
-      assert.equal([...text.matchAll(/^\| [CD]\d/gm)].length, 150)
+      assert.equal([...text.matchAll(/^\| [CD]\d/gm)].length, 100)
       for (const [tool, toolName] of Object.entries(tools)) for (const [platform, platformName] of Object.entries(platforms)) {
         const entry = selected.get(`${tool}/${platform}`)
         const block = section(section(text, toolName), platformName, 3)
@@ -105,7 +105,7 @@ export async function verifyPocReports(resultsDirectory = 'test-results/pocs/fin
       }
     }
   }
-  // A rodada nova de arquivos tem contagem própria, sem alterar os 150 casos C/D.
+  // A rodada nova de arquivos tem contagem própria, sem alterar os 100 casos C/D.
   let nativeCases = 0, nativePassed = 0, nativeUnavailable = 0
   const nativeText = await readFile(join(reportsRoot, 'ELECTRON-ARQUIVOS.md'), 'utf8').catch(error => {
     if (error.code === 'ENOENT') return ''
@@ -191,5 +191,5 @@ export async function verifyPocReports(resultsDirectory = 'test-results/pocs/fin
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const result = await verifyPocReports(process.argv[2])
-  console.log(`Relatórios conferidos contra os JSONs: ${result.combinations} combinações, ${result.cases} casos, ${result.passed} aprovados e ${result.failed} falhas; duas janelas ${result.dualPassed}/36. Arquivos do main Electron: ${result.nativePassed}/${result.nativeCases} aprovados e ${result.nativeUnavailable} sem execução, contabilizados separadamente. ${result.versions} versões atuais e ${result.archives} arquivos históricos (${result.historicalRows} linhas numéricas conferidas); tempos, percentuais, origens e links válidos.`)
+  console.log(`Relatórios conferidos contra os JSONs: ${result.combinations} combinações, ${result.cases} casos, ${result.passed} aprovados e ${result.failed} falhas; duas janelas ${result.dualPassed}/24. Arquivos do main Electron: ${result.nativePassed}/${result.nativeCases} aprovados e ${result.nativeUnavailable} sem execução, contabilizados separadamente. ${result.versions} versões atuais e ${result.archives} arquivos históricos (${result.historicalRows} linhas numéricas conferidas); tempos, percentuais, origens e links válidos.`)
 }

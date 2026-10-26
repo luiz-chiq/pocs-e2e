@@ -184,7 +184,7 @@ O protótipo [Playwright + Appium no APK](android-hybrid.test.ts) **ainda não e
 
 Essa tentativa adicional não está incluída nos 150 casos C/D do consolidado anterior. Não se deve apresentar os 9/9 Android C/D como aprovação dos novos cenários de arquivos e permissões. Nesta análise não foi feita nova execução nem correção desse protótipo.
 
-**Dependência relevante para remover WebdriverIO:** esse protótipo ainda usa `remote` do pacote `webdriverio` como cliente Appium. A retirada completa exige trocar esse cliente, por exemplo por Selenium JS com os comandos nativos necessários. Excluir a dependência agora sem adaptar o código quebraria a integração em construção. WebdriverIO foi excluído desta avaliação de escolha, mas as dependências e evidências históricas existentes foram preservadas.
+**Atualização da implementação na main:** o cliente Appium do protótipo foi substituído por Selenium JS. As dependências, configurações e suítes WebdriverIO foram removidas da main. A implementação anterior completa permanece na branch `codex/poc-tres-ferramentas`, commit `98f49f5`. A troca do cliente não converte os resultados antigos em validação do novo adaptador; a rodada híbrida Android ainda precisa ser repetida.
 
 ## Critérios para a decisão final
 

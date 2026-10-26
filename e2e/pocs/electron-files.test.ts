@@ -6,11 +6,10 @@ import { resolve, join } from 'node:path'
 import { _electron } from '@playwright/test'
 import { Builder, By } from 'selenium-webdriver'
 import chrome from 'selenium-webdriver/chrome.js'
-import { remote } from 'webdriverio'
-import { electronDriver, electronDriverVersion } from './shared/electron.ts'
+import { electronDriver } from './shared/electron.ts'
 import { electronFileCases } from './shared/electron-file-cases.ts'
 
-type Tool = 'playwright' | 'selenium' | 'webdriverio'
+type Tool = 'playwright' | 'selenium'
 type Adapter = {
   click(selector: string): Promise<void>
   snapshot(): Promise<Snapshot>
@@ -56,7 +55,7 @@ async function wait<T>(read: () => Promise<T>, accept: (value: T) => boolean, me
 }
 
 async function launch(tool: Tool, profile: string): Promise<Adapter> {
-  if (directMain && tool !== 'playwright') throw new Error('Sem ChromeDriver, Selenium/WDIO precisam de automação nativa. Nenhum fallback é permitido nesta modalidade.')
+  if (directMain && tool !== 'playwright') throw new Error('Sem ChromeDriver, Selenium precisa de automação nativa. Nenhum fallback é permitido nesta modalidade.')
   const binary = process.env.ELECTRON_APP_PATH ?? resolve('release/electron/mac-arm64/Poligonos POC.app/Contents/MacOS/Poligonos POC')
   if (tool === 'playwright') {
     const env: Record<string, string | undefined> = { ...process.env, POLYGON_USER_DATA_DIR: profile }
@@ -124,19 +123,7 @@ async function launch(tool: Tool, profile: string): Promise<Adapter> {
       reload: () => driver.navigate().refresh(), close: () => driver.quit()
     }
   }
-  const browser = await remote({ logLevel: 'error', connectionRetryCount: 0,
-    capabilities: {
-      browserName: 'chrome', browserVersion: await electronDriverVersion(driverPath),
-      'wdio:enforceWebDriverClassic': true,
-      'goog:chromeOptions': { binary, windowTypes: ['app', 'webview'], args: [`--user-data-dir=${profile}`] },
-      'wdio:chromedriverOptions': { binary: driverPath }
-    }
-  })
-  return {
-    click: async selector => { await browser.$(selector).click() }, snapshot: () => browser.execute(snapshot),
-    handles: () => browser.getWindowHandles(), switchTo: async handle => { await browser.switchToWindow(handle) },
-    reload: () => browser.refresh(), close: async () => { await browser.deleteSession() }
-  }
+  throw new Error(`Ferramenta não suportada: ${tool}`)
 }
 
 const directory = resolve(process.env.POC_NATIVE_RESULTS_DIR ?? 'test-results/pocs/electron-files')
@@ -237,11 +224,11 @@ const cases: [string, (context: Context) => Promise<void>][] = [
     await c.completed(s => s.ready && s.count === '2' && s.mapNames.length === 2, 'Dados não persistiram ao reunir/recarregar')
   }]
 ]
-const selected = (process.env.POC_FRAMEWORKS ?? 'playwright,selenium,webdriverio').split(',')
-if (new Set(selected).size !== selected.length || selected.some(tool => !['playwright', 'selenium', 'webdriverio'].includes(tool))) {
-  throw new Error('POC_FRAMEWORKS inválido. Use playwright,selenium,webdriverio, sem repetições.')
+const selected = (process.env.POC_FRAMEWORKS ?? 'playwright,selenium').split(',')
+if (new Set(selected).size !== selected.length || selected.some(tool => !['playwright', 'selenium'].includes(tool))) {
+  throw new Error('POC_FRAMEWORKS inválido. Use playwright,selenium, sem repetições.')
 }
-for (const tool of ['playwright', 'selenium', 'webdriverio'] as Tool[]) {
+for (const tool of ['playwright', 'selenium'] as Tool[]) {
   if (!selected.includes(tool)) continue
   for (const [title, body] of cases) test(`${tool} / ${title}`, { timeout: 90000 }, async () => {
     const started = performance.now()

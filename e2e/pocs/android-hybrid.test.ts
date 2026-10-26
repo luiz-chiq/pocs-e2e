@@ -4,7 +4,7 @@ import { join, resolve } from 'node:path'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { _android, expect, type AndroidDevice, type Page } from '@playwright/test'
-import { remote } from 'webdriverio'
+import { createNativeAppiumSession } from './shared/appium-native.ts'
 import { androidHybridCases } from './shared/android-hybrid-cases.ts'
 
 const directory = resolve(process.env.POC_RESULTS_DIR!)
@@ -19,8 +19,8 @@ const fixtureDocument = { format: 'poligonos', version: 1, polygons: [
   { name: 'Área Android 1', geometry: { rings: [[[-46.64, -23.55], [-46.63, -23.54], [-46.62, -23.55], [-46.64, -23.55]]], spatialReference: { wkid: 4326 } } }
 ] }
 const results: { id: string; title: string; status: string; durationMs: number | null; steps: { owner: string; action: string; durationMs: number }[]; error?: string; variants?: string[] }[] = []
-const metadata: Record<string, unknown> = { startedAt: new Date().toISOString(), target: 'android', framework: 'playwright+appium', nativeClient: 'webdriverio', chromedriverUsed: false, permission: 'SAF folder URI grant; autoGrantPermissions=false', folder: deviceDirectory }
-let native: Awaited<ReturnType<typeof remote>> | undefined
+const metadata: Record<string, unknown> = { startedAt: new Date().toISOString(), target: 'android', framework: 'playwright+appium', nativeClient: 'selenium', chromedriverUsed: false, permission: 'SAF folder URI grant; autoGrantPermissions=false', folder: deviceDirectory }
+let native: Awaited<ReturnType<typeof createNativeAppiumSession>> | undefined
 let android: AndroidDevice | undefined
 let page!: Page
 let current: typeof results[number] | undefined
@@ -85,7 +85,7 @@ async function bounded<T>(promise: Promise<T>, ms: number, action: string): Prom
 }
 async function nativeText(pattern: string) {
   const selector = `android=new UiSelector().textMatches(${JSON.stringify(pattern)})`
-  const element = await native!.$(selector)
+  const element = native!.element(selector)
   await element.waitForDisplayed({ timeout: 15_000 })
   return element
 }
@@ -98,7 +98,7 @@ async function downloads() {
   // O seletor pode abrir em Recentes ou lembrar a última pasta escolhida.
   const source = await native!.getPageSource()
   if (source.includes(`text="${runId}"`)) return
-  const roots = await native!.$('android=new UiSelector().descriptionMatches("(?i)Show roots|Mostrar raízes|Mostrar locais|Mostrar pastas")')
+  const roots = native!.element('android=new UiSelector().descriptionMatches("(?i)Show roots|Mostrar raízes|Mostrar locais|Mostrar pastas")')
   await roots.waitForDisplayed({ timeout: 15_000 })
   await roots.click()
   await (await nativeText('(?i)Downloads')).click()
@@ -257,12 +257,12 @@ try {
     await writeFile(path, content)
     await adb('push', path, `${deviceDirectory}/${name}`)
   }
-  native = await remote({ hostname: process.env.APPIUM_HOST, port: Number(process.env.APPIUM_PORT), path: '/', logLevel: 'warn', connectionRetryCount: 0, capabilities: {
+  native = await createNativeAppiumSession(`http://${process.env.APPIUM_HOST ?? '127.0.0.1'}:${process.env.APPIUM_PORT}`, {
     platformName: 'Android', 'appium:automationName': 'UiAutomator2', 'appium:udid': process.env.ANDROID_SERIAL,
     'appium:appPackage': pkg, 'appium:appActivity': '.MainActivity', 'appium:autoWebview': false,
     'appium:autoGrantPermissions': false, 'appium:noReset': true, 'appium:forceAppLaunch': true,
     'appium:newCommandTimeout': 180, 'appium:shouldTerminateApp': false
-  } })
+  })
   assert.equal(await native.getContext(), 'NATIVE_APP')
   await native.updateSettings({ waitForIdleTimeout: 500 })
   metadata.nativeSessionId = native.sessionId
@@ -296,7 +296,7 @@ try {
   infrastructureError = String(error instanceof Error ? error.stack : error)
   console.error(infrastructureError)
 } finally {
-  await native?.deleteSession().catch(() => {})
+  await native?.quit().catch(() => {})
   await android?.close().catch(() => {})
   for (const item of androidHybridCases) if (!results.some(result => result.id === item.id)) results.push({ ...item, status: 'unavailable', durationMs: null, steps: [], error: infrastructureError ?? 'Infraestrutura não ficou disponível.' })
   await writeFile(join(directory, 'results.json'), JSON.stringify({ ...metadata, finishedAt: new Date().toISOString(), infrastructureError, cases: results }, null, 2))

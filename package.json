@@ -9,11 +9,10 @@
     "build": "tsc --noEmit && vite build",
     "build:e2e": "node scripts/build-e2e.mjs",
     "preview": "vite preview --host 0.0.0.0",
-    "test:e2e": "wdio run ./wdio.conf.ts",
-    "test:e2e:visual": "HEADLESS=false npm run test:e2e",
+    "test:e2e": "playwright test",
+    "test:e2e:visual": "playwright test --headed",
     "test:e2e:playwright": "playwright test",
     "test:poc:playwright": "playwright test --config playwright.poc.config.ts",
-    "test:poc:webdriverio": "wdio run ./wdio.poc.conf.ts",
     "test:poc:selenium": "node --test --test-concurrency=1 e2e/pocs/selenium/web.test.ts",
     "test:poc:web": "node scripts/run-pocs.mjs web",
     "test:poc:pwa": "node scripts/run-pocs.mjs pwa",
@@ -29,16 +28,17 @@
     "report:poc": "node scripts/report-pocs.mjs",
     "report:poc:check": "node scripts/verify-poc-reports.mjs",
     "test:e2e:playwright:visual": "HEADLESS=false playwright test --headed",
-    "test:e2e:visual:edit": "HEADLESS=false wdio run ./wdio.conf.ts --mochaOpts.grep \"move o polígono\"",
-    "test:e2e:electron": "npm run build:e2e && wdio run ./wdio.electron.conf.ts",
-    "test:e2e:android": "wdio run ./wdio.android.conf.ts",
+    "test:e2e:visual:edit": "playwright test e2e/playwright/cancel-edit.spec.ts --headed",
+    "test:e2e:electron": "node scripts/run-pocs.mjs electron",
+    "test:e2e:android": "node scripts/run-pocs.mjs android",
     "test:e2e:android:build": "npm run build:e2e && cap sync android && cd android && ./gradlew assembleDebug",
-    "test:e2e:watch": "wdio run ./wdio.conf.ts --watch",
+    "test:e2e:watch": "playwright test --ui",
     "electron:dev": "electron ./electron/main.cjs",
     "electron:build": "npm run build && electron-builder --win --x64",
     "electron:build:poc": "node scripts/build-electron-poc.mjs",
     "android:sync": "npm run build && cap sync android",
-    "android:open": "cap open android"
+    "android:open": "cap open android",
+    "test:appium:native": "node --test e2e/pocs/shared/appium-native.test.ts"
   },
   "dependencies": {
     "@arcgis/core": "latest",
@@ -47,18 +47,12 @@
     "lucide": "^1.47.0"
   },
   "devDependencies": {
-    "@electron/get": "^5.1.0",
     "@capacitor/cli": "latest",
+    "@electron/get": "^5.1.0",
     "@playwright/test": "^1.63.0",
     "@types/node": "latest",
     "@types/selenium-webdriver": "^4.35.7",
     "@vitejs/plugin-basic-ssl": "latest",
-    "@wdio/cli": "latest",
-    "@wdio/globals": "latest",
-    "@wdio/local-runner": "latest",
-    "@wdio/mocha-framework": "latest",
-    "@wdio/spec-reporter": "latest",
-    "@wdio/visual-service": "latest",
     "appium": "^3.7.0",
     "appium-uiautomator2-driver": "^8.7.0",
     "electron": "44.4.3",
@@ -67,8 +61,6 @@
     "selenium-webdriver": "^4.51.0",
     "typescript": "latest",
     "vite": "latest",
-    "vite-plugin-pwa": "latest",
-    "wdio-electron-service": "^9.2.1",
-    "webdriverio": "latest"
+    "vite-plugin-pwa": "latest"
   }
 }

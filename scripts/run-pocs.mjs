@@ -7,8 +7,8 @@ import { androidEnvironment, prepareAndroid } from './android-poc.mjs'
 const selection = process.argv[2] ?? 'web'
 const targets = selection === 'all' ? ['web', 'pwa', 'electron', 'android'] : [selection]
 if (targets.some(target => !['web', 'pwa', 'electron', 'android'].includes(target))) throw new Error('Ambiente inválido. Use web, pwa, electron, android ou all.')
-const frameworks = (process.env.POC_FRAMEWORKS ?? 'playwright,webdriverio,selenium').split(',')
-if (frameworks.some(framework => !['playwright', 'webdriverio', 'selenium'].includes(framework))) throw new Error('POC_FRAMEWORKS inválido.')
+const frameworks = (process.env.POC_FRAMEWORKS ?? 'playwright,selenium').split(',')
+if (!frameworks.length || new Set(frameworks).size !== frameworks.length || frameworks.some(framework => !['playwright', 'selenium'].includes(framework))) throw new Error('POC_FRAMEWORKS inválido. Use playwright,selenium.')
 const directory = resolve(process.env.POC_RESULTS_DIR ?? `test-results/pocs/${selection}-${new Date().toISOString().replace(/[:.]/g, '-')}`)
 await mkdir(directory, { recursive: true })
 const runStarted = performance.now()

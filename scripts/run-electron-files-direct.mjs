@@ -25,11 +25,11 @@ const playwright = JSON.parse(await readFile(join(directory, 'playwright/results
 let preflights
 try {
   await access(resolve('test-results/appium-mac2/node_modules/appium-mac2-driver/package.json'))
-  console.log('Selenium/WDIO: tentativa de sessão Appium Mac2 nativa, sem fallback para ChromeDriver.')
+  console.log('Selenium: tentativa de sessão Appium Mac2 nativa, sem fallback para ChromeDriver.')
   run(['e2e/pocs/electron-mac2-bootstrap.ts'], 'mac2-clients.log', { POC_NATIVE_RESULTS_DIR: directory })
   preflights = JSON.parse(await readFile(join(directory, 'mac2-bootstrap.json'), 'utf8')).results
 } catch (error) {
-  preflights = ['selenium', 'webdriverio'].map(tool => ({ tool, status: 'unavailable', durationMs: null,
+  preflights = ['selenium'].map(tool => ({ tool, status: 'unavailable', durationMs: null,
     transport: 'appium-mac2-native', chromeDriverUsed: false, error: String(error) }))
 }
 const xcode = spawnSync('xcodebuild', ['-version'], { encoding: 'utf8' })

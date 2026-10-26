@@ -50,7 +50,6 @@ async function dragMapPoint(page: Page, point: ScreenPoint, deltaX: number, delt
   await page.mouse.move(startX, startY)
   await page.mouse.down()
   await page.waitForTimeout(250)
-  // Equivalente aos cinco pointerMove de 150 ms usados na suíte WebdriverIO.
   // O Sketch do ArcGIS precisa receber eventos espaçados para reconhecer um drag.
   const steps = 5
   for (let step = 1; step <= steps; step += 1) {
@@ -74,7 +73,7 @@ async function createPolygon(page: Page, points: Array<[number, number]>) {
   // O SDK ativa a ferramenta de forma assíncrona antes de receber o primeiro ponto.
   await page.waitForTimeout(300)
   for (const [x, y] of points) {
-    // A suíte WebdriverIO usa coordenadas em relação ao centro do mapa.
+    // Os pontos de teste usam coordenadas relativas ao centro do mapa.
     await page.mouse.click(box.x + box.width / 2 + x, box.y + box.height / 2 + y)
     // O SketchViewModel processa cada clique em um frame de renderização.
     await page.waitForTimeout(100)
@@ -96,8 +95,7 @@ async function clearPolygonsWithConfirmation(page: Page) {
 
 async function waitForSketchEditing(page: Page) {
   // A visibilidade do botão ocorre antes da ativação das alças pelo ArcGIS.
-  // WebdriverIO absorve esse intervalo por meio de seus comandos remotos;
-  // em Playwright precisamos esperar explicitamente antes do primeiro gesto.
+  // Aguardar as alças antes de enviar o primeiro gesto.
   await page.waitForTimeout(500)
 }
 

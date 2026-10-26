@@ -1,13 +1,13 @@
 # Plano das POCs E2E
 
-Comparar WebdriverIO, Selenium e Playwright usando os mesmos critérios de
+Comparar Playwright e Selenium usando os mesmos critérios de
 aceitação. Cada ferramenta terá sua implementação e configurações por ambiente:
 navegador, PWA instalado, Electron e Android via Capacitor.
 
 Este documento define a cobertura proposta. Não representa testes implementados
-ou executados nos três frameworks e nos quatro ambientes.
+ou executados nos dois frameworks e nos quatro ambientes.
 
-Os cenários web C01–C10 já têm implementações independentes nas três ferramentas
+Os cenários web C01–C10 já têm implementações independentes nas duas ferramentas
 em `e2e/pocs/`, com duas execuções para C10 (mouse e touch). Consulte
 `e2e/pocs/README.md` para execução e limites dessa primeira etapa.
 
@@ -32,7 +32,7 @@ sem tratar o clique ignorado como comportamento correto.
 
 ## Duas telas: navegador, PWA instalado e Electron
 
-As três POCs devem executar os cenários abaixo nesses três ambientes.
+As duas POCs devem executar os cenários abaixo nesses três ambientes.
 Android nativo fica fora desta cobertura adicional, pois não oferece separar mapa.
 
 ### D01 — Operar as duas janelas com sincronização bidirecional
@@ -89,7 +89,7 @@ de treze execuções por ferramenta.
 
 ## Critérios de execução e comparação
 
-- Aplicar a mesma matriz às três ferramentas; registrar limitações de ambiente
+- Aplicar a mesma matriz às duas ferramentas; registrar limitações de ambiente
   e dependências adicionais separadamente de falhas funcionais.
 - Validar o PWA em uma janela realmente instalada. Abrir uma página comum ou
   simular `display-mode: standalone` não comprova essa execução.
@@ -110,6 +110,9 @@ de treze execuções por ferramenta.
 
 `e2e/playwright/detached-map.spec.ts` já contém verificações de duas janelas em
 um contexto de navegador. Essa suíte serve como referência de comportamento;
-a execução completa nos quatro ambientes e nas três ferramentas ainda não
-foi concluída. Consulte [`e2e/pocs/STATUS.md`](e2e/pocs/STATUS.md) para a
+as evidências das últimas execuções e os fluxos nativos adicionais têm
+escopos separados. Consulte [`e2e/pocs/STATUS.md`](e2e/pocs/STATUS.md) para a
 cobertura verificada e as pendências.
+
+A implementação das três ferramentas anterior à remoção está na branch
+`codex/poc-tres-ferramentas` (`98f49f5`). A main mantém somente as duas alternativas atuais.
