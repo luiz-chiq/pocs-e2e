@@ -61,3 +61,24 @@ somente a escolha/cancelamento no diálogo é simulada. O seletor nativo visual
 continua fora da cobertura. Isso não dá acesso genérico ao processo principal
 para Selenium/WDIO: os clientes acionam os botões e observam os efeitos da API
 restrita do aplicativo. O serviço Electron do WDIO continua sem uso nesta rodada.
+
+## Rodada de arquivos sem ChromeDriver
+
+A [modalidade atual](ELECTRON-ARQUIVOS.md) usa Playwright diretamente no Electron,
+inclusive `electronApplication.evaluate` no processo principal. N01–N05 passaram.
+Somente a resposta do diálogo foi simulada; arquivos e IPC são reais.
+
+Para Selenium e WebdriverIO, foi instalado Mac2 4.5.0 em uma pasta Appium isolada.
+Ambos tentaram uma sessão nativa; o WebDriverAgentMac não iniciou porque o Xcode
+completo está ausente. Seus cinco cenários por ferramenta não foram executados.
+Não se deve apresentar o 15/15 da modalidade anterior com ChromeDriver como
+resultado nativo atual. O código nativo preparado é somente diagnóstico de
+sessão; os cenários da árvore de acessibilidade ainda precisam de adaptação e
+validação após configurar o Xcode. O serviço Electron do WDIO também usa
+ChromeDriver; ativá-lo não elimina essa dependência.
+
+Appium pode controlar elementos nativos e diálogos via Mac2; isso não é acesso
+direto ao JavaScript do main nem conserva os seletores DOM/CSS. Playwright não
+usa Appium como backend, mas pode coexistir no mesmo runner com um cliente
+Appium, por exemplo WDIO, para ações nativas complementares. No Android, o
+contexto WebView de Appium pode continuar usando ChromeDriver internamente.

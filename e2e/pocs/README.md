@@ -29,10 +29,16 @@ npm run test:poc:electron:files
 npm run test:electron:files
 ```
 
-O segundo comando usa Playwright, Selenium e WebdriverIO sequencialmente. A
-seleção do caminho no diálogo é simulada; IPC, validação e operações de disco são
-reais. A build normal usa os diálogos nativos. Essa suíte adicional não está
-incluída no comando original `test:poc:electron`, que executa o catálogo C/D.
+O segundo comando executa Playwright por Electron direto, sem ChromeDriver, e
+tenta sessões nativas Selenium/WDIO via Appium Mac2. A execução nativa exige
+Xcode completo; se a sessão não inicia, os cenários ficam sem execução e o
+comando termina com código 2. Os cenários nativos ainda precisam de adaptação
+à árvore de acessibilidade após destravar a sessão. Não há fallback para
+ChromeDriver. A escolha do caminho no diálogo é simulada; IPC, validação e
+operações de disco são reais nos casos executados. A build normal usa os
+diálogos nativos. A modalidade antiga está explicitamente em
+`npm run test:poc:electron:files:chromedriver`. Essa suíte adicional não está
+incluída em `test:poc:electron`, que preserva o catálogo C/D anterior.
 
 ## Suítes web implementadas
 

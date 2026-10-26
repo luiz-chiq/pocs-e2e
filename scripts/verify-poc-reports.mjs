@@ -106,7 +106,7 @@ export async function verifyPocReports(resultsDirectory = 'test-results/pocs/fin
     }
   }
   // A rodada nova de arquivos tem contagem própria, sem alterar os 150 casos C/D.
-  let nativeCases = 0, nativePassed = 0
+  let nativeCases = 0, nativePassed = 0, nativeUnavailable = 0
   const nativeText = await readFile(join(reportsRoot, 'ELECTRON-ARQUIVOS.md'), 'utf8').catch(error => {
     if (error.code === 'ENOENT') return ''
     throw error
@@ -119,23 +119,26 @@ export async function verifyPocReports(resultsDirectory = 'test-results/pocs/fin
     assert.equal(native.dialogSelection, 'simulated')
     const nativeTime = ms => `${(ms / 1000).toFixed(2)} s`
     const nativeSummary = rows(section(nativeText, 'Resumo'))
-    const sums = Object.keys(tools).map(tool => native.tests.filter(test => test.tool === tool).reduce((sum, test) => sum + test.durationMs, 0))
-    const complete = Object.keys(tools).every(tool => native.tests.filter(test => test.tool === tool).length === 5)
+    const executed = test => ['passed', 'failed'].includes(test.status)
+    const sums = Object.keys(tools).map(tool => native.tests.filter(test => test.tool === tool && executed(test)).reduce((sum, test) => sum + test.durationMs, 0))
+    const complete = Object.keys(tools).every(tool => native.tests.filter(test => test.tool === tool).length === 5 && native.tests.filter(test => test.tool === tool).every(executed))
     for (const [index, [tool, toolName]] of Object.entries(tools).entries()) {
       const tests = native.tests.filter(test => test.tool === tool)
       assert.equal(new Set(tests.map(test => test.title)).size, tests.length, 'Caso nativo duplicado')
-      assert(tests.every(test => /^N0[1-5] /.test(test.title) && Number.isFinite(test.durationMs) && test.durationMs >= 0))
+      assert(tests.every(test => /^N0[1-5] /.test(test.title) && (test.status === 'unavailable' ? test.durationMs === null && Boolean(test.reason) : Number.isFinite(test.durationMs) && test.durationMs >= 0)))
       const passed = tests.filter(test => test.status === 'passed').length
       const failed = tests.filter(test => test.status === 'failed').length
-      assert.equal(passed + failed, tests.length)
+      const unavailable = tests.filter(test => test.status === 'unavailable').length
+      assert.equal(passed + failed + unavailable, tests.length)
       const percentage = complete ? `${((sums[index] / Math.min(...sums) - 1) * 100).toFixed(2)}%` : '—'
-      assert.deepEqual(nativeSummary[index], [toolName, String(passed), String(failed), String(5 - tests.length), nativeTime(sums[index]), percentage])
+      assert.deepEqual(nativeSummary[index], [toolName, String(passed), String(failed), String(5 - passed - failed), tests.some(executed) ? nativeTime(sums[index]) : '—', percentage])
       const details = rows(section(nativeText, toolName, 3))
-      assert.deepEqual(details, tests.map(test => [test.title, test.status === 'passed' ? 'Passou' : 'Falhou', nativeTime(test.durationMs)]))
+      assert.deepEqual(details, tests.map(test => [test.title, test.status === 'passed' ? 'Passou' : test.status === 'failed' ? 'Falhou' : 'Não executado', test.status === 'unavailable' ? '—' : nativeTime(test.durationMs)]))
       for (const test of tests.filter(test => test.status === 'passed')) {
         assert(test.audit?.length > 0 && test.audit.every(entry => entry.processType === 'browser' && entry.pid > 0), 'Falta auditoria do main no teste de arquivo')
       }
       nativeCases += tests.length; nativePassed += passed
+      nativeUnavailable += unavailable
     }
     const summaryText = nativeText.split('## Resumo\n')[1].split('## Testes por ferramenta\n')[0].trim()
     for (const name of versions) {
@@ -183,10 +186,10 @@ export async function verifyPocReports(resultsDirectory = 'test-results/pocs/fin
       await readFile(resolve(dirname(path), target.split('#')[0])).catch(error => { if (error.code !== 'EISDIR') throw new Error(`Link quebrado em ${name}: ${target}`, { cause: error }) })
     }
   }
-  return { combinations: selected.size, cases: passed + failed, passed, failed, dualPassed, dualFailed, nativeCases, nativePassed, versions: versions.length, archives: archives.length, historicalRows }
+  return { combinations: selected.size, cases: passed + failed, passed, failed, dualPassed, dualFailed, nativeCases, nativePassed, nativeUnavailable, versions: versions.length, archives: archives.length, historicalRows }
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const result = await verifyPocReports(process.argv[2])
-  console.log(`Relatórios conferidos contra os JSONs: ${result.combinations} combinações, ${result.cases} casos, ${result.passed} aprovados e ${result.failed} falhas; duas janelas ${result.dualPassed}/36. Arquivos do main Electron: ${result.nativePassed}/${result.nativeCases} aprovados, contabilizados separadamente. ${result.versions} versões atuais e ${result.archives} arquivos históricos (${result.historicalRows} linhas numéricas conferidas); tempos, percentuais, origens e links válidos.`)
+  console.log(`Relatórios conferidos contra os JSONs: ${result.combinations} combinações, ${result.cases} casos, ${result.passed} aprovados e ${result.failed} falhas; duas janelas ${result.dualPassed}/36. Arquivos do main Electron: ${result.nativePassed}/${result.nativeCases} aprovados e ${result.nativeUnavailable} sem execução, contabilizados separadamente. ${result.versions} versões atuais e ${result.archives} arquivos históricos (${result.historicalRows} linhas numéricas conferidas); tempos, percentuais, origens e links válidos.`)
 }

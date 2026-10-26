@@ -78,3 +78,12 @@ reais pelos botões, preload, IPC e `fs` do main. O runner lê o arquivo de saí
 para conferir seu conteúdo. Há um processo/perfil novo por caso nas três
 ferramentas, diferente do isolamento da suíte WDIO original. Por isso, seus tempos
 ficam [separados](ELECTRON-ARQUIVOS.md) das métricas C/D anteriores.
+
+Na modalidade mais recente, o comando de arquivos usa Playwright direto e
+`electronApplication.evaluate` para configurar a resposta do diálogo no main.
+Selenium/WDIO sem ChromeDriver foram tentados por Appium Mac2. A sessão não
+iniciou sem Xcode completo; os cenários nativos não estão adaptados/validados.
+Portar para Mac2 exige operar a árvore de acessibilidade, usando outros
+seletores e ações; não basta reaproveitar CSS ou trocar a URL do servidor.
+As implementações e os resultados anteriores com ChromeDriver foram preservados
+como outra modalidade, sem aprová-los novamente como testes nativos.

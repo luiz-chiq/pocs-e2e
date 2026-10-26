@@ -1,0 +1,35 @@
+import { writeFile } from 'node:fs/promises'
+import { resolve, relative } from 'node:path'
+
+export async function renderDirectFiles(report, directory) {
+  const link = name => relative(resolve('e2e/pocs'), resolve(directory, name))
+  const names = { playwright: 'Playwright', selenium: 'Selenium', webdriverio: 'WebdriverIO' }
+  const time = ms => Number.isFinite(ms) ? `${(ms / 1000).toFixed(2)} s` : '—'
+  const executed = test => ['passed', 'failed'].includes(test.status)
+  let text = `# Electron — importação e exportação sem ChromeDriver\n\nExecutado de ${report.startedAt} a ${report.finishedAt}. Evidência: [resultados JSON](${link('results.json')}).\n\n## Sumário\n\n- [Resumo](#resumo)\n- [Testes por ferramenta](#testes-por-ferramenta)\n- [Implementação e limites](#implementação-e-limites)\n\n## Resumo\n\n**Modalidade atual: sem ChromeDriver.** Playwright controla o Electron diretamente; Selenium e WebdriverIO tentam uma sessão nativa Appium/Mac2. Não há fallback para ChromeDriver. Sessão indisponível não é aprovação nem falha funcional dos cenários.\n\nN01–N05 têm contagem própria, separada dos 150 casos C/D anteriores. Esta rodada não reexecuta web, PWA, Android ou o catálogo C/D.\n\n| Ferramenta | Passou | Falhou | Não executado | Soma das durações | Aumento sobre o menor tempo |\n| --- | --- | --- | --- | --- | --- |\n`
+  for (const [tool, name] of Object.entries(names)) {
+    const tests = report.tests.filter(test => test.tool === tool)
+    const passed = tests.filter(test => test.status === 'passed').length
+    const failed = tests.filter(test => test.status === 'failed').length
+    const sum = tests.filter(executed).reduce((sum, test) => sum + test.durationMs, 0)
+    text += `| ${name} | ${passed} | ${failed} | ${5 - passed - failed} | ${tests.some(executed) ? time(sum) : '—'} | — |\n`
+  }
+  text += '\nCada duração executada inclui lançamento com perfil novo, cenário e encerramento; exclui build e preparação externa. Cenários não executados não recebem duração zero. O tempo da tentativa de criar a sessão Mac2 aparece separadamente abaixo, sem ser confundido com execução dos cinco testes. Não há percentual comparativo com duas ferramentas sem execução.\n\n## Testes por ferramenta\n'
+  for (const [tool, name] of Object.entries(names)) {
+    text += `\n### ${name}\n\n| Cenário | Resultado | Duração |\n| --- | --- | --- |\n`
+    for (const test of report.tests.filter(test => test.tool === tool)) text += `| ${test.title} | ${test.status === 'passed' ? 'Passou' : test.status === 'failed' ? 'Falhou' : 'Não executado'} | ${time(test.durationMs)} |\n`
+    const preflight = report.preflights.find(item => item.tool === tool)
+    if (preflight) text += `\nPreparação nativa: **${preflight.status === 'session-ready' ? 'sessão criada; cenários nativos ainda não validados' : 'sessão indisponível'}**, em ${time(preflight.durationMs)}. Os cinco cenários ficaram sem execução. [Log Appium](${link('appium-mac2.log')}) · [diagnóstico dos clientes](${link('mac2-bootstrap.json')}).\n\n\`\`\`text\n${preflight.error ?? 'Os cenários ainda precisam ser adaptados e validados na árvore de acessibilidade Mac2.'}\n\`\`\`\n`
+    for (const test of report.tests.filter(test => test.tool === tool && test.status === 'failed')) text += `\nErro em ${test.title}:\n\n\`\`\`text\n${test.error}\n\`\`\`\n`
+  }
+  text += '\n## Implementação e limites\n\n'
+  text += '- **Playwright:** `_electron.launch` abre o app empacotado. `electronApplication.evaluate` configura somente a resposta dos diálogos no processo principal e lê a auditoria. Não usa ChromeDriver nem POLYGON_E2E_DIALOG_PLAN. Os cliques da interface, preload, IPC, validação e operações de disco são reais. O seletor visual do sistema continua simulado.\n'
+  text += '- **Selenium e WDIO:** ambos os clientes tentaram criar uma sessão Appium Mac2/WebDriverAgentMac nativa. O Mac2 foi instalado em `test-results/appium-mac2`, separado do Android. O Xcode completo está ausente: o doctor indicou caminho inválido e xcodebuild indisponível; o WebDriverAgentMac encerrou com código 1. Nenhum N01–N05 rodou nessas duas integrações. O bootstrap não é uma implementação E2E completa: após destravar a sessão, os cenários ainda precisam ser adaptados e validados com seletores de acessibilidade. [Requisitos Mac2](https://appium.github.io/appium-mac2-driver/latest/getting-started/).\n'
+  text += '- O [serviço Electron do WDIO](https://webdriver.io/docs/desktop-testing/electron/) também usa ChromeDriver. Appium é o servidor, Mac2 é seu driver nativo de macOS, e Selenium/WDIO são clientes. Usar Appium não elimina automaticamente ChromeDriver em outros contextos: no Android/WebView ele pode continuar necessário.\n'
+  text += '- O [Playwright](https://playwright.dev/docs/api/class-electron) não oferece Appium como backend. Pode-se combinar bibliotecas no mesmo runner, usando Playwright para renderer/main e outro cliente para ações nativas via Appium. Os cinco testes atuais não usam Appium.\n'
+  text += '- Os mesmos cenários TypeScript verificam JSON com nomes/coordenadas, persistência após reload, cancelamento, rejeição atômica de arquivos inválidos, erros de disco/limpeza e duas janelas. O main continua lendo/gravando os arquivos reais. A rodada atual usa o novo fundo World Imagery. Não foram testados Windows/Linux, instalador nem o seletor nativo visual.\n'
+  text += `\n### Pré-requisitos pendentes\n\nInstalar Xcode completo compatível com este macOS, selecionar seu diretório de desenvolvimento, concluir a configuração e conceder acessibilidade ao Xcode Helper. Command Line Tools sozinho não atende ao requisito. Não foi desativada a autenticação do modo de automação.\n\nDiretório selecionado: \`${report.environment.xcodeSelected}\`.\n\n\`\`\`text\n${report.environment.xcodeOutput}\n\`\`\`\n\nPara configurar o driver isolado, se necessário:\n\n\`\`\`bash\nAPPIUM_HOME="$PWD/test-results/appium-mac2" npx appium driver install mac2@4.5.0\nAPPIUM_HOME="$PWD/test-results/appium-mac2" npx appium driver doctor mac2\n\`\`\`\n\nPara repetir a rodada: npm run electron:build:poc e npm run test:poc:electron:files. O comando termina com código 2 se houver cenários sem execução, em vez de apresentar uma rodada incompleta como aprovada.\n\n[Rodada anterior com ChromeDriver em Selenium/WDIO](${report.previousReport}): 15/15 aprovados, em outra modalidade. Esses resultados não são aprovações da tentativa nativa atual. O comando antigo está disponível explicitamente como npm run test:poc:electron:files:chromedriver.\n`
+  const target = resolve('e2e/pocs/ELECTRON-ARQUIVOS.md')
+  await writeFile(target, text)
+  console.log(`Relatório gerado: ${target}`)
+}

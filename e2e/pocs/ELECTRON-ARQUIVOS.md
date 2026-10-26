@@ -1,6 +1,6 @@
-# Electron — importação e exportação pelo processo principal
+# Electron — importação e exportação sem ChromeDriver
 
-Executado de 2026-10-19T20:12:09.050Z a 2026-10-19T20:12:25.773Z. Evidência: [resultados JSON](../../test-results/pocs/electron-files-verified/results.json).
+Executado de 2026-10-20T16:58:50.469Z a 2026-10-20T16:59:07.587Z. Evidência: [resultados JSON](../../test-results/pocs/electron-direct-final/results.json).
 
 ## Sumário
 
@@ -10,15 +10,17 @@ Executado de 2026-10-19T20:12:09.050Z a 2026-10-19T20:12:25.773Z. Evidência: [r
 
 ## Resumo
 
-Esta é uma rodada adicional da nova funcionalidade Electron. Seus casos N01–N05 são separados do consolidado histórico de 150 testes; web, PWA e Android não foram reexecutados nesta rodada.
+**Modalidade atual: sem ChromeDriver.** Playwright controla o Electron diretamente; Selenium e WebdriverIO tentam uma sessão nativa Appium/Mac2. Não há fallback para ChromeDriver. Sessão indisponível não é aprovação nem falha funcional dos cenários.
+
+N01–N05 têm contagem própria, separada dos 150 casos C/D anteriores. Esta rodada não reexecuta web, PWA, Android ou o catálogo C/D.
 
 | Ferramenta | Passou | Falhou | Não executado | Soma das durações | Aumento sobre o menor tempo |
 | --- | --- | --- | --- | --- | --- |
-| Playwright | 5 | 0 | 0 | 6.84 s | 48.61% |
-| Selenium | 5 | 0 | 0 | 4.60 s | 0.00% |
-| WebdriverIO | 5 | 0 | 0 | 5.17 s | 12.21% |
+| Playwright | 5 | 0 | 0 | 8.46 s | — |
+| Selenium | 0 | 0 | 5 | — | — |
+| WebdriverIO | 0 | 0 | 5 | — | — |
 
-Cada duração inclui lançamento de um app empacotado com perfil novo, cenário e encerramento. A soma exclui build e trabalho externo do runner; não equivale ao tempo do comando das suítes antigas. Percentual: (soma ÷ menor soma − 1) × 100, somente com os cinco casos registrados nas três ferramentas. Uma execução não estabelece um benchmark de desempenho.
+Cada duração executada inclui lançamento com perfil novo, cenário e encerramento; exclui build e preparação externa. Cenários não executados não recebem duração zero. O tempo da tentativa de criar a sessão Mac2 aparece separadamente abaixo, sem ser confundido com execução dos cinco testes. Não há percentual comparativo com duas ferramentas sem execução.
 
 ## Testes por ferramenta
 
@@ -26,41 +28,69 @@ Cada duração inclui lançamento de um app empacotado com perfil novo, cenário
 
 | Cenário | Resultado | Duração |
 | --- | --- | --- |
-| N01 importa e exporta nomes e coordenadas usando IPC e disco real | Passou | 2.48 s |
-| N02 cancelar abertura e salvamento preserva os polígonos e não cria arquivos | Passou | 0.97 s |
-| N03 rejeita JSON, nomes e geometrias inválidos sem importar parcialmente | Passou | 1.00 s |
-| N04 informa erros de leitura e escrita sem perder dados nem deixar temporários | Passou | 0.90 s |
-| N05 importa com duas janelas, acrescenta áreas, exporta e reúne sem perder dados | Passou | 1.50 s |
+| N01 importa e exporta nomes e coordenadas usando IPC e disco real | Passou | 3.11 s |
+| N02 cancelar abertura e salvamento preserva os polígonos e não cria arquivos | Passou | 1.09 s |
+| N03 rejeita JSON, nomes e geometrias inválidos sem importar parcialmente | Passou | 1.22 s |
+| N04 informa erros de leitura e escrita sem perder dados nem deixar temporários | Passou | 1.20 s |
+| N05 importa com duas janelas, acrescenta áreas, exporta e reúne sem perder dados | Passou | 1.84 s |
 
 ### Selenium
 
 | Cenário | Resultado | Duração |
 | --- | --- | --- |
-| N01 importa e exporta nomes e coordenadas usando IPC e disco real | Passou | 0.97 s |
-| N02 cancelar abertura e salvamento preserva os polígonos e não cria arquivos | Passou | 0.78 s |
-| N03 rejeita JSON, nomes e geometrias inválidos sem importar parcialmente | Passou | 0.79 s |
-| N04 informa erros de leitura e escrita sem perder dados nem deixar temporários | Passou | 0.71 s |
-| N05 importa com duas janelas, acrescenta áreas, exporta e reúne sem perder dados | Passou | 1.36 s |
+| N01 importa e exporta nomes e coordenadas usando IPC e disco real | Não executado | — |
+| N02 cancelar abertura e salvamento preserva os polígonos e não cria arquivos | Não executado | — |
+| N03 rejeita JSON, nomes e geometrias inválidos sem importar parcialmente | Não executado | — |
+| N04 informa erros de leitura e escrita sem perder dados nem deixar temporários | Não executado | — |
+| N05 importa com duas janelas, acrescenta áreas, exporta e reúne sem perder dados | Não executado | — |
+
+Preparação nativa: **sessão indisponível**, em 1.04 s. Os cinco cenários ficaram sem execução. [Log Appium](../../test-results/pocs/electron-direct-final/appium-mac2.log) · [diagnóstico dos clientes](../../test-results/pocs/electron-direct-final/mac2-bootstrap.json).
+
+```text
+'GET /status' cannot be proxied to Mac2 Driver server because its process is not running (probably crashed). Check the Appium log for more details
+```
 
 ### WebdriverIO
 
 | Cenário | Resultado | Duração |
 | --- | --- | --- |
-| N01 importa e exporta nomes e coordenadas usando IPC e disco real | Passou | 1.01 s |
-| N02 cancelar abertura e salvamento preserva os polígonos e não cria arquivos | Passou | 0.87 s |
-| N03 rejeita JSON, nomes e geometrias inválidos sem importar parcialmente | Passou | 0.93 s |
-| N04 informa erros de leitura e escrita sem perder dados nem deixar temporários | Passou | 0.84 s |
-| N05 importa com duas janelas, acrescenta áreas, exporta e reúne sem perder dados | Passou | 1.52 s |
+| N01 importa e exporta nomes e coordenadas usando IPC e disco real | Não executado | — |
+| N02 cancelar abertura e salvamento preserva os polígonos e não cria arquivos | Não executado | — |
+| N03 rejeita JSON, nomes e geometrias inválidos sem importar parcialmente | Não executado | — |
+| N04 informa erros de leitura e escrita sem perder dados nem deixar temporários | Não executado | — |
+| N05 importa com duas janelas, acrescenta áreas, exporta e reúne sem perder dados | Não executado | — |
+
+Preparação nativa: **sessão indisponível**, em 1.04 s. Os cinco cenários ficaram sem execução. [Log Appium](../../test-results/pocs/electron-direct-final/appium-mac2.log) · [diagnóstico dos clientes](../../test-results/pocs/electron-direct-final/mac2-bootstrap.json).
+
+```text
+WebDriverError: 'GET /status' cannot be proxied to Mac2 Driver server because its process is not running (probably crashed). Check the Appium log for more details when running "http://127.0.0.1:4725/session" with method "POST"
+```
 
 ## Implementação e limites
 
-- Botões disponíveis somente no Electron, no rodapé do menu. Importar acrescenta áreas, gera IDs novos e sincroniza com a janela do mapa. Exportar salva todas as áreas confirmadas. Ambos ficam desabilitados durante desenho/edição.
-- O renderer chama duas funções restritas do preload/contextBridge. O processo principal valida a origem IPC e os dados, abre os diálogos e lê/grava por Node fs. A página não recebe caminhos arbitrários nem acesso ao Node.
-- JSON próprio, formato poligonos, versão 1, nome e geometria ArcGIS (rings/spatialReference). Não é GeoJSON. Nomes de 1 a 30 caracteres, letras/números/espaços e acentos; mínimo de três pontos distintos formando área e anéis fechados. Referências 4326/3857/102100/102113; até 10 MB, 1.000 polígonos e 100.000 pontos por arquivo. Não verifica todas as regras topológicas, como auto-interseções.
-- Gravação real por arquivo temporário e rename; falhas não substituem o destino e limpam temporários. Importação só altera a coleção após validar todo o arquivo.
-- Os três clientes usam as mesmas funções de cenário e asserções em TypeScript, com adaptadores de clique, leitura e troca de janela próprios. Playwright lança por _electron; Selenium e WDIO remoto usam ChromeDriver compatível. Não se utiliza o serviço Electron do WDIO nem se executa código arbitrário no main via WebDriver. O efeito do main é verificado por arquivos reais e auditoria de chamadas no processo browser.
-- Apenas a resposta de seleção/cancelamento do diálogo é simulada, por plano local habilitado exclusivamente no pacote POC (polygonE2E=true) e variável POLYGON_E2E_DIALOG_PLAN. A build normal não habilita esse plano. Abertura visual, navegação e interação com o seletor nativo do sistema **não foram automatizadas**.
-- Testado em macOS arm64. Windows/Linux, instalador e diálogos reais continuam sem validação nesta rodada. As duas janelas foram testadas no mesmo computador, sem exigir dois monitores físicos.
-- Validação complementar: seis testes Node do serviço cobrem formato/geometria, disco real, cancelamento, tamanho, preservação do destino quando rename falha, rejeição de origens/subframes IPC e bloqueio de operações simultâneas.
+- **Playwright:** `_electron.launch` abre o app empacotado. `electronApplication.evaluate` configura somente a resposta dos diálogos no processo principal e lê a auditoria. Não usa ChromeDriver nem POLYGON_E2E_DIALOG_PLAN. Os cliques da interface, preload, IPC, validação e operações de disco são reais. O seletor visual do sistema continua simulado.
+- **Selenium e WDIO:** ambos os clientes tentaram criar uma sessão Appium Mac2/WebDriverAgentMac nativa. O Mac2 foi instalado em `test-results/appium-mac2`, separado do Android. O Xcode completo está ausente: o doctor indicou caminho inválido e xcodebuild indisponível; o WebDriverAgentMac encerrou com código 1. Nenhum N01–N05 rodou nessas duas integrações. O bootstrap não é uma implementação E2E completa: após destravar a sessão, os cenários ainda precisam ser adaptados e validados com seletores de acessibilidade. [Requisitos Mac2](https://appium.github.io/appium-mac2-driver/latest/getting-started/).
+- O [serviço Electron do WDIO](https://webdriver.io/docs/desktop-testing/electron/) também usa ChromeDriver. Appium é o servidor, Mac2 é seu driver nativo de macOS, e Selenium/WDIO são clientes. Usar Appium não elimina automaticamente ChromeDriver em outros contextos: no Android/WebView ele pode continuar necessário.
+- O [Playwright](https://playwright.dev/docs/api/class-electron) não oferece Appium como backend. Pode-se combinar bibliotecas no mesmo runner, usando Playwright para renderer/main e outro cliente para ações nativas via Appium. Os cinco testes atuais não usam Appium.
+- Os mesmos cenários TypeScript verificam JSON com nomes/coordenadas, persistência após reload, cancelamento, rejeição atômica de arquivos inválidos, erros de disco/limpeza e duas janelas. O main continua lendo/gravando os arquivos reais. A rodada atual usa o novo fundo World Imagery. Não foram testados Windows/Linux, instalador nem o seletor nativo visual.
 
-Para repetir: npm run electron:build:poc e npm run test:poc:electron:files. Testes do serviço: npm run test:electron:files.
+### Pré-requisitos pendentes
+
+Instalar Xcode completo compatível com este macOS, selecionar seu diretório de desenvolvimento, concluir a configuração e conceder acessibilidade ao Xcode Helper. Command Line Tools sozinho não atende ao requisito. Não foi desativada a autenticação do modo de automação.
+
+Diretório selecionado: `/Library/Developer/CommandLineTools`.
+
+```text
+xcode-select: error: tool 'xcodebuild' requires Xcode, but active developer directory '/Library/Developer/CommandLineTools' is a command line tools instance
+```
+
+Para configurar o driver isolado, se necessário:
+
+```bash
+APPIUM_HOME="$PWD/test-results/appium-mac2" npx appium driver install mac2@4.5.0
+APPIUM_HOME="$PWD/test-results/appium-mac2" npx appium driver doctor mac2
+```
+
+Para repetir a rodada: npm run electron:build:poc e npm run test:poc:electron:files. O comando termina com código 2 se houver cenários sem execução, em vez de apresentar uma rodada incompleta como aprovada.
+
+[Rodada anterior com ChromeDriver em Selenium/WDIO](old/ELECTRON-ARQUIVOS-COM-CHROMEDRIVER.md): 15/15 aprovados, em outra modalidade. Esses resultados não são aprovações da tentativa nativa atual. O comando antigo está disponível explicitamente como npm run test:poc:electron:files:chromedriver.

@@ -26,7 +26,7 @@ export async function androidEnvironment() {
   }
 }
 
-export async function prepareAndroid(env, directory) {
+export async function prepareAndroid(env, directory, { nativeOnly = false } = {}) {
   const adb = join(env.ANDROID_HOME, 'platform-tools', `adb${suffix}`)
   const emulatorBinary = join(env.ANDROID_HOME, 'emulator', `emulator${suffix}`)
   const command = async args => (await exec(adb, args, { env, timeout: 15_000 })).stdout.trim()
@@ -91,7 +91,7 @@ export async function prepareAndroid(env, directory) {
       const pkg = JSON.parse(await readFile('node_modules/appium/package.json', 'utf8'))
       const log = createWriteStream(join(directory, 'appium.log')); streams.push(log)
       console.log(`Iniciando Appium na porta ${port}...`)
-      appium = spawn(process.execPath, [resolve('node_modules/appium', pkg.bin.appium), '--address', '127.0.0.1', '--port', port, '--allow-insecure', 'uiautomator2:chromedriver_autodownload'], { env, stdio: ['ignore', 'pipe', 'pipe'] })
+      appium = spawn(process.execPath, [resolve('node_modules/appium', pkg.bin.appium), '--address', '127.0.0.1', '--port', port, ...(nativeOnly ? [] : ['--allow-insecure', 'uiautomator2:chromedriver_autodownload'])], { env, stdio: ['ignore', 'pipe', 'pipe'] })
       appium.stdout.pipe(log, { end: false }); appium.stderr.pipe(log, { end: false })
     }
     const host = env.APPIUM_HOST ?? '127.0.0.1'

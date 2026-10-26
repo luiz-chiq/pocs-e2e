@@ -1,4 +1,5 @@
 import '@arcgis/core/assets/esri/themes/light/main.css'
+import './native-files'
 import Map from '@arcgis/core/Map.js'
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer.js'
 import TileLayer from '@arcgis/core/layers/TileLayer.js'
