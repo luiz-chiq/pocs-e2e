@@ -1,5 +1,5 @@
 // Compartilhar dados e contratos; cada POC implementa seus próprios gestos e esperas.
-export const appUrl = process.env.BASE_URL ?? 'https://poc-e2e.chiquetano.com.br/'
+export const appUrl = process.env.BASE_URL ?? 'http://localhost:4173/'
 export const target = process.env.POC_TARGET ?? 'web'
 if (!['web', 'pwa', 'electron', 'android'].includes(target)) throw new Error(`POC_TARGET inválido: ${target}`)
 export const isWeb = target === 'web'

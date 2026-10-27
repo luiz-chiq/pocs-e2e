@@ -182,6 +182,11 @@ As POCs comparativas usam uma build E2E, gestos reais e uma API auxiliar somente
 de leitura. O plano está em [E2E-POCS.md](E2E-POCS.md) e a execução em
 [e2e/pocs/README.md](e2e/pocs/README.md).
 
+O alvo padrão das POCs web e PWA é a build local em `http://localhost:4173/`.
+Antes de executar, rode `npm run build:e2e` e mantenha `npm run preview` ativo
+em outro terminal. O preview usa a porta 4173 fixa e encerra com erro se ela
+estiver ocupada. Para outro endereço, defina `BASE_URL` explicitamente.
+
 | Plataforma | Comando — Playwright e Selenium em sequência |
 | --- | --- |
 | Web | `npm run test:poc:web` |

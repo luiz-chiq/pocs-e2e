@@ -27,6 +27,12 @@ npm run build:e2e
 npm run preview
 ```
 
+O alvo padrão das POCs web e PWA é `http://localhost:4173/`, servido a partir
+da pasta `dist/` gerada por `build:e2e`. O preview usa a porta 4173 fixa e
+encerra com erro se ela estiver ocupada. Os comandos de teste não iniciam
+o preview automaticamente. Electron e Android usam suas builds empacotadas.
+Para testar outro endereço, defina `BASE_URL` explicitamente.
+
 Com o preview ativo em outro terminal:
 
 ```bash
