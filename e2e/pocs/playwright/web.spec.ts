@@ -97,9 +97,8 @@ async function deleteInEdit(page: Page) {
   await clickPoint(page, (await points(page)).center)
   await expect(page.locator(s.mapSurface)).toBeFocused()
   await page.keyboard.press('Delete')
-  await expect(page.locator(s.instructions)).toContainText('Polígono apagado nesta edição')
-  await page.locator(s.finish).click()
-  await expect(page.locator(s.deletedDialog)).toBeVisible()
+  await expect(page.locator('#clear-dialog')).toBeVisible()
+  await expect(page.locator(s.mapLabel).first()).toBeVisible()
 }
 
 async function points(page: Page) {
@@ -370,11 +369,12 @@ test(cases.delete, async ({ page }) => {
   await create(page, 240)
   if (!isAndroid) {
   await deleteInEdit(page)
-  await page.locator(s.restoreDeleted).click()
+  await page.locator(s.dismissClear).click()
+  await page.locator(s.cancel).click()
   await expect(page.locator(s.items)).toHaveCount(2)
   await expect(page.locator(s.finish)).toBeHidden()
   await deleteInEdit(page)
-  await page.locator(s.confirmDeleted).click()
+  await page.locator(s.confirmClear).click()
   await expect(page.locator(s.items)).toHaveCount(1)
   await expect(page.locator(s.mapLabel)).toHaveCount(1)
   }

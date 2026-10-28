@@ -109,11 +109,22 @@ test('o nome acompanha zoom, rotação, navegação e vértices sem interferir n
   await page.mouse.up()
   await expect.poll(async () => Math.hypot((await labelCenter(page)).x - before.x, (await labelCenter(page)).y - before.y)).toBeGreaterThan(20)
   await expectAtTriangleCenter(page)
+  // Após zoom e pan, os vértices podem estar fora da tela. Reenquadrar pela UI.
+  await page.getByTestId('polygon-item').locator('.polygon-label').click()
+  await expect.poll(() => page.evaluate(() => (window as typeof window & {
+    polygonTestApi: { getMapState(): { stationary: boolean } }
+  }).polygonTestApi.getMapState().stationary)).toBe(true)
   await page.locator('#map .esri-view-surface').focus()
   await page.keyboard.press('Enter')
   await expect(page.getByTestId('polygon-name')).toBeVisible()
-  await page.waitForTimeout(500)
+  await expect.poll(() => page.evaluate(() => (window as typeof window & {
+    polygonTestApi: { getMapState(): { editingReady: boolean } }
+  }).polygonTestApi.getMapState().editingReady)).toBe(true)
   const vertex = (await vertices(page))[0]
+  expect(vertex.x).toBeGreaterThan(20)
+  expect(vertex.x).toBeLessThan(map.width - 20)
+  expect(vertex.y).toBeGreaterThan(100)
+  expect(vertex.y).toBeLessThan(map.height - 20)
   await page.mouse.move(map.x + vertex.x, map.y + vertex.y)
   await page.mouse.down()
   await page.waitForTimeout(200)
@@ -173,10 +184,10 @@ test('Enter e nomes funcionam nas duas janelas, incluindo exclusão e restauraç
   await popup.waitForTimeout(500)
   await popup.locator('#map .esri-view-surface').focus()
   await popup.keyboard.press('Delete')
-  await expect(popup.getByTestId('polygon-map-label')).toHaveCount(0)
-  await page.getByTestId('finish-drawing').click()
-  await expect(popup.locator('#deleted-edit-dialog')).toBeVisible()
-  await popup.locator('#restore-deleted-edit').click()
+  await expect(popup.getByTestId('polygon-map-label')).toHaveCount(1)
+  await expect(popup.locator('#clear-dialog')).toBeVisible()
+  await popup.locator('#dismiss-clear').click()
+  await page.getByTestId('cancel-editing').click()
   await expect(popup.getByTestId('polygon-map-label')).toHaveText('Reserva Rio Verde')
   await page.getByTestId('reunite-windows').click()
   await expect(page.getByTestId('polygon-map-label')).toHaveText('Reserva Rio Verde')

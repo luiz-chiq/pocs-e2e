@@ -208,9 +208,8 @@ async function deleteInEdit(driver: chrome.Driver) {
   await beginEdit(driver)
   await driver.executeScript((selector: string) => document.querySelector<HTMLElement>(selector)!.focus(), s.mapSurface)
   await driver.actions().sendKeys(Key.DELETE).perform()
-  await driver.wait(until.elementTextContains(await element(driver, s.instructions), 'Polígono apagado nesta edição'), 10_000)
-  await (await element(driver, s.finish)).click()
-  await visible(driver, s.deletedDialog)
+  await visible(driver, '#clear-dialog')
+  await visible(driver, s.mapLabel)
 }
 
 async function separate(driver: chrome.Driver) {
@@ -562,11 +561,12 @@ scenario(cases.delete, async (driver) => {
   await create(driver, 240)
   if (!isAndroid) {
   await deleteInEdit(driver)
-  await (await element(driver, s.restoreDeleted)).click()
+  await (await element(driver, s.dismissClear)).click()
+  await (await element(driver, s.cancel)).click()
   await count(driver, s.items, 2)
   assert.equal(await (await element(driver, s.finish)).isDisplayed(), false)
   await deleteInEdit(driver)
-  await (await element(driver, s.confirmDeleted)).click()
+  await (await element(driver, s.confirmClear)).click()
   await count(driver, s.items, 1)
   await count(driver, s.mapLabel, 1)
   }

@@ -1,5 +1,6 @@
 import '@arcgis/core/assets/esri/themes/light/main.css'
 import './native-files'
+import './sketch-handles'
 import Map from '@arcgis/core/Map.js'
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer.js'
 import TileLayer from '@arcgis/core/layers/TileLayer.js'
@@ -141,6 +142,8 @@ type MapCommand =
   | { type: 'draw' | 'finish' | 'cancel' | 'deselect' | 'confirm-edit-deletion' }
   | { type: 'select' | 'edit' | 'expand'; id: string }
   | { type: 'delete'; id: string | 'all' }
+  | { type: 'request-deletion'; id: string | 'all' }
+  | { type: 'dismiss-deletion' | 'confirm-deletion' }
   | { type: 'rename'; id: string; value: string; changeId: string }
   | { type: 'import'; polygons: PolygonFileData[]; fileName: string }
   | { type: 'draft-lock'; id: string | null; value: boolean }
@@ -159,6 +162,7 @@ interface MapState {
   warning: boolean
   deletedEditId: string | null
   confirmingDeletedEdit: boolean
+  pendingDeletionId: string | 'all' | null
   draftName: string
   draftLocked: boolean
   draftColor: string
@@ -181,6 +185,7 @@ const detachedMap = new DetachedMap<MapState, MapCommand>({
     warning: validationWarning,
     deletedEditId,
     confirmingDeletedEdit,
+    pendingDeletionId: pendingDeletion === 'all' ? 'all' : graphicId(pendingDeletion),
     draftName,
     draftLocked,
     draftColor,
@@ -207,6 +212,12 @@ const detachedMap = new DetachedMap<MapState, MapCommand>({
     if (command.type === 'finish') finishButton.click()
     if (command.type === 'cancel') cancelButton.click()
     if (command.type === 'confirm-edit-deletion') confirmDeletedEditButton.click()
+    if (command.type === 'dismiss-deletion') dismissDeletion()
+    if (command.type === 'confirm-deletion') confirmClearButton.click()
+    if (command.type === 'request-deletion') {
+      const target = command.id === 'all' ? 'all' : findGraphic(command.id)
+      if (target) requestDeletion(target)
+    }
     if (command.type === 'deselect') clearSelection()
     if (command.type === 'rename' && command.id === graphicId(activeGraphic)) updateDraftName(command.value, command.changeId)
     if (command.type === 'select') {
@@ -660,6 +671,7 @@ async function applyWindowState(state: MapState) {
     selectedGraphic = findGraphic(state.selectedId)
     expandedGraphic = findGraphic(state.expandedId)
     activeGraphic = findGraphic(state.activeId)
+    pendingDeletion = state.pendingDeletionId === 'all' ? 'all' : findGraphic(state.pendingDeletionId)
     deletedEditId = state.deletedEditId
     draftLocked = state.draftLocked
     if (!keepLocalColor) {
@@ -680,6 +692,7 @@ async function applyWindowState(state: MapState) {
     lastEdit.textContent = state.lastEdit
     render()
     setDeletedEditConfirmation(state.confirmingDeletedEdit)
+    updateDeletionDialog()
     if (detachedMap.isMapWindow && state.action === 'update' && activeGraphic) {
       await activateSketchUpdate(activeGraphic)
     } else if (detachedMap.isMapWindow && state.action === 'create') {
@@ -781,14 +794,33 @@ function setActiveAction(action: 'create' | 'update' | null) {
 }
 
 function requestDeletion(target: Graphic | 'all') {
+  const id = target === 'all' ? 'all' : graphicId(target)!
+  if (detachedMap.command({ type: 'request-deletion', id })) return
   pendingDeletion = target
+  updateDeletionDialog()
+  detachedMap.publish()
+}
+
+function updateDeletionDialog() {
+  const target = pendingDeletion
+  if (!target) {
+    if (clearDialog.open) clearDialog.close()
+    return
+  }
   const isAll = target === 'all'
   clearDialogTitle.textContent = isAll ? 'Apagar todos os polígonos?' : 'Apagar este polígono?'
   clearDialogDescription.textContent = isAll
     ? 'Essa ação removerá todos os polígonos desenhados no mapa.'
-    : `Essa ação removerá “${polygonName(target)}” do mapa.`
+    : `Essa ação removerá “${polygonName(target)}” do mapa.${activeAction === 'update' ? ' Confirmar a exclusão também encerrará a edição.' : ''}`
   confirmClearButton.textContent = isAll ? 'Apagar todos' : 'Excluir polígono'
-  clearDialog.showModal()
+  if (!clearDialog.open) clearDialog.showModal()
+}
+
+function dismissDeletion() {
+  if (detachedMap.command({ type: 'dismiss-deletion' })) return
+  pendingDeletion = null
+  updateDeletionDialog()
+  detachedMap.publish()
 }
 
 function forgetActiveEdit() {
@@ -1239,16 +1271,19 @@ cancelButton.addEventListener('click', () => {
   message.textContent = 'Desenho ou edição cancelado.'
 })
 clearButton.addEventListener('click', () => requestDeletion('all'))
-dismissClearButton.addEventListener('click', () => {
-  pendingDeletion = null
-  clearDialog.close()
+dismissClearButton.addEventListener('click', dismissDeletion)
+clearDialog.addEventListener('cancel', (event) => {
+  event.preventDefault()
+  dismissDeletion()
 })
 confirmClearButton.addEventListener('click', () => {
+  if (detachedMap.command({ type: 'confirm-deletion' })) return
   const target = pendingDeletion
   if (!target) return
-  deletePolygons(target)
   pendingDeletion = null
-  clearDialog.close()
+  updateDeletionDialog()
+  deletePolygons(target)
+  detachedMap.publish()
 })
 restoreDeletedEditButton.addEventListener('click', () => cancelButton.click())
 deletedEditDialog.addEventListener('cancel', (event) => {
@@ -1391,6 +1426,15 @@ window.addEventListener('keydown', (event) => {
   const target = event.target instanceof Element ? event.target : null
   if (target?.closest('dialog') || event.isComposing) return
   const control = target?.closest('button, a, input, textarea, select, [contenteditable]:not([contenteditable="false"])')
+  const textControl = target?.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')
+  const deletionTarget = activeGraphic ?? selectedGraphic
+  if (event.key === 'Delete' && !textControl && activeAction !== 'create' && deletionTarget) {
+    event.preventDefault()
+    // Interceptar antes do SDK remover o desenho ou os vértices selecionados.
+    event.stopImmediatePropagation()
+    if (!event.repeat) requestDeletion(deletionTarget)
+    return
+  }
   if (event.key === 'Enter' && (!control || target === nameInput) && (activeAction !== null || (selectedGraphic && !target?.closest('.polygon-label')))) {
     event.preventDefault()
     event.stopPropagation()

@@ -104,8 +104,12 @@ sincronizado nas duas janelas; importação e exportação preservam esse estado
 Os nomes ficam salvos após recarregar. Na janela do mapa separado, o mesmo campo
 aparece no menu inferior e fica sincronizado com o card da janela principal.
 Durante a criação ou edição, essa mesma linha mostra **Concluir** e **Cancelar**.
-Se usar **Delete** para apagar um polígono durante a edição, **Concluir edição**
-pergunta se deseja excluir o polígono ou cancelar a edição e restaurar o desenho original.
+**Delete** em um polígono selecionado ou em edição pede confirmação antes de
+remover o desenho. Confirmar salva a exclusão e encerra a edição imediatamente;
+**Voltar** ou **Escape** cancela apenas a exclusão e preserva o rascunho em edição.
+Dentro do campo de nome, Delete continua apagando texto normalmente.
+As alças dos vértices e dos pontos intermediários são 50% maiores para facilitar
+o arraste e a inserção de vértices.
 Essa confirmação fica disponível nas duas janelas quando o mapa está separado.
 Desenhos com menos de três pontos diferentes ou sem área são bloqueados com um alerta;
 a confirmação por teclado segue a mesma validação.
