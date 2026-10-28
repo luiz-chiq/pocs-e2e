@@ -7,6 +7,8 @@ interface CompassOptions {
 }
 
 export function attachCompass(button: HTMLButtonElement, options: CompassOptions) {
+  const lifetime = new AbortController()
+  const signal = lifetime.signal
   let drag: {
     pointerId: number
     x: number
@@ -35,7 +37,7 @@ export function attachCompass(button: HTMLButtonElement, options: CompassOptions
     }
     suppressPointerClick = false
     button.setPointerCapture(event.pointerId)
-  })
+  }, { signal })
 
   button.addEventListener('pointermove', (event) => {
     if (!drag || drag.pointerId !== event.pointerId) return
@@ -58,7 +60,7 @@ export function attachCompass(button: HTMLButtonElement, options: CompassOptions
       drag.delta = event.clientX - drag.x
     }
     options.setRotation(((drag.rotation + drag.delta) % 360 + 360) % 360)
-  })
+  }, { signal })
 
   function finishDrag(event: PointerEvent) {
     if (!drag || drag.pointerId !== event.pointerId) return
@@ -69,9 +71,9 @@ export function attachCompass(button: HTMLButtonElement, options: CompassOptions
     if (button.hasPointerCapture(event.pointerId)) button.releasePointerCapture(event.pointerId)
     if (changed) options.onChange()
   }
-  button.addEventListener('pointerup', finishDrag)
-  button.addEventListener('pointercancel', finishDrag)
-  button.addEventListener('lostpointercapture', finishDrag)
+  button.addEventListener('pointerup', finishDrag, { signal })
+  button.addEventListener('pointercancel', finishDrag, { signal })
+  button.addEventListener('lostpointercapture', finishDrag, { signal })
 
   button.addEventListener('click', (event) => {
     // Soltar a agulha depois de girar não deve acionar o retorno ao norte.
@@ -82,7 +84,7 @@ export function attachCompass(button: HTMLButtonElement, options: CompassOptions
     }
     suppressPointerClick = false
     options.resetNorth()
-  })
+  }, { signal })
 
   button.addEventListener('keydown', (event) => {
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
@@ -95,5 +97,6 @@ export function attachCompass(button: HTMLButtonElement, options: CompassOptions
       event.preventDefault()
       options.resetNorth()
     }
-  })
+  }, { signal })
+  return () => lifetime.abort()
 }

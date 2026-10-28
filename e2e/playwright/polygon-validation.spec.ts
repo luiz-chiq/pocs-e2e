@@ -79,6 +79,8 @@ test('card seleciona sem editar e toque no desenho inicia edição imediatamente
   for (const point of triangle) await clickPoint(page, point)
   await page.getByTestId('finish-drawing').click()
   await page.getByTestId('polygon-item').click()
+  await expect(page.locator('.vertex-list li')).toHaveCount(0)
+  await page.getByTestId('expand-polygon').click()
   await expect(page.locator('.vertex-list li')).toHaveCount(3)
   await expect(page.getByTestId('draw-polygon')).toHaveAccessibleName('Editar polígono selecionado')
   await expect(page.getByTestId('finish-drawing')).toBeHidden()

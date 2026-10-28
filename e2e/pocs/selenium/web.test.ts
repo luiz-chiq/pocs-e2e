@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { resolve } from 'node:path'
 import { createRequire } from 'node:module'
-import { after, test } from 'node:test'
+import { after, describe, test } from 'node:test'
 import { Builder, By, Key, until, error as webdriverError } from 'selenium-webdriver'
 import chrome from 'selenium-webdriver/chrome.js'
 import { Command, Name } from 'selenium-webdriver/lib/command.js'
@@ -15,9 +16,12 @@ import { ChromePipe } from '../shared/chrome-pipe.ts'
 import { electronDriver } from '../shared/electron.ts'
 import { systemChrome } from '../shared/chrome.ts'
 import { androidCapabilities, androidPackage, appiumUrl } from '../shared/android.ts'
+import { pocWorkers } from '../shared/parallel.ts'
 
 const directory = `${process.env.POC_RESULTS_DIR ?? `test-results/pocs/${target}`}/selenium`
 const results: object[] = []
+const workers = pocWorkers(target)
+const suiteStarted = performance.now()
 mkdirSync(directory, { recursive: true })
 
 async function element(driver: chrome.Driver, selector: string) {
@@ -55,7 +59,13 @@ async function textChanged(driver: chrome.Driver, selector: string, previous: st
 }
 
 async function attribute(driver: chrome.Driver, selector: string, name: string, expected: string) {
-  await driver.wait(async () => await (await element(driver, selector)).getAttribute(name) === expected, 10_000)
+  await driver.wait(async () => {
+    try { return await (await element(driver, selector)).getAttribute(name) === expected }
+    catch (failure) {
+      if (failure instanceof webdriverError.StaleElementReferenceError) return false
+      throw failure
+    }
+  }, 10_000, `${selector}: atributo ${name} esperado ${JSON.stringify(expected)}`)
 }
 
 async function open(driver: chrome.Driver, url = appUrl) {
@@ -267,7 +277,25 @@ async function createDetached(driver: chrome.Driver, main: string, popup: string
   await count(driver, s.vertices, 3)
 }
 
+async function settledMap(driver: chrome.Driver) {
+  await driver.wait(() => driver.executeScript(() => (window as PocWindow).polygonTestApi!.getMapState().stationary), 10_000, 'O mapa deve terminar a navegação.')
+}
+
+async function clickItem(driver: chrome.Driver, index: number) {
+  await driver.wait(async () => {
+    try {
+      await (await driver.findElements(By.css(s.items)))[index].click()
+      return true
+    } catch (failure) {
+      if (failure instanceof webdriverError.StaleElementReferenceError) return false
+      throw failure
+    }
+  }, 10_000, `Clicar no polígono ${index + 1}`)
+}
+
 async function points(driver: chrome.Driver): Promise<ScreenPoints> {
+  await settledMap(driver)
+  await driver.wait(() => driver.executeScript(() => (window as PocWindow).polygonTestApi!.getMapState().editingReady), 10_000, 'O SDK deve terminar de preparar as alças de edição.')
   return driver.executeScript(() => (window as PocWindow).polygonTestApi!.getSelectedScreenPoints())
 }
 
@@ -295,6 +323,7 @@ async function drag(driver: chrome.Driver, point: Point, dx: number, dy: number)
 function scenario(title: string, body: (driver: chrome.Driver, restart: () => Promise<chrome.Driver>) => Promise<void>) {
   test(title, { timeout: isAndroid ? 180_000 : 90_000 }, async () => {
     const started = performance.now()
+    const startedAt = new Date().toISOString()
     const profile = mkdtempSync(join(tmpdir(), 'polygon-poc-selenium-'))
     const options = new chrome.Options()
     options.addArguments(`--window-size=${viewport.width},${viewport.height}`, `--user-data-dir=${profile}`)
@@ -408,8 +437,14 @@ function scenario(title: string, body: (driver: chrome.Driver, restart: () => Pr
         }
       }
       await cdp?.close()
-      results.push({ title, status, durationMs: Math.round(performance.now() - started), error, inputs, mapInputs, artifacts })
-      rmSync(profile, { recursive: true, force: true })
+      // No Windows, processos do Chrome podem liberar o perfil depois de quit().
+      try { await rm(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }) }
+      catch (cleanupError) {
+        if (status === 'passed') cleanupFailure = cleanupError
+        status = 'failed'
+        error ??= `Falha ao remover perfil temporário: ${String(cleanupError)}`
+      }
+      results.push({ title, status, startedAt, finishedAt: new Date().toISOString(), durationMs: Math.round(performance.now() - started), error, inputs, mapInputs, artifacts })
       if (previousUserData === undefined) delete process.env.POLYGON_USER_DATA_DIR
       else process.env.POLYGON_USER_DATA_DIR = previousUserData
       if (cleanupFailure) throw cleanupFailure
@@ -417,6 +452,9 @@ function scenario(title: string, body: (driver: chrome.Driver, restart: () => Pr
   })
 }
 
+// Cada cenário cria seu próprio driver e perfil. O limite da suíte controla
+// os testes deste arquivo; --test-concurrency controla apenas arquivos distintos.
+describe(`Selenium / ${target}`, { concurrency: workers }, () => {
 scenario(cases.create, async (driver) => {
   await open(driver)
   await create(driver)
@@ -556,6 +594,7 @@ scenario(cases.persist, async (driver, restart) => {
   await text(driver, s.label, 'Reserva São José')
   await text(driver, s.mapLabel, 'Reserva São José')
   await (await element(driver, s.items)).click()
+  await (await element(driver, '[data-testid="expand-polygon"]')).click()
   await text(driver, s.vertexList, saved)
 })
 
@@ -604,9 +643,14 @@ scenario(cases.navigation, async (driver) => {
     const vertices = (await points(driver)).vertices
     return Math.hypot(vertices[0].x - vertices[1].x, vertices[0].y - vertices[1].y)
   }
+  await settledMap(driver)
+  // O enquadramento usa escala livre; normalizar para um nível de zoom antes de testar ida e volta.
+  await (await element(driver, s.zoomOut)).click()
+  await settledMap(driver)
   const original = await distance()
   await (await element(driver, s.zoomIn)).click()
   await driver.wait(async () => await distance() > original * 1.5, 10_000)
+  await settledMap(driver)
   await visible(driver, s.mapLabel)
   await (await element(driver, s.zoomOut)).click()
   await driver.wait(async () => Math.abs(await distance() - original) < 0.5, 10_000)
@@ -633,11 +677,22 @@ scenario(dualCases.sync, async (driver) => {
   await (await element(driver, s.items)).click()
   await driver.switchTo().window(popup)
   await text(driver, `${s.mapLabel}.is-selected`, 'Polígono 1')
-  const center = (await points(driver)).center
+  await settledMap(driver)
+  const firstId = await driver.executeScript<string>(() => (window as PocWindow).polygonTestApi!.getMapState().selectedId!)
   await driver.switchTo().window(main)
-  await (await driver.findElements(By.css(s.items)))[1].click()
+  await clickItem(driver, 1)
   await driver.switchTo().window(popup)
   await text(driver, `${s.mapLabel}.is-selected`, 'Polígono 2')
+  await settledMap(driver)
+  const map = await mapRect(driver)
+  const firstCenter = () => driver.executeScript<Point>((id: string) => (window as PocWindow).polygonTestApi!.getSelectedScreenPoints(id).center, firstId)
+  let center = await firstCenter()
+  for (let attempt = 0; attempt < 6 && (center.x < 20 || center.x > map.width - 20 || center.y < 20 || center.y > map.height - 20); attempt++) {
+    await (await element(driver, s.zoomOut)).click()
+    await settledMap(driver)
+    center = await firstCenter()
+  }
+  assert.ok(center.x > 20 && center.x < map.width - 20 && center.y > 20 && center.y < map.height - 20, 'O primeiro polígono deve estar visível antes do clique.')
   await clickPoint(driver, center)
   await driver.switchTo().window(main)
   await attribute(driver, s.name, 'value', 'Polígono 1')
@@ -769,5 +824,6 @@ for (const pointerType of (isWeb ? ['mouse', 'touch'] as const : [])) {
 }
 
 after(() => {
-  writeFileSync(`${directory}/results.json`, JSON.stringify({ framework: 'selenium', target, url: appUrl, tests: results }, null, 2))
+  writeFileSync(`${directory}/results.json`, JSON.stringify({ framework: 'selenium', target, url: appUrl, workers, durationMs: Math.round(performance.now() - suiteStarted), tests: results }, null, 2))
+})
 })

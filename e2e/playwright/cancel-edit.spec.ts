@@ -1,5 +1,10 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
+type TestWindow = typeof window & { polygonTestApi: {
+  getDrawingState(): { ready: boolean; vertices: number }
+  getMapState(): { stationary: boolean; editingReady: boolean }
+} }
+
 const polygonItems = (page: Page) => page.locator('[data-testid="polygon-item"]')
 
 type ScreenPoint = { x: number; y: number }
@@ -70,13 +75,13 @@ async function createPolygon(page: Page, points: Array<[number, number]>) {
   const box = await mapBox(map)
   const previousCount = await polygonItems(page).count()
   await page.getByTestId('draw-polygon').click()
-  // O SDK ativa a ferramenta de forma assíncrona antes de receber o primeiro ponto.
-  await page.waitForTimeout(300)
+  await expect.poll(() => page.evaluate(() => (window as TestWindow).polygonTestApi.getDrawingState().ready)).toBe(true)
+  let vertices = 0
   for (const [x, y] of points) {
     // Os pontos de teste usam coordenadas relativas ao centro do mapa.
     await page.mouse.click(box.x + box.width / 2 + x, box.y + box.height / 2 + y)
-    // O SketchViewModel processa cada clique em um frame de renderização.
-    await page.waitForTimeout(100)
+    vertices++
+    await expect.poll(() => page.evaluate(() => (window as TestWindow).polygonTestApi.getDrawingState().vertices)).toBe(vertices)
   }
   await page.getByTestId('finish-drawing').click()
   await expect(polygonItems(page)).toHaveCount(previousCount + 1)
@@ -94,9 +99,10 @@ async function clearPolygonsWithConfirmation(page: Page) {
 }
 
 async function waitForSketchEditing(page: Page) {
-  // A visibilidade do botão ocorre antes da ativação das alças pelo ArcGIS.
-  // Aguardar as alças antes de enviar o primeiro gesto.
-  await page.waitForTimeout(500)
+  await expect.poll(() => page.evaluate(() => {
+    const state = (window as TestWindow).polygonTestApi.getMapState()
+    return state.stationary && state.editingReady
+  })).toBe(true)
 }
 
 test.describe('Editor de polígonos', () => {
@@ -111,6 +117,8 @@ test.describe('Editor de polígonos', () => {
     await expect(page.locator('#polygon-count')).toHaveText('1')
     await expect(page.getByTestId('clear-polygons')).toBeEnabled()
     await page.getByTestId('polygon-item').click()
+    await expect(page.locator('.vertex-list li')).toHaveCount(0)
+    await page.getByTestId('expand-polygon').click()
     await expect(page.locator('.vertex-list li')).toHaveCount(3)
     await expect(page.getByTestId('expand-polygon')).toHaveAttribute('aria-expanded', 'true')
     await expect(page.getByTestId('polygon-item')).toHaveClass(/selected/)

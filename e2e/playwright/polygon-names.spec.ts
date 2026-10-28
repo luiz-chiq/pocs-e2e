@@ -146,6 +146,8 @@ test('preserva polígonos antigos sem nome e atribui nomes estáveis', async ({ 
   await editPolygon(page)
   await expect(page.getByTestId('polygon-name')).toHaveValue('Polígono 1')
   await page.getByTestId('cancel-editing').click()
+  await expect(page.getByTestId('finish-drawing')).toBeHidden()
+  await page.getByTestId('expand-polygon').click()
   await expect(page.locator('.vertex-list li')).toHaveCount(3)
 })
 

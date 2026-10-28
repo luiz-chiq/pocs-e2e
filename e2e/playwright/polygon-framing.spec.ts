@@ -49,6 +49,8 @@ for (const width of [1280, 390]) {
     await page.getByTestId('polygon-item').locator('.polygon-label').click()
     await expectFramed(page)
     await expect(page.getByTestId('finish-drawing')).toBeHidden()
+    await expect(page.locator('.vertex-list li')).toHaveCount(0)
+    await page.getByTestId('expand-polygon').click()
     await expect(page.locator('.vertex-list li')).toHaveCount(3)
     await page.screenshot({ path: testInfo.outputPath(`framed-${width}.png`), fullPage: true })
     await page.getByTestId('zoom-out').click()

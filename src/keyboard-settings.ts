@@ -1,35 +1,23 @@
 const preferenceKey = 'polygon-keyboard-shortcuts'
 let enabled = true
-try { enabled = localStorage.getItem(preferenceKey) !== 'false' } catch { /* A preferência continua válida nesta janela. */ }
-
+try { enabled = localStorage.getItem(preferenceKey) !== 'false' } catch { /* Preferência em memória. */ }
+const listeners = new Set<() => void>()
 export function shortcutsEnabled() { return enabled }
-
-export function attachKeyboardSettings(onChange: () => void) {
-  const toggles = document.querySelectorAll<HTMLInputElement>('[data-shortcuts-toggle]')
-  const statuses = document.querySelectorAll<HTMLElement>('[data-shortcuts-status]')
-  const dialog = document.querySelector<HTMLDialogElement>('#keyboard-shortcuts-dialog')!
-  const openButton = document.querySelector<HTMLButtonElement>('#open-keyboard-shortcuts')!
-  openButton.addEventListener('click', () => { if (!dialog.open) dialog.showModal() })
-  document.querySelector('#close-keyboard-shortcuts')!.addEventListener('click', () => dialog.close())
-  dialog.addEventListener('close', () => openButton.focus({ preventScroll: true }))
-  const update = () => {
-    toggles.forEach(toggle => { toggle.checked = enabled })
-    statuses.forEach(status => {
-      status.textContent = enabled ? 'Ativos' : 'Desativados'
-      status.dataset.enabled = String(enabled)
-    })
+export function setShortcutsEnabled(value: boolean) {
+  enabled = value
+  try { localStorage.setItem(preferenceKey, String(value)) } catch { /* Armazenamento indisponível. */ }
+  listeners.forEach(listener => listener())
+}
+function onStorage(event: StorageEvent) {
+  if (event.storageArea !== localStorage || (event.key !== preferenceKey && event.key !== null)) return
+  enabled = event.newValue !== 'false'
+  listeners.forEach(listener => listener())
+}
+export function subscribeShortcuts(listener: () => void) {
+  if (!listeners.size) window.addEventListener('storage', onStorage)
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
+    if (!listeners.size) window.removeEventListener('storage', onStorage)
   }
-  toggles.forEach(toggle => toggle.addEventListener('change', () => {
-    enabled = toggle.checked
-    try { localStorage.setItem(preferenceKey, String(enabled)) } catch { /* Armazenamento indisponível. */ }
-    update()
-    onChange()
-  }))
-  window.addEventListener('storage', event => {
-    if (event.storageArea !== localStorage || (event.key !== preferenceKey && event.key !== null)) return
-    enabled = event.newValue !== 'false'
-    update()
-    onChange()
-  })
-  update()
 }

@@ -36,7 +36,7 @@ Para testar outro endereço, defina `BASE_URL` explicitamente.
 Com o preview ativo em outro terminal:
 
 ```bash
-# As duas ferramentas em sequência
+# As duas ferramentas em sequência, com cenários web em paralelo
 npm run test:poc:web
 
 # Uma ferramenta
@@ -48,6 +48,46 @@ npm run test:poc:selenium
 `POC_RESULTS_DIR` define a pasta das evidências. O catálogo web tem 15 casos por
 ferramenta, incluindo quatro verificações de duas janelas e C10 mouse/touch.
 A falha C10 mouse é intencional; não foi invertida ou ignorada.
+
+### Paralelismo web
+
+Os comandos web executam até dois cenários simultaneamente por ferramenta
+(um em máquinas com apenas um processador disponível). Cada cenário mantém
+seu próprio contexto ou perfil de navegador e suas próprias evidências.
+Playwright e Selenium continuam em sequência para limitar o uso de memória.
+Os comandos individuais usam o mesmo limite.
+
+No PowerShell, é possível ajustar o limite antes de executar:
+
+```powershell
+$env:POC_WORKERS = "4"
+npm run test:poc:web
+
+# Voltar à execução individual para diagnóstico ou comparação de tempos
+$env:POC_WORKERS = "1"
+npm run test:poc:web
+
+# Restaurar o padrão
+Remove-Item Env:POC_WORKERS
+```
+
+O limite é por cenário, inclusive os que abrem duas janelas. Mais cenários
+simultâneos exigem mais memória e GPU; aumentar o limite nem sempre reduz
+o tempo total. Android, PWA e Electron permanecem com um cenário por vez,
+mesmo com `POC_WORKERS` maior. No Playwright, `fullyParallel` permite dividir
+os cenários do mesmo arquivo; no Selenium, a concorrência é definida na suíte
+do Node, pois `--test-concurrency` sozinho só distribui arquivos diferentes.
+
+Os JSONs registram `workers`, `startedAt` e `finishedAt` para conferir a
+sobreposição dos cenários. Para comparar rodadas, use o tempo total da suíte;
+a soma dos tempos individuais não corresponde ao tempo decorrido em paralelo.
+Antes dos gestos de edição, os testes aguardam o mapa parar e o SDK preparar
+as alças, em vez de depender apenas de uma pausa fixa. A janela separada também
+aguarda a inicialização do seu próprio mapa antes de verificar a conexão.
+No Playwright web, C07 recebe 45 segundos adicionais no limite total para fechar
+e iniciar o segundo processo Chrome; os limites das asserções não aumentam.
+A limpeza dos perfis Selenium é assíncrona, para que a liberação de arquivos de
+um navegador no Windows não bloqueie os demais cenários.
 
 ```bash
 npm run test:poc:pwa
@@ -67,6 +107,23 @@ npx appium driver install uiautomator2
 Use `ANDROID_AVD`, `ANDROID_SERIAL`, `ANDROID_HOME` e `ANDROID_JAVA_HOME` para
 selecionar o ambiente. Appium e emulador podem ser iniciados pelo orquestrador.
 A suíte C/D Android usa a WebView; não inclui duas janelas ou instalação de PWA.
+
+## Esperas de navegação nos cenários C09 e D01
+
+C09 aguarda o mapa parar e parte de um nível de zoom definido antes de verificar
+zoom de ida e volta. O enquadramento automático dos cards usa escala livre;
+comparar diretamente essa escala com os níveis dos botões gerava uma falha falsa.
+A comparação de retorno continua exigindo diferença inferior a 0,5 pixel.
+
+D01 aguarda o enquadramento do segundo polígono, consulta novamente a posição
+do primeiro pelo seu identificador e reduz o zoom pelos controles quando ele
+está fora da tela. O clique e as demais edições continuam sendo interações reais.
+A API de E2E apenas fornece estado e coordenadas, sem selecionar ou alterar áreas.
+No Selenium, o clique no segundo card reconsulta o elemento se a sincronização
+recriar a lista. A limpeza do perfil temporário também repete tentativas no
+Windows, e eventuais falhas dessa etapa são incluídas no relatório.
+
+Esses ajustes não alteram C10 mouse.
 
 ## Arquivos Electron
 

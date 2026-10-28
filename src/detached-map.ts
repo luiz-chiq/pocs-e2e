@@ -25,16 +25,18 @@ export class DetachedMap<State, Command> {
   private connected = false
   private started = false
   private connectionTimeout?: number
+  private readonly lifetime = new AbortController()
+  private readonly monitor: number
 
   constructor(private readonly callbacks: WindowCallbacks<State, Command>) {
     this.isMapWindow = Boolean(this.session && window.opener)
     callbacks.onModeChange(this.isMapWindow ? 'map' : 'main', false)
-    window.addEventListener('message', (event) => void this.receive(event))
+    window.addEventListener('message', (event) => void this.receive(event), { signal: this.lifetime.signal })
     window.addEventListener('pagehide', () => {
       if (this.isMapWindow) this.send(window.opener, 'loading')
       else this.popup?.close()
-    })
-    window.setInterval(() => {
+    }, { signal: this.lifetime.signal })
+    this.monitor = window.setInterval(() => {
       if (this.popup?.closed) this.restore()
     }, 400)
   }
@@ -70,6 +72,13 @@ export class DetachedMap<State, Command> {
   }
 
   focus() { this.popup?.focus() }
+
+  destroy() {
+    this.lifetime.abort()
+    window.clearInterval(this.monitor)
+    window.clearTimeout(this.connectionTimeout)
+    this.popup?.close()
+  }
 
   reunite() {
     if (this.isMapWindow) this.send(window.opener, 'return')
@@ -116,6 +125,7 @@ export class DetachedMap<State, Command> {
       if (data.type === 'initialize' && this.started) {
         this.connected = false
         await this.callbacks.applyState(data.payload as State)
+        if (this.lifetime.signal.aborted) return
         this.connected = true
         this.callbacks.onModeChange('map', true)
         this.publish()

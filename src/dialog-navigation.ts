@@ -1,5 +1,6 @@
 // Navegação dos diálogos permanece disponível mesmo com atalhos globais desligados.
 export function attachDialogNavigation() {
+  const lifetime = new AbortController()
   document.querySelectorAll('dialog').forEach(dialog => {
     dialog.addEventListener('keydown', event => {
       if (event.isComposing || event.altKey || event.ctrlKey || event.metaKey) return
@@ -22,6 +23,7 @@ export function attachDialogNavigation() {
       const direction = event.key === 'ArrowUp' || event.key === 'ArrowLeft' ? -1 : 1
       const next = index < 0 ? (direction === 1 ? 0 : controls.length - 1) : (index + direction + controls.length) % controls.length
       controls[next].focus()
-    })
+    }, { signal: lifetime.signal })
   })
+  return () => lifetime.abort()
 }

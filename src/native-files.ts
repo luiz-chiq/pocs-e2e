@@ -10,6 +10,4 @@ if (Capacitor.getPlatform() === 'android') {
     importPolygons: () => files.importPolygons(),
     exportPolygons: polygons => files.exportPolygons({ polygons })
   }
-  const exportButton = document.querySelector<HTMLButtonElement>('#export-polygons')
-  if (exportButton) exportButton.title = 'Escolher uma pasta, permitir o acesso e exportar os polígonos em JSON'
 }

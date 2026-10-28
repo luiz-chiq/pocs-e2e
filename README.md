@@ -1,6 +1,6 @@
 # Polígonos no mapa — POCs E2E
 
-Editor de polígonos usando o ArcGIS Maps SDK for JavaScript, com versões web/PWA, Electron e Android via Capacitor. O projeto compara automação E2E com Playwright e Selenium. A versão com as três ferramentas está preservada na branch `codex/poc-tres-ferramentas` (commit `98f49f5`).
+Editor de polígonos em **React + TypeScript**, usando o ArcGIS Maps SDK for JavaScript, com versões web/PWA, Electron e Android via Capacitor. O projeto compara automação E2E com Playwright e Selenium. A versão com as três ferramentas está preservada na branch `codex/poc-tres-ferramentas` (commit `98f49f5`).
 
 A interface usa verde profundo, superfícies claras e âmbar no card selecionado.
 No mapa, a seleção recebe brilho branco e a edição usa contorno branco, preservando
@@ -15,11 +15,26 @@ As outras áreas e ações gerais voltam ao concluir ou cancelar. A barra de rol
 do conteúdo fica sempre visível, com cabeçalho e ações fixos. A contagem de
 vértices aparece em um badge redondo, como uma notificação, ao lado do nome.
 
+## Estrutura da aplicação
+
+A interface é composta por componentes React em `src/components/`: lista de
+polígonos, formulário de edição, ações, barra lateral, mapa e modais.
+`src/App.tsx` integra esses componentes. As dependências ficam registradas no `yarn.lock`; use Yarn para instalar e executar o projeto.
+O hook `useEditor` cria e descarta a
+instância do mapa conforme o ciclo de vida do React, incluindo o Strict Mode.
+
+O controlador tipado em `src/editor/createEditor.ts` concentra as operações do
+ArcGIS, a persistência e a sincronização das duas janelas. Ele expõe ações e um
+snapshot imutável consumido com `useSyncExternalStore`; o React renderiza os
+controles e rótulos, enquanto o SDK controla apenas o conteúdo do mapa.
+`src/hooks/usePwa.ts` gerencia a instalação. A importação/exportação continua
+usando o processo principal do Electron e a ponte nativa do Capacitor.
+
 ## Execução
 
 ```bash
-npm ci
-npm run dev
+yarn install --frozen-lockfile
+yarn dev
 ```
 
 Abra a URL indicada pelo Vite, normalmente `http://localhost:5173`. Navegadores consideram `localhost` um contexto seguro para desenvolvimento, portanto o service worker funciona sem certificado local.
@@ -31,8 +46,8 @@ não coloque segredos nelas.
 ## PWA
 
 ```bash
-npm run build
-npm run preview
+yarn build
+yarn preview
 ```
 
 Abra a URL do preview e toque no ícone de **Instalar aplicativo**, à direita do título no cabeçalho da lista de polígonos.
@@ -44,8 +59,8 @@ No Chrome/Edge, o botão abre a instalação quando o navegador a disponibiliza.
 No iPhone/iPad, ele explica como instalar pelo Safari: **Compartilhar → Adicionar à Tela de Início**.
 O botão fica oculto quando o aplicativo está aberto em modo instalado ou nas versões nativas Electron/Android.
 
-O manifest, os ícones e o service worker são gerados em `npm run build`.
-Para validar a instalação local, use `npm run preview` em `localhost`; `npm run dev` não ativa o service worker.
+O manifest, os ícones e o service worker são gerados em `yarn build`.
+Para validar a instalação local, use `yarn preview` em `localhost`; `yarn dev` não ativa o service worker.
 Em produção, publique o conteúdo de `dist/` atrás de HTTPS. Os caminhos do PWA também permitem publicação em um subdiretório.
 O service worker mantém os arquivos da aplicação em cache; o mapa-base e recursos externos do ArcGIS ainda dependem de internet.
 
@@ -215,7 +230,7 @@ offline. A exportação de polígonos contém nomes, coordenadas, cor e o bloque
 
 A [verificação do satélite](e2e/pocs/MAPA-SATELITE.md) conferiu imagens reais,
 atribuição, desenho e edição em duas janelas no Chrome e no Electron. Para
-repetir, execute `npm run electron:build:poc` e `npm run check:satellite`.
+repetir, execute `yarn electron:build:poc` e `yarn check:satellite`.
 
 
 ## Testes E2E — Playwright e Selenium
@@ -225,14 +240,14 @@ incluindo o WebdriverIO e o trabalho Android em andamento, está preservada em
 `codex/poc-tres-ferramentas`, commit `98f49f5`.
 
 ```bash
-npm ci
-npx playwright install chromium
-npm run test:e2e
+yarn install --frozen-lockfile
+yarn playwright install chromium
+yarn test:e2e
 ```
 
 `test:e2e` executa a suíte Playwright de desenvolvimento e inicia o Vite quando
-necessário. Para depurar, use `npm run test:e2e:watch` ou
-`npm run test:e2e:visual`. As evidências dessa suíte ficam em
+necessário. Para depurar, use `yarn test:e2e:watch` ou
+`yarn test:e2e:visual`. As evidências dessa suíte ficam em
 `test-results/development/`, separadas das POCs em `test-results/pocs/`.
 
 As POCs comparativas usam uma build E2E, gestos reais e uma API auxiliar somente
@@ -240,21 +255,26 @@ de leitura. O plano está em [E2E-POCS.md](E2E-POCS.md) e a execução em
 [e2e/pocs/README.md](e2e/pocs/README.md).
 
 O alvo padrão das POCs web e PWA é a build local em `http://localhost:4173/`.
-Antes de executar, rode `npm run build:e2e` e mantenha `npm run preview` ativo
+Antes de executar, rode `yarn build:e2e` e mantenha `yarn preview` ativo
 em outro terminal. O preview usa a porta 4173 fixa e encerra com erro se ela
 estiver ocupada. Para outro endereço, defina `BASE_URL` explicitamente.
 
 | Plataforma | Comando — Playwright e Selenium em sequência |
 | --- | --- |
-| Web | `npm run test:poc:web` |
-| PWA instalado | `npm run test:poc:pwa` |
-| Electron empacotado | `npm run test:poc:electron` |
-| APK Android | `npm run test:poc:android` |
-| Todas | `npm run test:poc:all` |
+| Web | `yarn test:poc:web` |
+| PWA instalado | `yarn test:poc:pwa` |
+| Electron empacotado | `yarn test:poc:electron` |
+| APK Android | `yarn test:poc:android` |
+| Todas | `yarn test:poc:all` |
 
 Para selecionar uma ferramenta, defina `POC_FRAMEWORKS=playwright` ou
 `POC_FRAMEWORKS=selenium`. O padrão é `playwright,selenium`. O cenário C10 mouse
 continua falhando de propósito para detectar o defeito de instalação; touch deve passar.
+
+Na web, cada ferramenta executa até dois cenários simultaneamente, com dados
+isolados por cenário. No PowerShell, use `$env:POC_WORKERS = "4"` para ajustar
+o limite ou `"1"` para execução individual. As ferramentas continuam em sequência;
+PWA, Electron e Android mantêm um cenário por vez.
 
 Resultados, tempos por ferramenta/plataforma e limites:
 [relatório completo](e2e/pocs/RELATORIO.md),
@@ -264,15 +284,15 @@ Resultados, tempos por ferramenta/plataforma e limites:
 ## Electron
 
 ```bash
-npm run build
-npm run electron:dev
+yarn build
+yarn electron:dev
 ```
 
 Para empacotar no sistema local e testar a feature de arquivos:
 
 ```bash
-npm run electron:build:poc
-npm run test:poc:electron:files
+yarn electron:build:poc
+yarn test:poc:electron:files
 ```
 
 O segundo comando testa Playwright direto no Electron e tenta o bootstrap nativo
@@ -287,19 +307,19 @@ Instale Android SDK, JDK 21 e configure um emulador de testes ou `ANDROID_SERIAL
 O orquestrador prepara o APK e inicia o Appium quando necessário.
 
 ```bash
-npm run test:e2e:android:build
-npm run test:poc:android
+yarn test:e2e:android:build
+yarn test:poc:android
 ```
 
 O APK também oferece importar/exportar JSON por código nativo Capacitor.
 Na exportação, escolha uma pasta e confirme o acesso solicitado pelo Android;
 a autorização é limitada à pasta escolhida, sem permissão ampla de armazenamento.
 
-O protótipo `npm run test:poc:android:hybrid` combina Playwright na WebView e
+O protótipo `yarn test:poc:android:hybrid` combina Playwright na WebView e
 Appium/UiAutomator2 com cliente Selenium JS nas telas nativas. O cliente tem
-verificações de contrato em `npm run test:appium:native`. **A migração do cliente
+verificações de contrato em `yarn test:appium:native`. **A migração do cliente
 não significa validação dos fluxos completos no APK**; veja as pendências no relatório.
 
 Builds, perfis, resultados brutos e dependências são ignorados pelo Git e não
-fazem parte do snapshot da branch. Use `npm ci` ao trocar de branch para alinhar
+fazem parte do snapshot da branch. Use `yarn install --frozen-lockfile` ao trocar de branch para alinhar
 as dependências à versão escolhida.

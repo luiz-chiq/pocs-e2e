@@ -60,8 +60,9 @@ async function separate(page: Page) {
   await page.locator(s.detach).click()
   const popup = await pending
   await popup.setViewportSize(viewport)
+  // A nova janela carrega seu próprio SDK antes de confirmar a conexão.
+  await expect(popup.locator(s.ready)).toBeVisible({ timeout: 45_000 })
   await expect(page.locator(s.connection)).toContainText('Mapa conectado')
-  await expect(popup.locator(s.ready)).toBeVisible()
   await expect(page.locator(s.map)).toBeHidden()
   return popup
 }
@@ -103,8 +104,14 @@ async function deleteInEdit(page: Page) {
   await expect(page.locator(s.mapLabel).first()).toBeVisible()
 }
 
+async function settledMap(page: Page) {
+  await expect.poll(() => page.evaluate(() => (window as PocWindow).polygonTestApi!.getMapState().stationary), { message: 'O mapa deve terminar a navegação.' }).toBe(true)
+}
+
 async function points(page: Page) {
   if (isAndroid) await mapRect(page)
+  await settledMap(page)
+  await expect.poll(() => page.evaluate(() => (window as PocWindow).polygonTestApi!.getMapState().editingReady), { message: 'O SDK deve terminar de preparar as alças de edição.' }).toBe(true)
   return page.evaluate(() => (window as PocWindow).polygonTestApi!.getSelectedScreenPoints())
 }
 
@@ -304,6 +311,9 @@ test(cases.cancel, async ({ page }) => {
 })
 
 test(cases.persist, async ({ appSession }, testInfo) => {
+  // Este cenário fecha um processo Chrome e inicia outro; reservar uma
+  // navegação extra sem aumentar as esperas das asserções funcionais.
+  if (isWeb) testInfo.setTimeout(testInfo.timeout + 45_000)
   if (appSession) {
     let page = await appSession.main()
     await open(page)
@@ -320,6 +330,7 @@ test(cases.persist, async ({ appSession }, testInfo) => {
     await expect(page.locator(s.label)).toHaveText('Reserva São José')
     await expect(page.locator(s.mapLabel)).toHaveText('Reserva São José')
     await page.locator(s.items).click()
+    await page.getByTestId('expand-polygon').click()
     await expect.poll(() => page.locator(s.vertexList).innerText()).toBe(saved)
     if (isPwa) expect(await page.evaluate(() => matchMedia('(display-mode: standalone)').matches)).toBe(true)
     return
@@ -350,6 +361,7 @@ test(cases.persist, async ({ appSession }, testInfo) => {
     await expect(page.locator(s.label)).toHaveText('Reserva São José')
     await expect(page.locator(s.mapLabel)).toHaveText('Reserva São José')
     await page.locator(s.items).click()
+    await page.getByTestId('expand-polygon').click()
     await expect.poll(() => page.locator(s.vertexList).innerText()).toBe(saved)
   } catch (error) {
     const page = context?.pages()[0]
@@ -410,9 +422,14 @@ test(cases.navigation, async ({ page }) => {
     const vertices = (await points(page)).vertices
     return Math.hypot(vertices[0].x - vertices[1].x, vertices[0].y - vertices[1].y)
   }
+  await settledMap(page)
+  // O enquadramento usa escala livre; normalizar para um nível de zoom antes de testar ida e volta.
+  await page.locator(s.zoomOut).click()
+  await settledMap(page)
   const original = await distance()
   await page.locator(s.zoomIn).click()
   await expect.poll(distance).toBeGreaterThan(original * 1.5)
+  await settledMap(page)
   await expect(page.locator(s.mapLabel)).toBeVisible()
   await page.locator(s.zoomOut).click()
   await expect.poll(distance).toBeCloseTo(original, 0)
@@ -439,10 +456,23 @@ test(dualCases.sync, async ({ page }) => {
   await expect(popup.locator(s.mapLabel)).toHaveCount(2)
   await page.locator(s.items).first().click()
   await expect(popup.locator(`${s.mapLabel}.is-selected`)).toHaveText('Polígono 1')
-  const firstCenter = (await points(popup)).center
+  await settledMap(popup)
+  const firstId = await popup.evaluate(() => (window as PocWindow).polygonTestApi!.getMapState().selectedId!)
   await page.locator(s.items).last().click()
   await expect(popup.locator(`${s.mapLabel}.is-selected`)).toHaveText('Polígono 2')
+  await settledMap(popup)
+  // Selecionar o segundo card pode deixar o primeiro fora da tela.
   const map = (await popup.locator(s.map).boundingBox())!
+  let firstCenter = await popup.evaluate(id => (window as PocWindow).polygonTestApi!.getSelectedScreenPoints(id).center, firstId)
+  for (let attempt = 0; attempt < 6 && (firstCenter.x < 20 || firstCenter.x > map.width - 20 || firstCenter.y < 20 || firstCenter.y > map.height - 20); attempt++) {
+    await popup.locator(s.zoomOut).click()
+    await settledMap(popup)
+    firstCenter = await popup.evaluate(id => (window as PocWindow).polygonTestApi!.getSelectedScreenPoints(id).center, firstId)
+  }
+  expect(firstCenter.x).toBeGreaterThan(20)
+  expect(firstCenter.x).toBeLessThan(map.width - 20)
+  expect(firstCenter.y).toBeGreaterThan(20)
+  expect(firstCenter.y).toBeLessThan(map.height - 20)
   await popup.mouse.click(map.x + firstCenter.x, map.y + firstCenter.y)
   await expect(page.locator(s.name)).toHaveValue('Polígono 1')
   await expect(page.locator(s.finish)).toBeVisible()

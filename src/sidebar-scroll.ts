@@ -1,5 +1,7 @@
 // Uma barra própria permanece visível mesmo quando o sistema oculta barras nativas.
 export function attachSidebarScrollbar(viewport: HTMLElement, track: HTMLElement) {
+  const lifetime = new AbortController()
+  const signal = lifetime.signal
   const thumb = track.firstElementChild as HTMLElement
   let pointer: number | null = null
   let grabOffset = 0
@@ -31,13 +33,13 @@ export function attachSidebarScrollbar(viewport: HTMLElement, track: HTMLElement
     track.setPointerCapture(event.pointerId)
     track.focus({ preventScroll: true })
     move(event.clientY)
-  })
+  }, { signal })
   track.addEventListener('pointermove', (event) => {
     if (event.pointerId === pointer) move(event.clientY)
-  })
-  track.addEventListener('lostpointercapture', () => { pointer = null })
-  track.addEventListener('pointerup', () => { pointer = null })
-  track.addEventListener('pointercancel', () => { pointer = null })
+  }, { signal })
+  track.addEventListener('lostpointercapture', () => { pointer = null }, { signal })
+  track.addEventListener('pointerup', () => { pointer = null }, { signal })
+  track.addEventListener('pointercancel', () => { pointer = null }, { signal })
   track.addEventListener('keydown', (event) => {
     const amount = { ArrowDown: 40, ArrowUp: -40, PageDown: viewport.clientHeight, PageUp: -viewport.clientHeight, Home: -viewport.scrollHeight, End: viewport.scrollHeight }[event.key]
     if (amount === undefined) return
@@ -45,10 +47,11 @@ export function attachSidebarScrollbar(viewport: HTMLElement, track: HTMLElement
     event.stopPropagation()
     viewport.scrollTop += amount
     update()
-  })
-  viewport.addEventListener('scroll', update, { passive: true })
+  }, { signal })
+  viewport.addEventListener('scroll', update, { passive: true, signal })
   const observer = new ResizeObserver(update)
   observer.observe(viewport)
   Array.from(viewport.children).forEach((child) => observer.observe(child))
   update()
+  return () => { lifetime.abort(); observer.disconnect() }
 }
