@@ -72,6 +72,11 @@ a ponte nativa do Capacitor e o seletor de documentos do Android.
 - Separar o mapa em outra janela e sincronizar as ações nas duas telas.
 - Navegar com teclado e consultar os atalhos pelo botão de informações.
 
+No modo de duas telas, a janela de controles mostra a lista de polígonos à
+direita e as mensagens, os atalhos e o gerenciamento das janelas à esquerda.
+Na janela do mapa, **Reunir telas** fica ao lado de **Criar/Editar**; durante
+uma ação, essa linha mostra somente **Confirmar** e **Cancelar**.
+
 Os nomes aceitam letras, números e espaços, até 30 caracteres. Um desenho precisa
 ter pelo menos três pontos distintos formando uma área. Excluir uma área pede
 confirmação; Delete remove diretamente os vértices selecionados durante a edição.

@@ -224,7 +224,6 @@ button .compass-dial { width: 26px; height: 26px; }
 .map-window-menu { position: absolute; z-index: 1; left: .75rem; bottom: calc(2.25rem + env(safe-area-inset-bottom)); display: grid; gap: 10px; width: min(21rem, calc(100% - 1.5rem)); padding: 12px; border: 1px solid #ffffffb3; border-radius: 17px; background: #f9fbf6f2; box-shadow: 0 8px 32px #15362924; backdrop-filter: blur(16px); }
 .map-window-actions { display: grid; gap: 12px; }
 .map-window-actions:empty { display: none; }
-#return-map { min-height: 38px; font-size: .74rem; }
 
 /* Dialogs share the same visual language. */
 dialog { width: min(calc(100% - 2rem), 27rem); padding: 26px; border: 1px solid #dfe6dc; border-radius: 21px; background: #fcfdf9; color: var(--ink); box-shadow: 0 24px 90px #102e3452; }
@@ -255,21 +254,31 @@ dialog p { margin: 12px 0 0; color: var(--muted); font-size: .85rem; line-height
 }
 
 /* Detached map and its companion collection window */
-.map-detached .workspace, .map-window .workspace { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; height: 100dvh; }
+.map-window .workspace { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; height: 100dvh; }
+.map-detached .workspace { grid-template-columns: minmax(260px, 360px) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); height: 100dvh; }
 .map-detached .map-panel { display: none; }
-.map-detached .polygon-sidebar { grid-row: 1; height: 100dvh; min-height: 100dvh; padding: 92px 0 0; border: 0; overflow: hidden; }
-.map-detached .sidebar-header { margin: 0; padding: 0 max(20px, calc((100% - 680px) / 2)) 20px; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); }
-.map-detached .sidebar-scroll { padding-left: max(20px, calc((100% - 680px) / 2)); padding-right: calc(max(20px, calc((100% - 680px) / 2)) + 8px); }
-.map-detached .sidebar-actions { margin-inline: max(20px, calc((100% - 680px) / 2)); }
+.map-detached .polygon-sidebar { grid-column: 2; grid-row: 1; height: 100dvh; min-height: 0; padding: 0; border: 0; overflow: hidden; }
+.map-detached .sidebar-header { margin: 0; padding: 24px 24px 20px; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); }
+.map-detached .sidebar-scroll { padding: 20px 32px 20px 24px; }
+.map-detached .sidebar-actions { margin-inline: 24px; margin-top: auto; }
 .map-detached .polygon-count { background: #e2ebdf; color: #486849; }
 .map-detached .install-app-button { border-color: var(--line); background: #fff; color: var(--forest); }
 .map-detached .polygon-list { flex: none; }
 .map-detached .empty-state { flex: 1; min-height: 100px; }
-.map-detached .sidebar-actions { margin-top: auto; }
+.detached-control-panel { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; gap: 24px; min-height: 0; height: 100dvh; padding: 24px; border-right: 1px solid var(--line); background: #eef2eb; overflow-y: auto; }
+.detached-control-panel .map-status { position: static; flex-shrink: 0; width: 100%; max-width: none; transform: none; text-align: left; }
+.detached-control-settings { display: grid; gap: 16px; margin-top: auto; }
+.detached-control-settings .keyboard-shortcuts { padding: 4px 12px; border: 1px solid var(--line); border-radius: 13px; background: #fff; }
 .map-window .polygon-sidebar { display: none; }
 .map-window .map-panel { grid-row: auto; min-height: 100dvh; }
 .map-window .map-status { --sidebar-offset: 0px; }
-.map-detached .map-status { --sidebar-offset: 0px; left: 50%; max-width: min(34rem, calc(100% - 1.5rem)); }
+
+@media (max-width: 600px) {
+  .map-detached .workspace { display: flex; flex-direction: column; height: auto; }
+  .detached-control-panel { flex: none; height: auto; padding: 16px; gap: 16px; border-right: 0; border-bottom: 1px solid var(--line); overflow: visible; }
+  .detached-control-settings { margin-top: 0; }
+  .map-detached .polygon-sidebar { flex: none; height: 75svh; min-height: 36svh; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }

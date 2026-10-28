@@ -1,5 +1,5 @@
 import { useEffect, useRef, type RefObject } from 'react'
-import { Minus, PanelsTopLeft, Plus } from 'lucide-react'
+import { Minus, Plus } from 'lucide-react'
 import { useEditorContext } from './EditorContext'
 import { PolygonActions } from './PolygonActions'
 import { PolygonEditor } from './PolygonEditor'
@@ -22,7 +22,6 @@ export function MapPanel({ mapRef }: { mapRef: RefObject<HTMLDivElement | null> 
       </button>
     </div></div>
     <div className="map-window-menu" aria-label="Ações do mapa separado" hidden={state.mode !== 'map'}>
-      <button id="return-map" className="secondary" type="button" hidden={state.mode !== 'map' || Boolean(state.action)} disabled={Boolean(state.action)} title="Trazer o mapa de volta" onClick={() => actions?.reunite()}><PanelsTopLeft aria-hidden="true" /><span>Reunir telas</span></button>
       <div className="map-window-actions">{state.mode === 'map' && <><PolygonEditor /><PolygonActions /></>}</div>
     </div>
     <p id="map-ready" hidden={!state.ready}>Mapa ativo</p>

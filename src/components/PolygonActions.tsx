@@ -1,4 +1,4 @@
-import { Check, Pencil, Plus, Trash2, VectorPolygon, X } from 'lucide-react'
+import { Check, PanelsTopLeft, Pencil, Plus, Trash2, VectorPolygon, X } from 'lucide-react'
 import { useEditorContext, useShortcuts } from './EditorContext'
 export function PolygonActions() {
   const { state, actions } = useEditorContext()
@@ -9,8 +9,8 @@ export function PolygonActions() {
   const title = selected?.locked ? 'Destrave o polígono pelo cadeado na lista para editar.' : enabled
     ? selected ? `${label} (E ou Enter). Esc limpa a seleção; N cria outro polígono.` : `${label} (N)` : label
   return <div className="polygon-actions" role="group" aria-label="Ações dos polígonos">
-    <button id="clear-polygons" className="clear-all-button danger" type="button" title="Remover todos os polígonos"
-      hidden={Boolean(state.action)} disabled={!state.items.length || (state.mode === 'detached' && !state.connected)} onClick={() => actions?.requestDeletion('all')}><Trash2 aria-hidden="true" />Apagar todos</button>
+    {state.mode === 'map' ? <button id="return-map" className="secondary" type="button" hidden={Boolean(state.action)} title="Trazer o mapa de volta" onClick={() => actions?.reunite()}><PanelsTopLeft aria-hidden="true" /><span>Reunir telas</span></button> : <button id="clear-polygons" className="clear-all-button danger" type="button" title="Remover todos os polígonos"
+      hidden={Boolean(state.action)} disabled={!state.items.length || (state.mode === 'detached' && !state.connected)} onClick={() => actions?.requestDeletion('all')}><Trash2 aria-hidden="true" />Apagar todos</button>}
     <button id="draw-polygon" data-mode={selected ? 'edit' : 'create'} className="icon-button add-polygon-button" type="button"
       title={title} aria-label={label} aria-keyshortcuts={enabled ? selected ? 'E Enter' : 'N' : undefined} hidden={Boolean(state.action)} disabled={waiting || selected?.locked} onClick={() => actions?.draw()}>
       <VectorPolygon aria-hidden="true" />{selected ? <Pencil aria-hidden="true" /> : <Plus aria-hidden="true" />}<span>{selected ? 'Editar' : 'Criar'}</span>

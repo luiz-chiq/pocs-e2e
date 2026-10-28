@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import { Download, Pencil, Save, Trash2, X } from 'lucide-react'
 import { useEditorContext } from './EditorContext'
-import { ShortcutSwitch } from './Sidebar'
+import { ShortcutSwitch } from './KeyboardShortcuts'
 import type { PwaState } from '../hooks/usePwa'
 
 function Dialog({ id, title, open, onCancel, children, className }: { id: string; title: string; open: boolean; onCancel(): void; children: ReactNode; className?: string }) {
