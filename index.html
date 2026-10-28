@@ -38,6 +38,26 @@
           <div class="sidebar-scrollbar" role="scrollbar" tabindex="-1" aria-controls="sidebar-scroll-content" aria-label="Rolar menu lateral" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0" aria-disabled="true"><div class="sidebar-scrollbar-thumb"></div></div>
           </div>
           <div class="sidebar-actions" aria-label="Ações da aplicação">
+            <details id="keyboard-shortcuts" class="keyboard-shortcuts">
+              <summary>Atalhos de teclado <span id="keyboard-shortcuts-status">Ativos</span></summary>
+              <div class="keyboard-shortcuts-content">
+                <label class="keyboard-shortcuts-toggle"><input id="keyboard-shortcuts-enabled" data-testid="keyboard-shortcuts-enabled" type="checkbox" checked /> Habilitar atalhos</label>
+                <p>Quando habilitados, funcionam fora dos campos de texto. Enter conclui e Esc cancela também no campo de nome.</p>
+                <dl>
+                  <dt><kbd>N</kbd></dt><dd>Novo polígono</dd>
+                  <dt><kbd>E</kbd> / <kbd>Enter</kbd></dt><dd>Editar a seleção</dd>
+                  <dt><kbd>Enter</kbd></dt><dd>Concluir criação ou edição</dd>
+                  <dt><kbd>Esc</kbd></dt><dd>Cancelar ou limpar seleção</dd>
+                  <dt><kbd>Delete</kbd></dt><dd>Excluir com confirmação</dd>
+                  <dt><kbd>1</kbd> – <kbd>6</kbd></dt><dd>Cor do polígono</dd>
+                  <dt><kbd>Z</kbd> / <kbd>Ctrl/⌘ Z</kbd></dt><dd>Desfazer</dd>
+                  <dt><kbd>R</kbd> / <kbd>Ctrl/⌘ ⇧ Z</kbd></dt><dd>Refazer (também Ctrl/⌘ Y)</dd>
+                  <dt><kbd>+</kbd> / <kbd>−</kbd></dt><dd>Aumentar / diminuir zoom</dd>
+                  <dt><kbd>0</kbd></dt><dd>Retornar o norte para cima</dd>
+                  <dt><kbd>M</kbd></dt><dd>Separar / reunir mapa</dd>
+                </dl>
+              </div>
+            </details>
             <div id="polygon-file-actions" class="polygon-file-actions" role="group" aria-label="Arquivos de polígonos" hidden>
               <button id="import-polygons" data-testid="import-polygons" class="secondary" type="button" title="Acrescentar polígonos de um arquivo JSON"><i data-lucide="folder-open" aria-hidden="true"></i><span>Importar</span></button>
               <button id="export-polygons" data-testid="export-polygons" class="secondary" type="button" title="Salvar todos os polígonos em um arquivo JSON"><i data-lucide="save" aria-hidden="true"></i><span>Exportar</span></button>

@@ -21,6 +21,7 @@ import { createId, DetachedMap } from './detached-map'
 import { attachCompass } from './compass'
 import { attachSidebarScrollbar } from './sidebar-scroll'
 import { defaultPolygonColor, fixedPolygonColor, groupOverlappingPolygons, isPolygonColor, polygonPalette } from './polygon-rules'
+import { attachKeyboardSettings, shortcutsEnabled } from './keyboard-settings'
 
 const fileActions = document.querySelector<HTMLDivElement>('#polygon-file-actions')!
 const importButton = document.querySelector<HTMLButtonElement>('#import-polygons')!
@@ -144,6 +145,8 @@ type MapCommand =
   | { type: 'delete'; id: string | 'all' }
   | { type: 'request-deletion'; id: string | 'all' }
   | { type: 'dismiss-deletion' | 'confirm-deletion' }
+  | { type: 'history'; action: 'undo' | 'redo' }
+  | { type: 'navigate'; action: 'zoom-in' | 'zoom-out' | 'north-up' }
   | { type: 'rename'; id: string; value: string; changeId: string }
   | { type: 'import'; polygons: PolygonFileData[]; fileName: string }
   | { type: 'draft-lock'; id: string | null; value: boolean }
@@ -214,6 +217,8 @@ const detachedMap = new DetachedMap<MapState, MapCommand>({
     if (command.type === 'confirm-edit-deletion') confirmDeletedEditButton.click()
     if (command.type === 'dismiss-deletion') dismissDeletion()
     if (command.type === 'confirm-deletion') confirmClearButton.click()
+    if (command.type === 'history') changeHistory(command.action)
+    if (command.type === 'navigate') void navigateMap(command.action)
     if (command.type === 'request-deletion') {
       const target = command.id === 'all' ? 'all' : findGraphic(command.id)
       if (target) requestDeletion(target)
@@ -554,7 +559,11 @@ function updatePolygonButton() {
   }
   const label = selectedGraphic ? 'Editar polígono selecionado' : 'Criar um novo polígono'
   drawButton.setAttribute('aria-label', label)
-  drawButton.title = selectedGraphic ? `${label} ou use Enter. Clique no mapa vazio ou use Esc para limpar a seleção.` : label
+  drawButton.title = shortcutsEnabled()
+    ? selectedGraphic ? `${label} (E ou Enter). Esc limpa a seleção; N cria outro polígono.` : `${label} (N)`
+    : label
+  if (shortcutsEnabled()) drawButton.setAttribute('aria-keyshortcuts', selectedGraphic ? 'E Enter' : 'N')
+  else drawButton.removeAttribute('aria-keyshortcuts')
   if (isLocked(selectedGraphic)) drawButton.title = 'Destrave o polígono pelo cadeado na lista para editar.'
 }
 
@@ -640,6 +649,7 @@ function updateNavigationControls() {
 }
 
 async function navigateMap(action: 'zoom-in' | 'zoom-out' | 'north-up') {
+  if (detachedMap.command({ type: 'navigate', action })) return
   try {
     if (action === 'zoom-in') await view.zoomIn()
     if (action === 'zoom-out') await view.zoomOut()
@@ -1143,7 +1153,7 @@ function render() {
         event.preventDefault()
         event.stopPropagation()
         if (event.repeat) return
-        if (event.key === 'Enter' && activeAction === null && selectedGraphic === graphic) void startEditing(graphic)
+        if (shortcutsEnabled() && event.key === 'Enter' && activeAction === null && selectedGraphic === graphic) void startEditing(graphic)
         else selectPolygon(graphic)
       }
     })
@@ -1422,11 +1432,33 @@ view.on('immediate-click', async (event) => {
   }
   else clearSelection()
 })
+function changeHistory(action: 'undo' | 'redo') {
+  if (!activeAction || detachedMap.command({ type: 'history', action })) return
+  if (action === 'undo' && sketch.canUndo()) sketch.undo()
+  if (action === 'redo' && sketch.canRedo()) sketch.redo()
+  render()
+}
+
+attachKeyboardSettings(updatePolygonButton)
 window.addEventListener('keydown', (event) => {
   const target = event.target instanceof Element ? event.target : null
   if (target?.closest('dialog') || event.isComposing) return
-  const control = target?.closest('button, a, input, textarea, select, [contenteditable]:not([contenteditable="false"])')
-  const textControl = target?.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')
+  const control = target?.closest('button, a, summary, input, textarea, select, [contenteditable]:not([contenteditable="false"])')
+  const textControl = target?.closest('input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]), textarea, select, [contenteditable]:not([contenteditable="false"])')
+  const key = event.key.toLowerCase()
+  const modified = event.ctrlKey || event.metaKey || event.altKey
+  if (!shortcutsEnabled()) {
+    // Desligar também os atalhos do SDK no canvas; Tab e ativação de botões
+    // continuam disponíveis como navegação acessível, assim como a edição de texto.
+    const nativeControl = target?.closest('button, a, summary, input, textarea, select, [role="button"], [contenteditable]:not([contenteditable="false"])')
+    const sdkShortcut = key === 'delete' || key === 'backspace' || (!modified && ['enter', 'escape', 'z', 'r', 'f', '+', '=', '-', '0'].includes(key))
+    const historyShortcut = (event.ctrlKey || event.metaKey) && activeAction && (key === 'z' || key === 'y')
+    if (!nativeControl && (sdkShortcut || historyShortcut)) {
+      event.preventDefault()
+      event.stopImmediatePropagation()
+    }
+    return
+  }
   const deletionTarget = activeGraphic ?? selectedGraphic
   if (event.key === 'Delete' && !textControl && activeAction !== 'create' && deletionTarget) {
     event.preventDefault()
@@ -1435,7 +1467,35 @@ window.addEventListener('keydown', (event) => {
     if (!event.repeat) requestDeletion(deletionTarget)
     return
   }
-  if (event.key === 'Enter' && (!control || target === nameInput) && (activeAction !== null || (selectedGraphic && !target?.closest('.polygon-label')))) {
+  if (!textControl && !event.altKey && (event.ctrlKey || event.metaKey) && (key === 'z' || key === 'y')) {
+    if (!activeAction) return
+    event.preventDefault()
+    event.stopImmediatePropagation()
+    if (!event.repeat) changeHistory(key === 'y' || event.shiftKey ? 'redo' : 'undo')
+    return
+  }
+  if (modified) return
+  if (!textControl && ['n', 'e', 'm', 'z', 'r', '+', '=', '-', '0', '1', '2', '3', '4', '5', '6'].includes(key)) {
+    event.preventDefault()
+    event.stopImmediatePropagation()
+    if (event.repeat || !mapInitialized || (windowMode !== 'main' && !windowConnected)) return
+    if (key === 'n' && activeAction === null) {
+      if (!detachedMap.command({ type: 'draw' })) void beginDrawing()
+    }
+    if (key === 'e' && activeAction === null && selectedGraphic) void startEditing(selectedGraphic)
+    if (key === 'm' && activeAction === null) {
+      const button = windowMode === 'main' ? detachButton : windowMode === 'map' ? returnButton : reuniteButton
+      if (!button.hidden && !button.disabled) button.click()
+    }
+    if ((key === 'z' || key === 'r') && activeAction) changeHistory(key === 'z' ? 'undo' : 'redo')
+    if (/^[1-6]$/.test(key) && activeAction) chooseColor(polygonPalette[Number(key) - 1][1])
+    if (key === '+' || key === '=') { if (!zoomInButton.disabled) void navigateMap('zoom-in') }
+    if (key === '-') { if (!zoomOutButton.disabled) void navigateMap('zoom-out') }
+    if (key === '0' && !northUpButton.disabled) void navigateMap('north-up')
+    return
+  }
+  const checkbox = target instanceof HTMLInputElement && (target.type === 'checkbox' || target.type === 'radio')
+  if (event.key === 'Enter' && (!control || target === nameInput || checkbox) && (activeAction !== null || (selectedGraphic && !target?.closest('.polygon-label')))) {
     event.preventDefault()
     event.stopPropagation()
     if (event.repeat) return

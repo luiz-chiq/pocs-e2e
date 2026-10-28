@@ -145,6 +145,22 @@ h1 { margin: 0; font-size: 1.65rem; font-weight: 650; letter-spacing: -.045em; l
 .color-swatch:hover:not(:disabled) { background: var(--swatch-color); box-shadow: 0 0 0 2px #91a99b; }
 .color-swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--forest); }
 .sidebar-actions { display: grid; flex-shrink: 0; gap: 10px; margin: 0 20px; padding: 16px 0 20px; border-top: 1px solid var(--line); }
+.keyboard-shortcuts { min-width: 0; font-size: .73rem; }
+.keyboard-shortcuts summary { display: flex; align-items: center; gap: 8px; padding: 5px 0; color: var(--muted); cursor: pointer; list-style: none; }
+.keyboard-shortcuts summary::-webkit-details-marker { display: none; }
+.keyboard-shortcuts summary::before { content: '›'; font-size: 1rem; transition: transform .15s; }
+.keyboard-shortcuts[open] summary::before { transform: rotate(90deg); }
+.keyboard-shortcuts summary:focus-visible { outline: 2px solid var(--forest); outline-offset: 3px; border-radius: 4px; }
+#keyboard-shortcuts-status { margin-left: auto; font-size: .65rem; }
+#keyboard-shortcuts-status[data-enabled="true"] { color: var(--forest); }
+.keyboard-shortcuts-content { max-height: min(38dvh, 300px); padding: 10px 4px 5px 0; overflow-y: auto; scrollbar-gutter: stable; }
+.keyboard-shortcuts-toggle { display: flex; align-items: center; gap: 8px; color: var(--ink); cursor: pointer; }
+.keyboard-shortcuts-toggle input { width: 18px; height: 18px; margin: 0; accent-color: var(--forest); }
+.keyboard-shortcuts-content p { color: var(--muted); font-size: .65rem; line-height: 1.5; }
+.keyboard-shortcuts dl { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px 10px; margin: 12px 0 0; font-size: .65rem; }
+.keyboard-shortcuts dt { white-space: nowrap; }
+.keyboard-shortcuts dd { margin: 0; color: var(--muted); line-height: 1.4; }
+.keyboard-shortcuts kbd { padding: 2px 4px; border: 1px solid #cdd8ce; border-bottom-width: 2px; border-radius: 4px; background: #fff; color: #385547; font: inherit; font-size: .61rem; }
 .polygon-actions { display: flex; align-items: center; gap: 8px; min-height: 44px; }
 .polygon-actions > button { flex: 1 1 0; min-width: 0; width: 0; height: 44px; padding: 9px 10px; font-size: .76rem; white-space: nowrap; }
 .polygon-actions > button span { min-width: 0; }

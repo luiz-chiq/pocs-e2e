@@ -111,6 +111,27 @@ Dentro do campo de nome, Delete continua apagando texto normalmente.
 As alças dos vértices e dos pontos intermediários são 50% maiores para facilitar
 o arraste e a inserção de vértices.
 Essa confirmação fica disponível nas duas janelas quando o mapa está separado.
+No rodapé do menu lateral, **Atalhos de teclado** permite consultar as teclas e
+habilitar ou desabilitar os atalhos. A opção começa ativada, fica salva neste
+navegador e é compartilhada entre as duas janelas. Os atalhos não se aplicam
+durante a digitação em campos de texto, exceto Enter para concluir e Escape
+para cancelar a edição do nome. Tab e a ativação normal dos botões continuam
+disponíveis quando os atalhos globais estão desativados.
+
+| Tecla | Ação |
+| --- | --- |
+| N | Criar outro polígono, mesmo com uma área selecionada |
+| E ou Enter | Editar o polígono selecionado e destravado |
+| Enter | Concluir criação ou edição |
+| Escape | Cancelar a ação ou limpar a seleção |
+| Delete | Pedir confirmação para excluir |
+| 1 a 6 | Escolher uma das seis cores durante criação ou edição |
+| Z ou Ctrl/⌘ Z | Desfazer a última alteração do desenho |
+| R, Ctrl/⌘ Shift Z ou Ctrl/⌘ Y | Refazer |
+| + / − | Aumentar / diminuir o zoom |
+| 0 | Retornar o norte para cima |
+| M | Separar / reunir o mapa, quando disponível |
+
 Desenhos com menos de três pontos diferentes ou sem área são bloqueados com um alerta;
 a confirmação por teclado segue a mesma validação.
 Os controles continuam sincronizados quando o mapa está em uma janela separada.
