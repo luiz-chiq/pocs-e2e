@@ -82,6 +82,13 @@ ter pelo menos três pontos distintos formando uma área. Excluir uma área pede
 confirmação; Delete remove diretamente os vértices selecionados durante a edição.
 Esc permite salvar ou descartar alterações pendentes antes de sair da edição.
 
+## Planejamento de testes
+
+O [catálogo de casos Playwright](docs/casos-de-teste-playwright.md) define a nova
+cobertura, começando pela build web local, incluindo duas janelas e o defeito
+intencional do botão de instalação. Os casos ainda não foram implementados ou
+executados nesta nova suíte.
+
 ## Estrutura
 
 - `src/App.tsx`: composição da aplicação React.
