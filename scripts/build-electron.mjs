@@ -7,14 +7,15 @@ const run = (entry, args = []) => {
   if (result.error) throw result.error
   if (result.status !== 0) process.exit(result.status ?? 1)
 }
-run('scripts/build-e2e.mjs')
-const staging = resolve('test-results/electron-staging')
+run('node_modules/typescript/bin/tsc', ['--noEmit'])
+run('node_modules/vite/bin/vite.js', ['build'])
+const staging = resolve('.cache/electron-staging')
 await rm(staging, { recursive: true, force: true })
 await mkdir(staging, { recursive: true })
-for (const path of ['dist', 'electron', 'public/icons']) await cp(path, resolve(staging, path), { recursive: true, filter: source => !source.endsWith('.test.cjs') })
-await writeFile(resolve(staging, 'package.json'), JSON.stringify({ name: 'poligonos-poc', version: '0.1.0', main: 'electron/main.cjs', description: 'Editor de polígonos — POCs E2E', author: 'POC E2E' }, null, 2))
+for (const path of ['dist', 'electron', 'public/icons']) await cp(path, resolve(staging, path), { recursive: true })
+await writeFile(resolve(staging, 'package.json'), JSON.stringify({ name: 'poligonos-poc', version: '0.1.0', main: 'electron/main.cjs', description: 'Editor de polígonos em React e TypeScript', author: 'Polígonos' }, null, 2))
 const { version } = JSON.parse(await readFile('node_modules/electron/package.json', 'utf8'))
-const config = resolve('test-results/electron-poc-builder.json')
+const config = resolve('.cache/electron-builder.json')
 await writeFile(config, JSON.stringify({
   appId: 'com.example.poligonos.poc', productName: 'Poligonos POC', asar: true,
   electronVersion: version, electronDist: resolve('node_modules/electron/dist'),

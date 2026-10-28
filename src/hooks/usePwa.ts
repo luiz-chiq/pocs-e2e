@@ -31,7 +31,7 @@ export function usePwa() {
     return () => lifetime.abort()
   }, [])
   async function install(event: PointerEvent<HTMLButtonElement>) {
-    // Defeito intencional da POC: mouse, caneta e teclado continuam ignorados.
+    // A instalação responde somente a interações por toque.
     if (event.pointerType !== 'touch' || busy) return
     const deferred = prompt.current
     if (!deferred) { setDescription(helpText()); return }

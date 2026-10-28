@@ -1,9 +1,5 @@
 node_modules/
 dist/
-test-results/
-playwright-report/
-blob-report/
-coverage/
 release/
 out/
 .cache/
@@ -17,8 +13,6 @@ out/
 *.app/
 *.asar
 .codex-finalizer/
-.pptx-build/
-.pptx-output/
 
 .DS_Store
 .env
@@ -41,11 +35,6 @@ id_rsa
 id_ecdsa
 id_ed25519
 *.mobileprovision
-
-# Perfis e caches locais de automação
-.chrome-profile/
-.playwright/
-.appium/
 
 android/.gradle/
 android/.idea/

@@ -102,7 +102,6 @@ export function createEditor(container: HTMLDivElement) {
   let confirmingDeletedEdit = false
   let confirmingExit = false
   let exitAfterCommit = false
-  let pendingPersistence: Promise<void> = Promise.resolve()
   let windowMode: 'main' | 'detached' | 'map' = 'main'
   let windowConnected = false
   let mapInitialized = false
@@ -241,7 +240,7 @@ export function createEditor(container: HTMLDivElement) {
       setActiveAction(null)
       forgetActiveEdit()
       restoreCommittedPolygons()
-      pendingPersistence = persistPolygons(committedPolygons)
+      void persistPolygons(committedPolygons)
       instructions = 'Mapa reunido à aplicação.'
       notify()
     },
@@ -723,7 +722,7 @@ export function createEditor(container: HTMLDivElement) {
       }
     }
     committedPolygons = orderedGraphics().map((graphic) => graphic.toJSON())
-    pendingPersistence = persistPolygons(committedPolygons)
+    void persistPolygons(committedPolygons)
     if (merged) lastEditText = `${merged} área(s) incorporada(s) por fusão de polígonos da mesma cor.`
     return merged
   }
@@ -1127,7 +1126,7 @@ export function createEditor(container: HTMLDivElement) {
     const textControl = target?.closest('input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]), textarea, select, [contenteditable]:not([contenteditable="false"])')
     const key = event.key.toLowerCase()
     const modified = event.ctrlKey || event.metaKey || event.altKey
-    const listItem = target?.closest<HTMLElement>('[data-testid="polygon-item"]')
+    const listItem = target?.closest<HTMLElement>('#polygon-list > .pin')
     const listGraphic = findGraphic(listItem?.dataset.polygonId ?? null)
     if (!modified && !textControl && activeAction === null && listGraphic && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
       event.preventDefault()
@@ -1221,7 +1220,7 @@ export function createEditor(container: HTMLDivElement) {
     committedPolygons = stored.filter((polygon) => {
       try { return isValidPolygon(Graphic.fromJSON(polygon).geometry) } catch { return false }
     })
-    if (committedPolygons.length !== stored.length) pendingPersistence = persistPolygons(committedPolygons)
+    if (committedPolygons.length !== stored.length) void persistPolygons(committedPolygons)
     committedPolygons.forEach((polygon) => layer.add(Graphic.fromJSON(polygon)))
     ensureGraphicIds()
     syncCommittedPolygons()
@@ -1237,57 +1236,6 @@ export function createEditor(container: HTMLDivElement) {
   }))
   track(watch(() => [view.canZoomIn, view.canZoomOut, view.rotation], updateNavigationControls))
   track(watch(() => [view.extent, view.rotation, view.width, view.height], scheduleMapLabels))
-
-  // Disponível somente no servidor de desenvolvimento ou na build temporária de E2E.
-  // A API apenas consulta estado e coordenadas; os testes continuam usando gestos reais.
-  if (import.meta.env.DEV || import.meta.env.VITE_E2E === 'true') {
-    const testWindow = window as typeof window & {
-      polygonTestApi?: {
-        getSelectedScreenPoints: (id?: string) => {
-          center: { x: number; y: number }
-          vertices: Array<{ x: number; y: number }>
-          edgeMidpoint: { x: number; y: number }
-        }
-        getMapState: () => { stationary: boolean; selectedId: string | null; editingReady: boolean }
-        waitForPersistence: () => Promise<void>
-        getDrawingState: () => { ready: boolean; vertices: number }
-      }
-    }
-    testWindow.polygonTestApi = {
-      getMapState: () => ({
-        stationary: view.stationary && !view.animation,
-        selectedId: graphicId(selectedGraphic),
-        editingReady: activeAction !== 'update' || Boolean(activeGraphic && sketch.state === 'active' && sketch.updateGraphics.includes(activeGraphic) && !sketch.toolTransitionInProgress)
-      }),
-      getDrawingState: () => ({
-        ready: activeAction === 'create' && sketch.state === 'active' && sketch.activeTool === 'polygon' && !sketch.toolTransitionInProgress,
-        vertices: draftVertices.length
-      }),
-      getSelectedScreenPoints: (id?: string) => {
-        const graphic = id ? layer.graphics.find(candidate => graphicId(candidate) === id) : activeGraphic ?? selectedGraphic
-        if (!graphic) throw new Error('Nenhum polígono selecionado para teste.')
-        const polygon = graphic.geometry as Polygon
-        const points = polygon.rings[0]
-          .slice(0, -1)
-          .map((_, index) => polygon.getPoint(0, index))
-          .filter((point): point is NonNullable<typeof point> => point != null)
-        const vertices = points.map((point) => {
-          const screenPoint = view.toScreen(point)!
-          return { x: screenPoint.x, y: screenPoint.y }
-        })
-        const center = view.toScreen(polygon.extent!.center)!
-        return {
-          center: { x: center.x, y: center.y },
-          vertices,
-          edgeMidpoint: {
-            x: (vertices[0].x + vertices[1].x) / 2,
-            y: (vertices[0].y + vertices[1].y) / 2
-          }
-        }
-      },
-        waitForPersistence: () => pendingPersistence
-    }
-  }
 
   function buildSnapshot(): EditorSnapshot {
     const nameError = validateName(draftName)
@@ -1346,7 +1294,6 @@ export function createEditor(container: HTMLDivElement) {
       selectionHighlight?.remove()
       sketch.destroy()
       view.destroy()
-      delete (window as Window & { polygonTestApi?: unknown }).polygonTestApi
     }
   }
 }

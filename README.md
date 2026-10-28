@@ -1,285 +1,31 @@
-# Polígonos no mapa — POCs E2E
+# Polígonos no mapa
 
-Editor de polígonos em **React + TypeScript**, usando o ArcGIS Maps SDK for JavaScript, com versões web/PWA, Electron e Android via Capacitor. O projeto compara automação E2E com Playwright e Selenium. A versão com as três ferramentas está preservada na branch `codex/poc-tres-ferramentas` (commit `98f49f5`).
+Aplicação em React e TypeScript para desenhar e organizar polígonos sobre mapas
+de satélite, disponível na web, como PWA, no Electron e no Android com Capacitor.
 
-A interface usa verde profundo, superfícies claras e âmbar no card selecionado.
-No mapa, a seleção recebe brilho branco e a edição usa contorno branco, preservando
-a cor do preenchimento. Ao salvar ou cancelar, o contorno da cor original é restaurado.
-Os cards mostram a quantidade de vértices e o estado de seleção ou edição.
-No computador, a lista tem rolagem própria e mantém as ações no rodapé; no celular,
-o mapa aparece acima da coleção. As duas janelas compartilham o mesmo visual.
-O cabeçalho contém apenas **Polígonos**, o contador e o botão de instalação.
-Durante a criação ou edição, o menu lateral mostra apenas o polígono atual e
-seus controles em um formulário que ocupa o painel, sem aparência de card.
-As outras áreas e ações gerais voltam ao concluir ou cancelar. A barra de rolagem
-do conteúdo fica sempre visível, com cabeçalho e ações fixos. A contagem de
-vértices aparece em um badge redondo, como uma notificação, ao lado do nome.
+## Executar
 
-## Estrutura da aplicação
-
-A interface é composta por componentes React em `src/components/`: lista de
-polígonos, formulário de edição, ações, barra lateral, mapa e modais.
-`src/App.tsx` integra esses componentes. As dependências ficam registradas no `yarn.lock`; use Yarn para instalar e executar o projeto.
-O hook `useEditor` cria e descarta a
-instância do mapa conforme o ciclo de vida do React, incluindo o Strict Mode.
-
-O controlador tipado em `src/editor/createEditor.ts` concentra as operações do
-ArcGIS, a persistência e a sincronização das duas janelas. Ele expõe ações e um
-snapshot imutável consumido com `useSyncExternalStore`; o React renderiza os
-controles e rótulos, enquanto o SDK controla apenas o conteúdo do mapa.
-`src/hooks/usePwa.ts` gerencia a instalação. A importação/exportação continua
-usando o processo principal do Electron e a ponte nativa do Capacitor.
-
-## Execução
+Use Node.js 22.18 ou superior e Yarn.
 
 ```bash
 yarn install --frozen-lockfile
 yarn dev
 ```
 
-Abra a URL indicada pelo Vite, normalmente `http://localhost:5173`. Navegadores consideram `localhost` um contexto seguro para desenvolvimento, portanto o service worker funciona sem certificado local.
+O Vite informa a URL local. O mapa usa Esri World Imagery e não exige configurar
+uma API key. As imagens de satélite dependem de conexão com a internet.
 
-Use Node.js 22.18 ou superior. O fundo de satélite atual não exige configurar
-API key ou arquivo `.env.local`. Variáveis `VITE_*` são públicas na build;
-não coloque segredos nelas.
-
-## PWA
+## Build web e PWA
 
 ```bash
 yarn build
 yarn preview
 ```
 
-Abra a URL do preview e toque no ícone de **Instalar aplicativo**, à direita do título no cabeçalho da lista de polígonos.
-Para simular um bug de interação, esse botão responde **somente a toques touch**.
-Cliques de mouse, teclado e caneta são ignorados, mesmo em dispositivos com tela touch.
-Na automação, use um toque real/emulado (como `tap()` no Playwright com `hasTouch: true`),
-em vez de `click()`.
-No Chrome/Edge, o botão abre a instalação quando o navegador a disponibiliza.
-No iPhone/iPad, ele explica como instalar pelo Safari: **Compartilhar → Adicionar à Tela de Início**.
-O botão fica oculto quando o aplicativo está aberto em modo instalado ou nas versões nativas Electron/Android.
-
-O manifest, os ícones e o service worker são gerados em `yarn build`.
-Para validar a instalação local, use `yarn preview` em `localhost`; `yarn dev` não ativa o service worker.
-Em produção, publique o conteúdo de `dist/` atrás de HTTPS. Os caminhos do PWA também permitem publicação em um subdiretório.
-O service worker mantém os arquivos da aplicação em cache; o mapa-base e recursos externos do ArcGIS ainda dependem de internet.
-
-## Duas telas
-
-Os controles de navegação ficam no canto superior esquerdo. Arraste a agulha
-da bússola para girar o mapa; clique nela para retornar o norte para cima.
-Com a bússola em foco, use **← / →** para girar e **Enter** ou **Home** para
-retornar ao norte. O gesto de arrastar o mapa com o botão direito continua disponível.
-
-No rodapé da barra lateral, **Adicionar polígono** fica à direita de **Apagar todos**.
-Os dois botões têm o mesmo tamanho. Clicar no nome de um card seleciona e
-destaca o polígono com um brilho branco no mapa. A seta à esquerda abre ou
-recolhe os vértices sem alterar a seleção; selecionar também não expande o card.
-Ao clicar no card, o mapa centraliza a área e ajusta o zoom com margem ao redor,
-mantendo a rotação da bússola. O enquadramento também funciona com o mapa separado
-e com polígonos travados selecionados pela lista.
-Selecionar um card não inicia a edição: o botão de criar passa a **Editar polígono selecionado**.
-Toque ou clique diretamente no polígono no mapa para entrar na edição imediatamente.
-Se outro polígono estiver em edição, escolha **Salvar e trocar**, **Cancelar edição e trocar**
-ou **Continuar editando**. Nomes e desenhos inválidos impedem salvar a edição.
-Também é possível usar o botão Editar. Clique no mapa vazio ou use **Esc**
-para limpar a seleção e voltar a criar polígonos. Durante a criação ou edição,
-Esc pede para salvar, descartar ou continuar quando há alterações pendentes;
-ao sair, o polígono também fica desselecionado.
-Com um polígono selecionado, **Enter** inicia a edição; durante a edição,
-**Enter** conclui. O atalho mantém a ação normal dos botões de navegação e diálogos.
-O nome aparece no centro de cada área, acompanha os movimentos do mapa e a edição
-do desenho, e fica sincronizado entre as janelas. Em áreas côncavas, o nome é
-posicionado dentro do polígono. Os rótulos não bloqueiam os cliques no mapa.
-Durante a edição, o nome do card vira um campo de texto. O nome é obrigatório,
-aceita de 1 a 30 caracteres e permite apenas letras (incluindo acentos), números
-e espaços. Espaços nas extremidades e espaços repetidos são removidos ao salvar.
-O campo não mostra rótulo nem instruções fixas. Um tooltip avisa sobre nomes
-inválidos ou ao atingir 24 dos 30 caracteres; desaparece ao corrigir o nome
-ou ficar abaixo desse limite.
-Durante a criação e edição, escolha uma das seis cores fixas: azul, verde,
-dourado, vermelho, roxo ou rosa.
-A prévia aparece no mapa, com preenchimento a 50% de opacidade.
-**Confirmar** salva nome, desenho e cor;
-**Cancelar** restaura os valores anteriores. A cor persiste após recarregar,
-fica sincronizada nas duas telas e acompanha os arquivos importados/exportados.
-Ao concluir um desenho ou edição, polígonos da mesma cor com uma área em comum
-são fundidos, inclusive em cadeia. Apenas encostar bordas ou vértices não causa
-fusão. A área resultante mantém o nome e a identidade do polígono que está sendo
-salvo e fica travada se qualquer uma das áreas envolvidas estiver travada.
-Cancelar mantém as áreas originais separadas. A regra também vale ao importar
-e carregar dados salvos; nesses casos, o primeiro polígono da lista mantém seu
-nome. Cores livres de dados antigos são convertidas para a opção mais próxima
-da paleta antes de verificar a sobreposição.
-Durante a criação ou edição, **Travar ao salvar** impede novas edições do desenho
-e do nome após a confirmação. O ícone de cadeado indica o bloqueio e a borda
-do card indica a seleção, sem tags adicionais. Polígonos travados só podem ser
-selecionados pela lista lateral; cliques e toques neles no mapa são ignorados.
-Enter também não inicia a edição enquanto o polígono estiver travado.
-Destrave pelo cadeado no menu lateral para editar novamente. Cancelar descarta
-também a mudança de bloqueio. O bloqueio persiste após recarregar e fica
-sincronizado nas duas janelas; importação e exportação preservam esse estado.
-Os nomes ficam salvos após recarregar. Na janela do mapa separado, o mesmo campo
-aparece no menu inferior e fica sincronizado com o card da janela principal.
-Durante a criação ou edição, somente **Confirmar** e **Cancelar** ficam como
-botões de ação; os campos de nome, cor e bloqueio permanecem no editor.
-**Delete** ou **Backspace** remove vértices selecionados durante a edição.
-Sem vértices selecionados, pede confirmação antes de remover o polígono do mapa.
-Confirmar salva a exclusão e encerra a edição imediatamente;
-**Voltar** ou **Escape** cancela apenas a exclusão e preserva o rascunho em edição.
-Dentro do campo de nome, Delete continua apagando texto normalmente.
-As alças dos vértices e dos pontos intermediários são 50% maiores para facilitar
-o arraste e a inserção de vértices.
-Essa confirmação fica disponível nas duas janelas quando o mapa está separado.
-O botão **Clonar** ou a tecla **C** copia a área selecionada, preservando cor e
-bloqueio, com nome próprio e posição livre ao lado para evitar fusão imediata.
-A tecla **L** trava ou destrava a seleção; durante a edição, altera o bloqueio
-do rascunho, que só é aplicado ao confirmar.
-No rodapé, o switch **Atalhos** fica na linha de **Separar mapa** e permite
-habilitar ou desabilitar os atalhos. O botão **i** abre a lista em um modal.
-A opção começa ativada, fica salva neste navegador e é compartilhada entre as duas janelas. Os atalhos não se aplicam
-durante a digitação em campos de texto, exceto Enter para concluir e Escape
-para solicitar a saída da edição. Tab e a ativação normal dos botões continuam
-disponíveis quando os atalhos globais estão desativados.
-
-| Tecla | Ação |
-| --- | --- |
-| N | Criar outro polígono, mesmo com uma área selecionada |
-| A | Levar o foco à lista lateral e selecionar o polígono atual ou o primeiro |
-| ↑ / ↓ / ← / → | Navegar entre polígonos na lista ou controles dos modais |
-| D | Na lista, pedir confirmação para excluir o polígono com foco |
-| E ou Enter | Editar o polígono selecionado e destravado |
-| Enter | Concluir criação ou edição |
-| Escape | Sair e desselecionar; salvar ou descartar se houver alterações |
-| Delete / Backspace | Apagar vértices selecionados; sem seleção, confirmar exclusão da área |
-| C | Clonar a área selecionada |
-| L | Travar / destravar a seleção ou o rascunho |
-| 1 a 6 | Escolher uma das seis cores durante criação ou edição |
-| Z ou Ctrl/⌘ Z | Desfazer a última alteração do desenho |
-| R, Ctrl/⌘ Shift Z ou Ctrl/⌘ Y | Refazer |
-| + / − | Aumentar / diminuir o zoom |
-| 0 | Retornar o norte para cima |
-| M | Separar / reunir o mapa, quando disponível |
-
-Na lista, as setas selecionam e enquadram a área sem expandir os vértices;
-**E** ou **Enter** inicia a edição do item com foco, respeitando o bloqueio.
-**D** abre a confirmação e mantém a área no mapa até a exclusão ser confirmada.
-Nos modais, as setas circulam entre os controles; **Enter** aciona o botão,
-**Espaço** alterna o switch e **Esc** preserva a ação de voltar ou fechar.
-As setas e Tab continuam disponíveis como navegação mesmo com atalhos globais
-desativados; nesse caso A, D e E não executam ações.
-
-Desenhos com menos de três pontos diferentes ou sem área são bloqueados com um alerta;
-a confirmação por teclado segue a mesma validação.
-Os controles continuam sincronizados quando o mapa está em uma janela separada.
-
-Clique em **Separar mapa**, no rodapé da barra lateral, para abrir o mapa em outra janela e arraste essa janela
-para o segundo monitor. A janela principal mantém a lista de polígonos e os
-controles para criar, concluir, cancelar e excluir. Selecionar um polígono na
-lista destaca o desenho e habilita o botão de edição; alterações de coordenadas aparecem na lista
-assim que o gesto de edição termina.
-
-**Focar mapa** e **Reunir telas** ficam no rodapé da barra lateral.
-Na janela do mapa separado, **Reunir telas** e as ações dos polígonos ficam
-em um pequeno menu flutuante no canto inferior esquerdo, acima da atribuição do mapa.
-Os controles de zoom e bússola ficam na vertical. As mensagens ficam no topo,
-com espaço reservado para não cobrir os controles, também na janela principal quando o mapa está separado.
-**Reunir telas**, disponível nas duas janelas, devolve o mapa à aplicação.
-Conclua ou cancele a ação atual antes de separar ou reunir. Se fechar a janela
-do mapa manualmente, a aplicação restaura a última geometria confirmada;
-alterações ainda não confirmadas são canceladas. Recarregar a janela principal
-fecha a janela auxiliar. Se o navegador bloquear a abertura, permita pop-ups
-para o site e tente novamente. A opção não é exibida no Android nativo.
-
-A comunicação usa `window.postMessage`, com validação da origem, da janela
-remetente e de uma sessão exclusiva para cada par. Enquanto separado, o mapa
-executa os comandos e salva os dados no IndexedDB; a janela principal recebe
-cópias do estado para atualizar a lista. Ao reunir, a janela principal reassume
-a edição e a persistência. Não é necessário servidor de sincronização para
-duas janelas no mesmo navegador.
-
-## Importação e exportação no Electron
-
-No app Electron, os botões **Importar** e **Exportar** ficam no rodapé do menu
-lateral. A importação acrescenta áreas sem apagar as existentes; a exportação
-salva todas as áreas confirmadas em JSON. Conclua ou cancele a edição antes de
-usar os botões. Os arquivos usam o formato próprio `poligonos`, versão `1`, com
-nome, anéis de coordenadas, referência espacial ArcGIS e cor opcional `#RRGGBB`; não são GeoJSON.
-
-Os diálogos nativos, a validação e a leitura/gravação acontecem no processo
-principal do Electron. O preload expõe apenas essas duas operações por IPC,
-mantendo o renderer sem acesso ao Node. Arquivos inválidos são rejeitados por
-inteiro. Limites por arquivo: 10 MB, 1.000 polígonos e 100.000 pontos. As áreas
-importadas também são sincronizadas quando o mapa está separado.
-
-Testes e tempos nas duas ferramentas: [Electron — arquivos](e2e/pocs/ELECTRON-ARQUIVOS.md).
-
-## ArcGIS
-
-O editor usa o ArcGIS Maps SDK. O fundo é o **Esri World Imagery**, um mosaico
-global de imagens de satélite e fotografias aéreas, carregado por `TileLayer`
-do serviço público HTTPS. Essa camada responde sem API key e funciona com o
-mesmo código na web, PWA, Electron e Capacitor. A resolução e a data das imagens
-variam conforme a região; não se trata de imagem em tempo real.
-
-O SDK apresenta os créditos dos fornecedores na atribuição do mapa. O acesso
-público não elimina as condições de licença: consulte o
-[item oficial e seus termos](https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9).
-Usamos a camada online, sem exportação ou pré-download de imagens para uso
-offline. A exportação de polígonos contém nomes, coordenadas, cor e o bloqueio opcional `locked`.
-
-A [verificação do satélite](e2e/pocs/MAPA-SATELITE.md) conferiu imagens reais,
-atribuição, desenho e edição em duas janelas no Chrome e no Electron. Para
-repetir, execute `yarn electron:build:poc` e `yarn check:satellite`.
-
-
-## Testes E2E — Playwright e Selenium
-
-A `main` contém somente Playwright e Selenium. A POC completa das três ferramentas,
-incluindo o WebdriverIO e o trabalho Android em andamento, está preservada em
-`codex/poc-tres-ferramentas`, commit `98f49f5`.
-
-```bash
-yarn install --frozen-lockfile
-yarn playwright install chromium
-yarn test:e2e
-```
-
-`test:e2e` executa a suíte Playwright de desenvolvimento e inicia o Vite quando
-necessário. Para depurar, use `yarn test:e2e:watch` ou
-`yarn test:e2e:visual`. As evidências dessa suíte ficam em
-`test-results/development/`, separadas das POCs em `test-results/pocs/`.
-
-As POCs comparativas usam uma build E2E, gestos reais e uma API auxiliar somente
-de leitura. O plano está em [E2E-POCS.md](E2E-POCS.md) e a execução em
-[e2e/pocs/README.md](e2e/pocs/README.md).
-
-O alvo padrão das POCs web e PWA é a build local em `http://localhost:4173/`.
-Antes de executar, rode `yarn build:e2e` e mantenha `yarn preview` ativo
-em outro terminal. O preview usa a porta 4173 fixa e encerra com erro se ela
-estiver ocupada. Para outro endereço, defina `BASE_URL` explicitamente.
-
-| Plataforma | Comando — Playwright e Selenium em sequência |
-| --- | --- |
-| Web | `yarn test:poc:web` |
-| PWA instalado | `yarn test:poc:pwa` |
-| Electron empacotado | `yarn test:poc:electron` |
-| APK Android | `yarn test:poc:android` |
-| Todas | `yarn test:poc:all` |
-
-Para selecionar uma ferramenta, defina `POC_FRAMEWORKS=playwright` ou
-`POC_FRAMEWORKS=selenium`. O padrão é `playwright,selenium`. O cenário C10 mouse
-continua falhando de propósito para detectar o defeito de instalação; touch deve passar.
-
-Na web, cada ferramenta executa até dois cenários simultaneamente, com dados
-isolados por cenário. No PowerShell, use `$env:POC_WORKERS = "4"` para ajustar
-o limite ou `"1"` para execução individual. As ferramentas continuam em sequência;
-PWA, Electron e Android mantêm um cenário por vez.
-
-Resultados, tempos por ferramenta/plataforma e limites:
-[relatório completo](e2e/pocs/RELATORIO.md),
-[versão direta](e2e/pocs/RELATORIO-DIRETO.md),
-[comparativo para decisão](e2e/pocs/COMPARATIVO-PLAYWRIGHT-SELENIUM.md).
+O preview utiliza `http://localhost:4173`. Publique o conteúdo de `dist/` em um
+servidor HTTPS. O manifest, os ícones e o service worker são gerados na build.
+O botão de instalação responde apenas a toques e fica oculto no app instalado
+ou nas versões nativas.
 
 ## Electron
 
@@ -288,38 +34,58 @@ yarn build
 yarn electron:dev
 ```
 
-Para empacotar no sistema local e testar a feature de arquivos:
+Para empacotar o aplicativo para o sistema operacional atual:
 
 ```bash
-yarn electron:build:poc
-yarn test:poc:electron:files
+yarn electron:build
 ```
 
-O segundo comando testa Playwright direto no Electron e tenta o bootstrap nativo
-Selenium/Appium Mac2 no macOS. Mac2 exige Xcode completo. Cenários indisponíveis
-ficam registrados e o comando retorna código 2; não há fallback para ChromeDriver.
-A modalidade antiga de arquivos Electron com ChromeDriver foi removida da main;
-a implementação anterior está na branch `codex/poc-tres-ferramentas`.
+Os arquivos são gerados em `release/electron/`. A importação e a exportação de
+polígonos passam pelo preload e pelo processo principal, usando diálogos nativos.
 
 ## Android
 
-Instale Android SDK, JDK 21 e configure um emulador de testes ou `ANDROID_SERIAL`.
-O orquestrador prepara o APK e inicia o Appium quando necessário.
+Com Android SDK, JDK e Gradle configurados:
 
 ```bash
-yarn test:e2e:android:build
-yarn test:poc:android
+yarn android:sync
+yarn android:open
 ```
 
-O APK também oferece importar/exportar JSON por código nativo Capacitor.
-Na exportação, escolha uma pasta e confirme o acesso solicitado pelo Android;
-a autorização é limitada à pasta escolhida, sem permissão ampla de armazenamento.
+Para gerar um APK de depuração no macOS ou Linux:
 
-O protótipo `yarn test:poc:android:hybrid` combina Playwright na WebView e
-Appium/UiAutomator2 com cliente Selenium JS nas telas nativas. O cliente tem
-verificações de contrato em `yarn test:appium:native`. **A migração do cliente
-não significa validação dos fluxos completos no APK**; veja as pendências no relatório.
+```bash
+yarn android:build
+```
 
-Builds, perfis, resultados brutos e dependências são ignorados pelo Git e não
-fazem parte do snapshot da branch. Use `yarn install --frozen-lockfile` ao trocar de branch para alinhar
-as dependências à versão escolhida.
+O APK fica em `android/app/build/outputs/apk/debug/app-debug.apk`.
+No Windows, após `yarn android:sync`, use `gradlew.bat assembleDebug` na pasta
+`android`, ou gere a build pelo Android Studio. A importação e exportação usam
+a ponte nativa do Capacitor e o seletor de documentos do Android.
+
+## Funcionalidades
+
+- Criar, editar, clonar, excluir e nomear polígonos.
+- Selecionar pela lista ou tocar em uma área destravada para editar.
+- Travar áreas, escolher entre seis cores e fundir sobreposições da mesma cor.
+- Salvar os polígonos localmente e importar/exportar nas versões nativas.
+- Separar o mapa em outra janela e sincronizar as ações nas duas telas.
+- Navegar com teclado e consultar os atalhos pelo botão de informações.
+
+Os nomes aceitam letras, números e espaços, até 30 caracteres. Um desenho precisa
+ter pelo menos três pontos distintos formando uma área. Excluir uma área pede
+confirmação; Delete remove diretamente os vértices selecionados durante a edição.
+Esc permite salvar ou descartar alterações pendentes antes de sair da edição.
+
+## Estrutura
+
+- `src/App.tsx`: composição da aplicação React.
+- `src/components/`: lista, formulário, barra lateral, mapa, ações e modais.
+- `src/hooks/`: integração do React com o controlador e instalação do PWA.
+- `src/editor/`: controle do ArcGIS, estado tipado e persistência local.
+- `electron/`: processo principal, preload e operações nativas de arquivos.
+- `android/`: projeto Android e plugin nativo de documentos.
+
+O SDK controla o conteúdo do mapa. O React renderiza a interface e consome o
+estado do controlador com `useSyncExternalStore`. As instâncias, observadores
+e eventos são descartados ao desmontar os componentes.

@@ -25,7 +25,7 @@ export function useEditor() {
     const focus = state.focusRequest
     if (!focus || document.querySelector('dialog[open]')) return
     const element = focus.kind === 'name' ? document.querySelector<HTMLInputElement>('#polygon-name')
-      : [...document.querySelectorAll<HTMLElement>('[data-testid="polygon-item"]')]
+      : [...document.querySelectorAll<HTMLElement>('#polygon-list > .pin')]
         .find(item => item.dataset.polygonId === focus.id)?.querySelector<HTMLElement>('.polygon-label')
     element?.focus({ preventScroll: true })
     if (focus.kind === 'polygon') element?.scrollIntoView({ block: 'nearest' })

@@ -6,9 +6,6 @@ const { pathToFileURL } = require('node:url')
 // A origem estável preserva IndexedDB e comunicação entre janelas ao reiniciar.
 const origin = 'poligonos://app'
 const dist = path.join(__dirname, '../dist')
-if (process.env.POLYGON_USER_DATA_DIR) {
-  app.setPath('userData', path.resolve(process.env.POLYGON_USER_DATA_DIR))
-}
 protocol.registerSchemesAsPrivileged([{
   scheme: 'poligonos',
   privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, allowServiceWorkers: true }
