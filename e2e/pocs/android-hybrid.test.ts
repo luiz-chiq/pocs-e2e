@@ -16,7 +16,7 @@ const adb = async (...args: string[]) => (await exec(adbPath, ['-s', process.env
 const runId = `PolygonHybrid-${Date.now()}`
 const deviceDirectory = `/sdcard/Download/${runId}`
 const fixtureDocument = { format: 'poligonos', version: 1, polygons: [
-  { name: 'Área Android 1', geometry: { rings: [[[-46.64, -23.55], [-46.63, -23.54], [-46.62, -23.55], [-46.64, -23.55]]], spatialReference: { wkid: 4326 } } }
+  { name: 'Área Android 1', color: '#1261a0', geometry: { rings: [[[-46.64, -23.55], [-46.63, -23.54], [-46.62, -23.55], [-46.64, -23.55]]], spatialReference: { wkid: 4326 } } }
 ] }
 const results: { id: string; title: string; status: string; durationMs: number | null; steps: { owner: string; action: string; durationMs: number }[]; error?: string; variants?: string[] }[] = []
 const metadata: Record<string, unknown> = { startedAt: new Date().toISOString(), target: 'android', framework: 'playwright+appium', nativeClient: 'selenium', chromedriverUsed: false, permission: 'SAF folder URI grant; autoGrantPermissions=false', folder: deviceDirectory }
@@ -49,7 +49,7 @@ async function storedPolygons() {
       request.onerror = () => reject(request.error)
     })
     try {
-      return await new Promise<{ attributes: { polygonId: string; name: string }; geometry: PolygonFileData['geometry'] }[]>((resolve, reject) => {
+      return await new Promise<{ attributes: { polygonId: string; name: string; color: string }; geometry: PolygonFileData['geometry'] }[]>((resolve, reject) => {
         const request = database.transaction('state', 'readonly').objectStore('state').get('polygons')
         request.onsuccess = () => resolve(request.result ?? [])
         request.onerror = () => reject(request.error)
@@ -216,16 +216,16 @@ const bodies: Record<string, () => Promise<void>> = {
     await chooseExportFolder()
     await allowFolder()
     await importFixture(lastExport)
-    await expect(page.locator('.polygon-label')).toHaveText(['Área Android 1', 'Área Android 1'])
+    await expect(page.locator('.polygon-label')).toHaveText(['Área Android 1'])
     await storedPolygons()
     await page.reload()
     await page.getByTestId('map-ready').waitFor()
-    await expect(page.locator('.polygon-label')).toHaveText(['Área Android 1', 'Área Android 1'])
+    await expect(page.locator('.polygon-label')).toHaveText(['Área Android 1'])
     const stored = await storedPolygons()
     const ids = stored.map(item => item.attributes.polygonId)
-    assert.equal(ids.length, 2)
-    assert.equal(new Set(ids).size, 2)
-    assert.deepEqual(stored.map(item => ({ name: item.attributes.name, geometry: item.geometry })), [...fixtureDocument.polygons, ...fixtureDocument.polygons])
+    assert.equal(ids.length, 1)
+    assert.equal(new Set(ids).size, 1)
+    assert.deepEqual(stored.map(item => ({ name: item.attributes.name, color: item.attributes.color, geometry: item.geometry })), fixtureDocument.polygons)
     await writeFile(join(artifacts, 'H07-storage.json'), JSON.stringify({ ids, stored }, null, 2))
   },
   H08: async () => {

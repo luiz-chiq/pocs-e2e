@@ -125,6 +125,8 @@ async function create(driver: chrome.Driver, offset = 0) {
   await (await element(driver, s.draw)).click()
   await visible(driver, s.finish)
   await driver.sleep(300)
+  // Usar cores diferentes quando o cenário precisa de áreas independentes.
+  if (previous) await (await driver.findElements(By.css('[data-testid="polygon-color-option"]')))[previous % 6].click()
   const acknowledged = isAndroid && await driver.executeScript(() => typeof (window as PocWindow).polygonTestApi?.getDrawingState === 'function')
   if (acknowledged) await driver.wait(() => driver.executeScript(() => (window as PocWindow).polygonTestApi!.getDrawingState!().ready), 15_000, 'SDK ainda não está pronto para desenhar.')
   let vertices = 0
@@ -247,6 +249,7 @@ async function createDetached(driver: chrome.Driver, main: string, popup: string
   await driver.switchTo().window(popup)
   await visible(driver, s.finish)
   await driver.sleep(300)
+  if (previous) await (await driver.findElements(By.css('[data-testid="polygon-color-option"]')))[previous % 6].click()
   const map = await (await element(driver, s.map)).getRect()
   for (const [x, y] of triangle) {
     await clickPoint(driver, { x: map.width / 2 + x + offset, y: map.height / 2 + y })

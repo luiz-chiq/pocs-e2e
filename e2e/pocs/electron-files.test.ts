@@ -105,7 +105,7 @@ const directory = resolve(process.env.POC_NATIVE_RESULTS_DIR ?? 'test-results/po
 await mkdir(directory, { recursive: true })
 const expected = {
   format: 'poligonos', version: 1,
-  polygons: [{ name: 'Reserva São José', geometry: { rings: [[[-46.64, -23.55], [-46.63, -23.54], [-46.62, -23.56], [-46.64, -23.55]]], spatialReference: { wkid: 4326 } } }]
+  polygons: [{ name: 'Reserva São José', color: '#1261a0', geometry: { rings: [[[-46.64, -23.55], [-46.63, -23.54], [-46.62, -23.56], [-46.64, -23.55]]], spatialReference: { wkid: 4326 } } }]
 }
 const selectors = { import: '#import-polygons', export: '#export-polygons' }
 const results: { tool: 'playwright'; title: string; status: string; durationMs: number; error?: string; audit?: unknown; transport?: string; mainControl?: boolean }[] = []
@@ -184,19 +184,19 @@ const cases: [string, (context: Context) => Promise<void>][] = [
     const map = handles.find(h => h !== main)!
     await c.completed(s => Boolean(s.connected?.includes('Mapa conectado')), 'Mapa não conectou')
     await c.load()
-    assert.equal((await c.state()).count, '2')
+    assert.equal((await c.state()).count, '1')
     await c.app.switchTo(map)
-    await c.completed(s => s.mapNames.length === 2, 'Importação não sincronizou com o mapa')
+    await c.completed(s => s.mapNames.length === 1, 'Fusão não sincronizou com o mapa')
     await c.app.switchTo(main)
     const output = join(c.folder, 'duas-janelas.json')
     await c.choose('save', output)
     await c.app.click(selectors.export)
-    await c.completed(s => s.feedback.includes('2 polígono(s) exportado(s)'), 'Exportação das duas áreas não confirmada')
-    assert.deepEqual(JSON.parse(await readFile(output, 'utf8')).polygons, [...expected.polygons, ...expected.polygons])
+    await c.completed(s => s.feedback.includes('1 polígono(s) exportado(s)'), 'Exportação da área fundida não confirmada')
+    assert.deepEqual(JSON.parse(await readFile(output, 'utf8')).polygons, expected.polygons)
     await c.app.click('#reunite-windows')
     await wait(() => c.app.handles(), h => h.length === 1, 'Mapa não reuniu')
     await c.app.reload()
-    await c.completed(s => s.ready && s.count === '2' && s.mapNames.length === 2, 'Dados não persistiram ao reunir/recarregar')
+    await c.completed(s => s.ready && s.count === '1' && s.mapNames.length === 1, 'Dados não persistiram ao reunir/recarregar')
   }]
 ]
 const tool = 'playwright'
@@ -217,10 +217,9 @@ for (const [title, body] of cases) test(`${tool} / ${title}`, { timeout: 90000 }
     const choose: Context['choose'] = app.chooseDialog
     await body({ app, folder, choose, state: () => app!.snapshot(), completed,
       load: async (path = input) => {
-        const previous = (await app!.snapshot()).count
         await choose('open', path)
         await app!.click(selectors.import)
-        await completed(s => s.count === String(Number(previous) + 1), 'Importação não acrescentou a área')
+        await completed(s => s.count === '1' && s.instructions.includes('importado(s)'), 'Importação ou fusão não concluiu')
       }
     })
     const audit = await app.dialogAudit() as { processType: string; pid: number }[]

@@ -144,7 +144,6 @@ h1 { margin: 0; font-size: 1.65rem; font-weight: 650; letter-spacing: -.045em; l
 .color-swatch { flex: none; width: 25px; min-height: 25px; height: 25px; padding: 0; border: 3px solid #fff; border-radius: 50%; background: var(--swatch-color); box-shadow: 0 0 0 1px #d7dfd6; }
 .color-swatch:hover:not(:disabled) { background: var(--swatch-color); box-shadow: 0 0 0 2px #91a99b; }
 .color-swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--forest); }
-.polygon-color-editor input[type="color"] { flex: none; width: 30px; height: 30px; padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: #fff; cursor: pointer; }
 .sidebar-actions { display: grid; flex-shrink: 0; gap: 10px; margin: 0 20px; padding: 16px 0 20px; border-top: 1px solid var(--line); }
 .polygon-actions { display: flex; align-items: center; gap: 8px; min-height: 44px; }
 .polygon-actions > button { flex: 1 1 0; min-width: 0; width: 0; height: 44px; padding: 9px 10px; font-size: .76rem; white-space: nowrap; }

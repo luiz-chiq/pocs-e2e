@@ -16,7 +16,9 @@ async function vertices(mapPage: Page, offset = 0) {
 async function create(page: Page, offset = 0) {
   const count = await page.getByTestId('polygon-item').count()
   await page.getByTestId('draw-polygon').click()
-  await vertices(page, offset)
+  // A rolagem precisa de áreas independentes, sem acionar a fusão de duplicatas.
+  await page.getByTestId('polygon-color-option').nth(count % 6).click()
+  await vertices(page, offset + Math.floor(count / 6) * 150)
   await page.getByTestId('finish-drawing').click()
   await expect(page.getByTestId('polygon-item')).toHaveCount(count + 1)
 }
@@ -28,7 +30,8 @@ async function expectFocused(page: Page) {
   await expect(page.locator('#polygon-file-actions')).toBeHidden()
   await expect(page.getByTestId('clear-polygons')).toBeHidden()
   await expect(page.getByTestId('draw-polygon')).toBeHidden()
-  await expect(page.getByTestId('polygon-color')).toBeVisible()
+  await expect(page.getByTestId('polygon-color-option')).toHaveCount(6)
+  await expect(page.getByTestId('polygon-color-option').first()).toBeVisible()
   await expect(page.getByTestId('polygon-locked')).toBeVisible()
   await expect(page.getByTestId('finish-drawing')).toBeVisible()
   await expect(page.getByTestId('cancel-editing')).toBeVisible()

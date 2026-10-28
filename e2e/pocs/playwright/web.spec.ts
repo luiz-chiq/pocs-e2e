@@ -30,6 +30,8 @@ async function create(page: Page, offset = 0, controls = page) {
   await controls.locator(s.draw).click()
   await expect(page.locator(s.finish)).toBeVisible()
   await page.waitForTimeout(300)
+  // Estes cenários exercitam áreas independentes; a fusão tem uma suíte própria.
+  if (count) await controls.getByTestId('polygon-color-option').nth(count % 6).click()
   const map = await mapRect(page)
   const acknowledged = isAndroid && await page.evaluate(() => typeof (window as PocWindow).polygonTestApi?.getDrawingState === 'function')
   if (acknowledged) await expect.poll(() => page.evaluate(() => (window as PocWindow).polygonTestApi!.getDrawingState!().ready), { message: 'SDK ainda não está pronto para desenhar.', timeout: 15_000 }).toBe(true)

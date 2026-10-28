@@ -66,7 +66,8 @@ export type InstallInput = { pointerType: string; isTrusted: boolean }
 export type PocWindow = Window & {
   pocMapInputs?: Array<{ pointerType: string; x: number; y: number; inMap: boolean; isTrusted: boolean; event?: string; control?: string; timestamp?: number; target?: string; vertices?: number }>
   polygonTestApi?: {
-    getSelectedScreenPoints(): ScreenPoints
+    getSelectedScreenPoints(id?: string): ScreenPoints
+    getMapState(): { stationary: boolean; selectedId: string | null; editingReady: boolean }
     waitForPersistence(): Promise<void>
     getDrawingState?(): { ready: boolean; vertices: number }
   }

@@ -19,6 +19,7 @@ import { Check, ChevronRight, Download, ExternalLink, Focus, FolderOpen, Lock, L
 import { createId, DetachedMap } from './detached-map'
 import { attachCompass } from './compass'
 import { attachSidebarScrollbar } from './sidebar-scroll'
+import { defaultPolygonColor, fixedPolygonColor, groupOverlappingPolygons, isPolygonColor, polygonPalette } from './polygon-rules'
 
 const fileActions = document.querySelector<HTMLDivElement>('#polygon-file-actions')!
 const importButton = document.querySelector<HTMLButtonElement>('#import-polygons')!
@@ -42,7 +43,7 @@ const sketch = new SketchViewModel({
   view,
   layer,
   updateOnGraphicClick: false,
-  polygonSymbol: { type: 'simple-fill', color: [31, 119, 180, 0.25], outline: { color: '#1261a0', width: 2 } },
+  polygonSymbol: polygonSymbol(defaultPolygonColor),
   defaultUpdateOptions: { tool: 'reshape', toggleToolOnClick: false }
 })
 
@@ -87,10 +88,9 @@ const nameEditor = document.querySelector<HTMLElement>('#polygon-name-editor')!
 const nameInput = document.querySelector<HTMLInputElement>('#polygon-name')!
 const nameError = document.querySelector<HTMLElement>('#polygon-name-error')!
 const colorEditor = document.querySelector<HTMLElement>('#polygon-color-editor')!
-const colorInput = document.querySelector<HTMLInputElement>('#polygon-color')!
 const colorOptions = document.querySelector<HTMLElement>('#polygon-color-options')!
-const defaultColor = '#1261a0'
-let draftColor = defaultColor
+const defaultColor = defaultPolygonColor
+let draftColor: string = defaultColor
 let colorChangeId: string | null = null
 let pendingColorChangeId: string | null = null
 const mapLabels = document.querySelector<HTMLElement>('#polygon-map-labels')!
@@ -286,28 +286,26 @@ function isLocked(graphic: Graphic | null) {
 
 function polygonColor(graphic: Graphic) {
   const stored = graphic.attributes?.color
-  if (typeof stored === 'string' && /^#[0-9a-f]{6}$/i.test(stored)) return stored.toLowerCase()
-  return graphic.symbol?.type === 'simple-fill' ? graphic.symbol.outline?.color?.toHex().toLowerCase() ?? defaultColor : defaultColor
+  return fixedPolygonColor(stored ?? (graphic.symbol?.type === 'simple-fill' ? graphic.symbol.outline?.color?.toHex() : undefined))
 }
 
 function polygonSymbol(color: string) {
-  return new SimpleFillSymbol({ color: `${color}40`, outline: { color, width: 2 } })
+  return new SimpleFillSymbol({ color: `${color}66`, outline: { color, width: 2 } })
 }
 
 function editingSymbol(color: string) {
-  return new SimpleFillSymbol({ color: `${color}40`, outline: { color: '#ffffff', width: 3 } })
+  return new SimpleFillSymbol({ color: `${color}66`, outline: { color: '#ffffff', width: 3 } })
 }
 
 function updateColorControls() {
   colorEditor.hidden = activeAction === null || Boolean(deletedEditId)
-  colorInput.value = draftColor
   colorOptions.querySelectorAll<HTMLButtonElement>('button').forEach((button) => {
     button.setAttribute('aria-pressed', String(button.dataset.color === draftColor))
   })
 }
 
 function updateDraftColor(value: string, changeId: string) {
-  if (!activeAction || deletedEditId || !/^#[0-9a-f]{6}$/i.test(value)) return
+  if (!activeAction || deletedEditId || !isPolygonColor(value)) return
   draftColor = value.toLowerCase()
   colorChangeId = changeId
   const symbol = polygonSymbol(draftColor)
@@ -322,7 +320,7 @@ function updateDraftColor(value: string, changeId: string) {
 }
 
 function chooseColor(value: string) {
-  if (!activeAction || deletedEditId) return
+  if (!activeAction || deletedEditId || !isPolygonColor(value)) return
   draftColor = value.toLowerCase()
   colorChangeId = createId()
   pendingColorChangeId = colorChangeId
@@ -332,7 +330,7 @@ function chooseColor(value: string) {
   updateDraftColor(draftColor, colorChangeId)
 }
 
-for (const [name, color] of [['Azul', defaultColor], ['Verde', '#23845b'], ['Dourado', '#d6a323'], ['Vermelho', '#cf4949'], ['Roxo', '#8756b3'], ['Rosa', '#d65c94']]) {
+for (const [name, color] of polygonPalette) {
   const button = document.createElement('button')
   button.type = 'button'
   button.className = 'color-swatch'
@@ -665,7 +663,7 @@ async function applyWindowState(state: MapState) {
     deletedEditId = state.deletedEditId
     draftLocked = state.draftLocked
     if (!keepLocalColor) {
-      draftColor = state.draftColor
+      draftColor = fixedPolygonColor(state.draftColor)
       colorChangeId = state.colorChangeId
       pendingColorChangeId = null
     }
@@ -819,11 +817,43 @@ function setDeletedEditConfirmation(open: boolean) {
   if (!open && deletedEditDialog.open) deletedEditDialog.close()
 }
 
-function syncCommittedPolygons() {
+function syncCommittedPolygons(preferred?: Graphic | null) {
   ensureGraphicIds()
+  let groups: ReturnType<typeof groupOverlappingPolygons>
+  try {
+    groups = groupOverlappingPolygons(orderedGraphics(), preferred)
+  } catch {
+    // A geometria só é aplicada após preparar todas as uniões com sucesso.
+    switchAfterCommitId = null
+    setActiveAction(null)
+    forgetActiveEdit()
+    restoreCommittedPolygons()
+    setWarning(true)
+    message.textContent = 'Não foi possível fundir os polígonos. As alterações não foram salvas; tente ajustar o desenho.'
+    render()
+    detachedMap.publish()
+    return null
+  }
+  let merged = 0
+  for (const group of groups) {
+    const graphic = group.survivor
+    graphic.attributes = { ...graphic.attributes, color: group.color, locked: group.locked }
+    graphic.symbol = polygonSymbol(group.color)
+    if (group.members.length > 1) {
+      graphic.geometry = group.geometry
+      labelAnchors.delete(graphic)
+      for (const member of group.members) {
+        if (selectedGraphic === member) selectedGraphic = graphic
+        if (expandedGraphic === member) expandedGraphic = graphic
+        if (switchAfterCommitId === graphicId(member)) switchAfterCommitId = graphicId(graphic)
+        if (member !== graphic) { layer.remove(member); merged++ }
+      }
+    }
+  }
   committedPolygons = orderedGraphics().map((graphic) => graphic.toJSON())
   pendingPersistence = persistPolygons(committedPolygons)
-  return pendingPersistence
+  if (merged) lastEdit.textContent = `${merged} área(s) incorporada(s) por fusão de polígonos da mesma cor.`
+  return merged
 }
 
 function fileFeedback(text: string) {
@@ -838,8 +868,8 @@ function addImportedPolygons(polygons: PolygonFileData[], fileName: string) {
   }
   const imported = polygons.map((polygon) => new Graphic({
     geometry: new Polygon(polygon.geometry),
-    attributes: { polygonId: createId(), name: polygon.name, locked: polygon.locked === true, color: polygon.color ?? defaultColor },
-    symbol: polygonSymbol(polygon.color ?? defaultColor)
+    attributes: { polygonId: createId(), name: polygon.name, locked: polygon.locked === true, color: fixedPolygonColor(polygon.color) },
+    symbol: polygonSymbol(fixedPolygonColor(polygon.color))
   }))
   // Construir todo o lote antes de alterar a coleção. IDs novos evitam colisões ao reimportar.
   layer.addMany(imported)
@@ -847,9 +877,9 @@ function addImportedPolygons(polygons: PolygonFileData[], fileName: string) {
   expandedGraphic = selectedGraphic
   setWarning(false)
   message.textContent = `${imported.length} polígono(s) importado(s) de ${fileName}.`
-  void syncCommittedPolygons()
+  if (syncCommittedPolygons() === null) return
   render()
-  void view.goTo(imported).catch(() => { /* O usuário pode interromper o enquadramento. */ })
+  void view.goTo(layer.graphics.toArray()).catch(() => { /* O usuário pode interromper o enquadramento. */ })
 }
 
 async function polygonFileOperation(action: 'import' | 'export') {
@@ -911,8 +941,9 @@ async function cancelActiveAction() {
 }
 
 function commitActiveEdit() {
-  syncCommittedPolygons()
+  const merged = syncCommittedPolygons(activeGraphic)
   forgetActiveEdit()
+  return merged
 }
 
 async function activateSketchUpdate(graphic: Graphic) {
@@ -1190,8 +1221,6 @@ lockInput.addEventListener('change', () => {
   draftLocked = lockInput.checked
   if (!detachedMap.command({ type: 'draft-lock', id: graphicId(activeGraphic), value: draftLocked })) detachedMap.publish()
 })
-colorInput.addEventListener('input', () => chooseColor(colorInput.value))
-colorInput.addEventListener('change', () => chooseColor(colorInput.value))
 for (const [id, choice] of [['save-and-switch', 'save'], ['discard-and-switch', 'discard'], ['dismiss-switch', 'stay']] as const) {
   document.getElementById(id)!.addEventListener('click', () => void resolveSwitch(choice))
 }
@@ -1280,8 +1309,12 @@ sketch.on('create', (event) => {
       showDrawingWarning()
       return
     }
-    syncCommittedPolygons()
-    message.textContent = 'Polígono criado. Toque nele no mapa para editar; se estiver travado, destrave pela lista.'
+    const merged = syncCommittedPolygons(event.graphic)
+    if (merged === null) return
+    if (merged) selectedGraphic = expandedGraphic = event.graphic ?? null
+    message.textContent = merged
+      ? 'Polígonos da mesma cor fundidos. O nome do desenho salvo foi mantido.'
+      : 'Polígono criado. Toque nele no mapa para editar; se estiver travado, destrave pela lista.'
     render()
   }
   if (event.state === 'cancel') setActiveAction(null)
@@ -1334,9 +1367,10 @@ sketch.on('update', (event) => {
       return
     }
     confirmingUpdate = false
-    commitActiveEdit()
+    const merged = commitActiveEdit()
+    if (merged === null) return
     setActiveAction(null)
-    message.textContent = 'Polígono editado.'
+    message.textContent = merged ? 'Polígonos da mesma cor fundidos. O nome do polígono editado foi mantido.' : 'Polígono editado.'
     render()
     continueAfterCommit()
   }
@@ -1387,8 +1421,7 @@ view.when(async () => {
   if (committedPolygons.length !== stored.length) pendingPersistence = persistPolygons(committedPolygons)
   committedPolygons.forEach((polygon) => layer.add(Graphic.fromJSON(polygon)))
   ensureGraphicIds()
-  committedPolygons = layer.graphics.toArray().map((graphic) => graphic.toJSON())
-  pendingPersistence = persistPolygons(committedPolygons)
+  syncCommittedPolygons()
   mapInitialized = true
   ready.hidden = false
   render()
@@ -1401,26 +1434,32 @@ watch(() => [view.canZoomIn, view.canZoomOut, view.rotation], updateNavigationCo
 watch(() => [view.extent, view.rotation, view.width, view.height], scheduleMapLabels)
 
 // Disponível somente no servidor de desenvolvimento ou na build temporária de E2E.
-// A API apenas lê coordenadas de tela para que o WebDriver reproduza gestos reais.
+// A API apenas consulta estado e coordenadas; os testes continuam usando gestos reais.
 if (import.meta.env.DEV || import.meta.env.VITE_E2E === 'true') {
   const testWindow = window as typeof window & {
     polygonTestApi?: {
-      getSelectedScreenPoints: () => {
+      getSelectedScreenPoints: (id?: string) => {
         center: { x: number; y: number }
         vertices: Array<{ x: number; y: number }>
         edgeMidpoint: { x: number; y: number }
       }
+      getMapState: () => { stationary: boolean; selectedId: string | null; editingReady: boolean }
       waitForPersistence: () => Promise<void>
       getDrawingState: () => { ready: boolean; vertices: number }
     }
   }
   testWindow.polygonTestApi = {
+    getMapState: () => ({
+      stationary: view.stationary && !view.animation,
+      selectedId: graphicId(selectedGraphic),
+      editingReady: activeAction !== 'update' || Boolean(activeGraphic && sketch.state === 'active' && sketch.updateGraphics.includes(activeGraphic) && !sketch.toolTransitionInProgress)
+    }),
     getDrawingState: () => ({
       ready: activeAction === 'create' && sketch.state === 'active' && sketch.activeTool === 'polygon' && !sketch.toolTransitionInProgress,
       vertices: draftVertices.length
     }),
-    getSelectedScreenPoints: () => {
-      const graphic = activeGraphic ?? selectedGraphic
+    getSelectedScreenPoints: (id?: string) => {
+      const graphic = id ? layer.graphics.find(candidate => graphicId(candidate) === id) : activeGraphic ?? selectedGraphic
       if (!graphic) throw new Error('Nenhum polígono selecionado para teste.')
       const polygon = graphic.geometry as Polygon
       const points = polygon.rings[0]

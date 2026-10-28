@@ -79,10 +79,20 @@ e espaços. Espaços nas extremidades e espaços repetidos são removidos ao sal
 O campo não mostra rótulo nem instruções fixas. Um tooltip avisa sobre nomes
 inválidos ou ao atingir 24 dos 30 caracteres; desaparece ao corrigir o nome
 ou ficar abaixo desse limite.
-Durante a criação e edição, escolha a cor na paleta ou no seletor de cor livre.
-A prévia aparece no mapa. **Concluir edição** salva nome, desenho e cor;
+Durante a criação e edição, escolha uma das seis cores fixas: azul, verde,
+dourado, vermelho, roxo ou rosa.
+A prévia aparece no mapa, com preenchimento a 40% de opacidade.
+**Concluir edição** salva nome, desenho e cor;
 **Cancelar** restaura os valores anteriores. A cor persiste após recarregar,
 fica sincronizada nas duas telas e acompanha os arquivos importados/exportados.
+Ao concluir um desenho ou edição, polígonos da mesma cor com uma área em comum
+são fundidos, inclusive em cadeia. Apenas encostar bordas ou vértices não causa
+fusão. A área resultante mantém o nome e a identidade do polígono que está sendo
+salvo e fica travada se qualquer uma das áreas envolvidas estiver travada.
+Cancelar mantém as áreas originais separadas. A regra também vale ao importar
+e carregar dados salvos; nesses casos, o primeiro polígono da lista mantém seu
+nome. Cores livres de dados antigos são convertidas para a opção mais próxima
+da paleta antes de verificar a sobreposição.
 Durante a criação ou edição, **Travar ao salvar** impede novas edições do desenho
 e do nome após a confirmação. O ícone de cadeado indica o bloqueio e a borda
 do card indica a seleção, sem tags adicionais. Polígonos travados só podem ser
