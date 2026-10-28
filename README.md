@@ -57,8 +57,9 @@ Com a bússola em foco, use **← / →** para girar e **Enter** ou **Home** par
 retornar ao norte. O gesto de arrastar o mapa com o botão direito continua disponível.
 
 No rodapé da barra lateral, **Adicionar polígono** fica à direita de **Apagar todos**.
-Os dois botões têm o mesmo tamanho. Clicar em um card abre seus vértices e
-destaca o polígono com um brilho branco no mapa; a seta à esquerda do nome permite recolher os detalhes.
+Os dois botões têm o mesmo tamanho. Clicar no nome de um card seleciona e
+destaca o polígono com um brilho branco no mapa. A seta à esquerda abre ou
+recolhe os vértices sem alterar a seleção; selecionar também não expande o card.
 Ao clicar no card, o mapa centraliza a área e ajusta o zoom com margem ao redor,
 mantendo a rotação da bússola. O enquadramento também funciona com o mapa separado
 e com polígonos travados selecionados pela lista.
@@ -66,8 +67,10 @@ Selecionar um card não inicia a edição: o botão de criar passa a **Editar po
 Toque ou clique diretamente no polígono no mapa para entrar na edição imediatamente.
 Se outro polígono estiver em edição, escolha **Salvar e trocar**, **Cancelar edição e trocar**
 ou **Continuar editando**. Nomes e desenhos inválidos impedem salvar a edição.
-Também é possível usar o botão Editar. Clique no mapa vazio, recolha o card ou use **Esc**
-para limpar a seleção e voltar a criar polígonos.
+Também é possível usar o botão Editar. Clique no mapa vazio ou use **Esc**
+para limpar a seleção e voltar a criar polígonos. Durante a criação ou edição,
+Esc pede para salvar, descartar ou continuar quando há alterações pendentes;
+ao sair, o polígono também fica desselecionado.
 Com um polígono selecionado, **Enter** inicia a edição; durante a edição,
 **Enter** conclui. O atalho mantém a ação normal dos botões de navegação e diálogos.
 O nome aparece no centro de cada área, acompanha os movimentos do mapa e a edição
@@ -82,7 +85,7 @@ ou ficar abaixo desse limite.
 Durante a criação e edição, escolha uma das seis cores fixas: azul, verde,
 dourado, vermelho, roxo ou rosa.
 A prévia aparece no mapa, com preenchimento a 50% de opacidade.
-**Concluir edição** salva nome, desenho e cor;
+**Confirmar** salva nome, desenho e cor;
 **Cancelar** restaura os valores anteriores. A cor persiste após recarregar,
 fica sincronizada nas duas telas e acompanha os arquivos importados/exportados.
 Ao concluir um desenho ou edição, polígonos da mesma cor com uma área em comum
@@ -103,19 +106,25 @@ também a mudança de bloqueio. O bloqueio persiste após recarregar e fica
 sincronizado nas duas janelas; importação e exportação preservam esse estado.
 Os nomes ficam salvos após recarregar. Na janela do mapa separado, o mesmo campo
 aparece no menu inferior e fica sincronizado com o card da janela principal.
-Durante a criação ou edição, essa mesma linha mostra **Concluir** e **Cancelar**.
-**Delete** em um polígono selecionado ou em edição pede confirmação antes de
-remover o desenho. Confirmar salva a exclusão e encerra a edição imediatamente;
+Durante a criação ou edição, somente **Confirmar** e **Cancelar** ficam como
+botões de ação; os campos de nome, cor e bloqueio permanecem no editor.
+**Delete** ou **Backspace** remove vértices selecionados durante a edição.
+Sem vértices selecionados, pede confirmação antes de remover o polígono do mapa.
+Confirmar salva a exclusão e encerra a edição imediatamente;
 **Voltar** ou **Escape** cancela apenas a exclusão e preserva o rascunho em edição.
 Dentro do campo de nome, Delete continua apagando texto normalmente.
 As alças dos vértices e dos pontos intermediários são 50% maiores para facilitar
 o arraste e a inserção de vértices.
 Essa confirmação fica disponível nas duas janelas quando o mapa está separado.
-No rodapé do menu lateral, **Atalhos de teclado** permite consultar as teclas e
-habilitar ou desabilitar os atalhos. A opção começa ativada, fica salva neste
-navegador e é compartilhada entre as duas janelas. Os atalhos não se aplicam
+O botão **Clonar** ou a tecla **C** copia a área selecionada, preservando cor e
+bloqueio, com nome próprio e posição livre ao lado para evitar fusão imediata.
+A tecla **L** trava ou destrava a seleção; durante a edição, altera o bloqueio
+do rascunho, que só é aplicado ao confirmar.
+No rodapé, o switch **Atalhos** fica na linha de **Separar mapa** e permite
+habilitar ou desabilitar os atalhos. O botão **i** abre a lista em um modal.
+A opção começa ativada, fica salva neste navegador e é compartilhada entre as duas janelas. Os atalhos não se aplicam
 durante a digitação em campos de texto, exceto Enter para concluir e Escape
-para cancelar a edição do nome. Tab e a ativação normal dos botões continuam
+para solicitar a saída da edição. Tab e a ativação normal dos botões continuam
 disponíveis quando os atalhos globais estão desativados.
 
 | Tecla | Ação |
@@ -123,8 +132,10 @@ disponíveis quando os atalhos globais estão desativados.
 | N | Criar outro polígono, mesmo com uma área selecionada |
 | E ou Enter | Editar o polígono selecionado e destravado |
 | Enter | Concluir criação ou edição |
-| Escape | Cancelar a ação ou limpar a seleção |
-| Delete | Pedir confirmação para excluir |
+| Escape | Sair e desselecionar; salvar ou descartar se houver alterações |
+| Delete / Backspace | Apagar vértices selecionados; sem seleção, confirmar exclusão da área |
+| C | Clonar a área selecionada |
+| L | Travar / destravar a seleção ou o rascunho |
 | 1 a 6 | Escolher uma das seis cores durante criação ou edição |
 | Z ou Ctrl/⌘ Z | Desfazer a última alteração do desenho |
 | R, Ctrl/⌘ Shift Z ou Ctrl/⌘ Y | Refazer |

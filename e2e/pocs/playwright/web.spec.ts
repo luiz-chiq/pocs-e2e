@@ -50,6 +50,8 @@ async function create(page: Page, offset = 0, controls = page) {
   await expect(controls.locator(s.items)).toHaveCount(count + 1)
   await expect(page.locator(s.finish)).toBeHidden()
   await controls.locator(s.items).last().click()
+  const expand = controls.getByTestId('expand-polygon').last()
+  if (await expand.getAttribute('aria-expanded') !== 'true') await expand.click()
   await expect(controls.locator(s.vertices)).toHaveCount(3)
 }
 

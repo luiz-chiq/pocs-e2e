@@ -38,31 +38,21 @@
           <div class="sidebar-scrollbar" role="scrollbar" tabindex="-1" aria-controls="sidebar-scroll-content" aria-label="Rolar menu lateral" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0" aria-disabled="true"><div class="sidebar-scrollbar-thumb"></div></div>
           </div>
           <div class="sidebar-actions" aria-label="Ações da aplicação">
-            <details id="keyboard-shortcuts" class="keyboard-shortcuts">
-              <summary>Atalhos de teclado <span id="keyboard-shortcuts-status">Ativos</span></summary>
-              <div class="keyboard-shortcuts-content">
-                <label class="keyboard-shortcuts-toggle"><input id="keyboard-shortcuts-enabled" data-testid="keyboard-shortcuts-enabled" type="checkbox" checked /> Habilitar atalhos</label>
-                <p>Quando habilitados, funcionam fora dos campos de texto. Enter conclui e Esc cancela também no campo de nome.</p>
-                <dl>
-                  <dt><kbd>N</kbd></dt><dd>Novo polígono</dd>
-                  <dt><kbd>E</kbd> / <kbd>Enter</kbd></dt><dd>Editar a seleção</dd>
-                  <dt><kbd>Enter</kbd></dt><dd>Concluir criação ou edição</dd>
-                  <dt><kbd>Esc</kbd></dt><dd>Cancelar ou limpar seleção</dd>
-                  <dt><kbd>Delete</kbd></dt><dd>Excluir com confirmação</dd>
-                  <dt><kbd>1</kbd> – <kbd>6</kbd></dt><dd>Cor do polígono</dd>
-                  <dt><kbd>Z</kbd> / <kbd>Ctrl/⌘ Z</kbd></dt><dd>Desfazer</dd>
-                  <dt><kbd>R</kbd> / <kbd>Ctrl/⌘ ⇧ Z</kbd></dt><dd>Refazer (também Ctrl/⌘ Y)</dd>
-                  <dt><kbd>+</kbd> / <kbd>−</kbd></dt><dd>Aumentar / diminuir zoom</dd>
-                  <dt><kbd>0</kbd></dt><dd>Retornar o norte para cima</dd>
-                  <dt><kbd>M</kbd></dt><dd>Separar / reunir mapa</dd>
-                </dl>
-              </div>
-            </details>
             <div id="polygon-file-actions" class="polygon-file-actions" role="group" aria-label="Arquivos de polígonos" hidden>
               <button id="import-polygons" data-testid="import-polygons" class="secondary" type="button" title="Acrescentar polígonos de um arquivo JSON"><i data-lucide="folder-open" aria-hidden="true"></i><span>Importar</span></button>
               <button id="export-polygons" data-testid="export-polygons" class="secondary" type="button" title="Salvar todos os polígonos em um arquivo JSON"><i data-lucide="save" aria-hidden="true"></i><span>Exportar</span></button>
             </div>
-            <button id="detach-map" data-testid="detach-map" class="secondary detach-button" type="button" disabled><i data-lucide="external-link" aria-hidden="true"></i><span>Separar mapa</span></button>
+            <div class="sidebar-utility-row">
+              <button id="detach-map" data-testid="detach-map" class="secondary detach-button" type="button" disabled><i data-lucide="external-link" aria-hidden="true"></i><span>Separar mapa</span></button>
+              <div id="keyboard-shortcuts" class="keyboard-shortcuts">
+                <label class="keyboard-shortcuts-toggle">
+                  <input id="keyboard-shortcuts-enabled" data-testid="keyboard-shortcuts-enabled" data-shortcuts-toggle type="checkbox" role="switch" aria-label="Habilitar atalhos de teclado" checked />
+                  <span>Atalhos</span>
+                </label>
+                <span id="keyboard-shortcuts-status" data-shortcuts-status hidden>Ativos</span>
+                <button id="open-keyboard-shortcuts" data-testid="keyboard-shortcuts-settings" class="secondary icon-button" type="button" aria-label="Ver atalhos de teclado" aria-haspopup="dialog" aria-controls="keyboard-shortcuts-dialog" title="Ver atalhos de teclado"><i data-lucide="info" aria-hidden="true"></i></button>
+              </div>
+            </div>
             <div id="detached-tools" class="detached-tools" hidden>
               <p id="connection-status" role="status">Conectando à janela do mapa…</p>
               <p class="window-hint">Arraste a janela do mapa para o outro monitor. As ações nas duas telas ficam sincronizadas.</p>
@@ -157,6 +147,41 @@
         <button id="save-and-switch" type="button">Salvar e trocar</button>
         <button id="discard-and-switch" type="button" class="secondary">Cancelar edição e trocar</button>
         <button id="dismiss-switch" type="button" class="secondary">Continuar editando</button>
+      </div>
+    </dialog>
+    <dialog id="unsaved-edit-dialog" aria-labelledby="unsaved-edit-title" aria-describedby="unsaved-edit-description">
+      <div class="dialog-symbol" aria-hidden="true"><i data-lucide="save"></i></div>
+      <h2 id="unsaved-edit-title">Salvar alterações antes de sair?</h2>
+      <p id="unsaved-edit-description">Há alterações não salvas neste polígono. Você pode salvar, descartar ou continuar editando.</p>
+      <div class="dialog-actions switch-edit-actions">
+        <button id="save-and-exit" type="button">Salvar e sair</button>
+        <button id="discard-and-exit" type="button" class="secondary">Descartar e sair</button>
+        <button id="stay-editing" type="button" class="secondary">Continuar editando</button>
+      </div>
+    </dialog>
+    <dialog id="keyboard-shortcuts-dialog" class="keyboard-shortcuts-dialog" aria-labelledby="keyboard-shortcuts-title" aria-describedby="keyboard-shortcuts-description">
+      <div class="keyboard-shortcuts-header">
+        <h2 id="keyboard-shortcuts-title">Atalhos de teclado</h2>
+        <button id="close-keyboard-shortcuts" class="secondary icon-button" type="button" aria-label="Fechar atalhos de teclado" title="Fechar"><i data-lucide="x" aria-hidden="true"></i></button>
+      </div>
+      <div class="keyboard-shortcuts-body">
+        <label class="keyboard-shortcuts-toggle"><input id="keyboard-shortcuts-dialog-enabled" data-testid="keyboard-shortcuts-dialog-enabled" data-shortcuts-toggle type="checkbox" role="switch" checked /> Habilitar atalhos</label>
+        <p id="keyboard-shortcuts-description">Quando habilitados, funcionam fora dos campos de texto. Enter confirma. Esc solicita a saída e permite salvar ou descartar alterações pendentes, também no campo de nome.</p>
+        <dl class="keyboard-shortcuts-list">
+          <dt><kbd>N</kbd></dt><dd>Novo polígono</dd>
+          <dt><kbd>E</kbd> / <kbd>Enter</kbd></dt><dd>Editar a seleção</dd>
+          <dt><kbd>C</kbd></dt><dd>Clonar a seleção</dd>
+          <dt><kbd>L</kbd></dt><dd>Travar / destravar</dd>
+          <dt><kbd>Enter</kbd></dt><dd>Concluir criação ou edição</dd>
+          <dt><kbd>Esc</kbd></dt><dd>Sair da edição / limpar seleção</dd>
+          <dt><kbd>Delete</kbd></dt><dd>Remover vértices selecionados; sem seleção, confirmar exclusão da área (também Backspace)</dd>
+          <dt><kbd>1</kbd> – <kbd>6</kbd></dt><dd>Cor do polígono</dd>
+          <dt><kbd>Z</kbd> / <kbd>Ctrl/⌘ Z</kbd></dt><dd>Desfazer</dd>
+          <dt><kbd>R</kbd> / <kbd>Ctrl/⌘ ⇧ Z</kbd></dt><dd>Refazer (também Ctrl/⌘ Y)</dd>
+          <dt><kbd>+</kbd> / <kbd>−</kbd></dt><dd>Aumentar / diminuir zoom</dd>
+          <dt><kbd>0</kbd></dt><dd>Retornar o norte para cima</dd>
+          <dt><kbd>M</kbd></dt><dd>Separar / reunir mapa</dd>
+        </dl>
       </div>
     </dialog>
     <dialog id="install-dialog" aria-labelledby="install-dialog-title" aria-describedby="install-dialog-description">

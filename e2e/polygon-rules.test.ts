@@ -5,7 +5,7 @@ import Polygon from '@arcgis/core/geometry/Polygon.js'
 import * as areaOperator from '@arcgis/core/geometry/operators/areaOperator.js'
 import { project } from '@arcgis/core/geometry/support/webMercatorUtils.js'
 import SpatialReference from '@arcgis/core/geometry/SpatialReference.js'
-import { fixedPolygonColor, groupOverlappingPolygons, isPolygonColor, polygonPalette } from '../src/polygon-rules.ts'
+import { cloneGeometryBeside, fixedPolygonColor, groupOverlappingPolygons, isPolygonColor, polygonPalette } from '../src/polygon-rules.ts'
 
 function square(x: number, y = 0, color = '#1261a0', size = 10) {
   return new Graphic({
@@ -82,4 +82,26 @@ test('reimportar uma área geográfica idêntica preserva suas coordenadas exata
   const [result] = groupOverlappingPolygons([first, second])
   assert.equal(result.members.length, 2)
   assert.deepEqual(result.geometry.toJSON(), first.geometry.toJSON())
+})
+
+
+test('clonar mantém a forma sem alterar a origem e evita áreas já ocupadas', () => {
+  const source = square(0), occupied = square(13)
+  const original = source.geometry!.toJSON()
+  const clone = cloneGeometryBeside(source, [source, occupied])!
+  assert.ok(clone)
+  assert.equal(Math.abs(areaOperator.execute(clone)), 100)
+  assert.equal(clone.extent!.intersects(source.geometry!.extent!), false)
+  assert.equal(clone.extent!.intersects(occupied.geometry!.extent!), false)
+  assert.deepEqual(source.geometry!.toJSON(), original)
+  assert.equal(groupOverlappingPolygons([source, new Graphic({ geometry: clone })]).length, 2)
+})
+
+test('clonar preserva a referência geográfica', () => {
+  const source = square(1000, 1000)
+  source.geometry = project(source.geometry, new SpatialReference({ wkid: 4326 }))!
+  const clone = cloneGeometryBeside(source, [source])!
+  assert.ok(clone.spatialReference.equals(source.geometry!.spatialReference))
+  assert.equal(clone.rings[0].length, 5)
+  assert.equal(clone.extent!.intersects(source.geometry!.extent!), false)
 })

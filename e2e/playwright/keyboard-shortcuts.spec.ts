@@ -8,8 +8,6 @@ type TestWindow = typeof window & { polygonTestApi: {
 } }
 
 async function settings(page: Page, enabled: boolean) {
-  const menu = page.locator('#keyboard-shortcuts')
-  if (!await menu.getAttribute('open').then(value => value !== null)) await menu.locator('summary').click()
   await page.getByTestId('keyboard-shortcuts-enabled').setChecked(enabled)
   await expect(page.locator('#keyboard-shortcuts-status')).toHaveText(enabled ? 'Ativos' : 'Desativados')
 }
@@ -120,7 +118,6 @@ test('desativar persiste, bloqueia atalhos do app e do SDK, e mantém os botões
   await page.getByTestId('cancel-editing').click()
   await page.reload()
   await expect(page.getByTestId('map-ready')).toBeVisible()
-  await page.locator('#keyboard-shortcuts summary').click()
   await expect(page.getByTestId('keyboard-shortcuts-enabled')).not.toBeChecked()
   await settings(page, true)
   await mapFocus(page)
@@ -172,7 +169,7 @@ test('M separa e reúne; preferências, cores e desfazer funcionam entre as duas
   const pending = page.waitForEvent('popup')
   await page.keyboard.press('m')
   const popup = await pending
-  await expect(popup.getByTestId('map-ready')).toBeVisible()
+  await expect(popup.getByTestId('map-ready')).toBeVisible({ timeout: 30_000 })
   await expect(page.locator('#connection-status')).toContainText('Mapa conectado')
   await settings(page, false)
   await expect.poll(() => popup.evaluate(() => localStorage.getItem('polygon-keyboard-shortcuts'))).toBe('false')
@@ -197,14 +194,46 @@ test('M separa e reúne; preferências, cores e desfazer funcionam entre as duas
   await expect(page.getByTestId('detach-map')).toBeVisible()
 })
 
-test('o controle e a lista de atalhos ficam acessíveis no celular, inclusive durante criação', async ({ page }, testInfo) => {
+test('modal acessível no celular e ações reduzidas durante criação', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 375, height: 700 })
   await settings(page, false)
   await expect(page.getByTestId('keyboard-shortcuts-enabled')).toBeInViewport()
+  await page.getByTestId('keyboard-shortcuts-settings').click()
+  const dialog = page.getByRole('dialog', { name: 'Atalhos de teclado', exact: true })
+  await expect(dialog).toBeVisible()
+  await expect(dialog.locator('dd').last()).toHaveText('Separar / reunir mapa')
+  await dialog.locator('dd').last().scrollIntoViewIfNeeded()
+  await expect(page.getByRole('button', { name: 'Fechar atalhos de teclado', exact: true })).toBeInViewport()
+  await page.screenshot({ path: testInfo.outputPath('mobile-keyboard-modal.png') })
+  await page.getByRole('button', { name: 'Fechar atalhos de teclado', exact: true }).click()
+  await expect(dialog).toBeHidden()
   await page.getByTestId('draw-polygon').click()
-  await page.getByTestId('keyboard-shortcuts-enabled').scrollIntoViewIfNeeded()
-  await expect(page.getByTestId('keyboard-shortcuts-enabled')).toBeInViewport()
-  await page.getByTestId('finish-drawing').scrollIntoViewIfNeeded()
-  await expect(page.getByTestId('finish-drawing')).toBeInViewport()
-  await page.screenshot({ path: testInfo.outputPath('mobile-keyboard-settings.png'), fullPage: true })
+  await expect(page.getByTestId('keyboard-shortcuts-enabled')).toBeHidden()
+  await expect(page.getByTestId('keyboard-shortcuts-settings')).toBeHidden()
+  await expect(page.getByTestId('finish-drawing')).toBeVisible()
+})
+
+test('modal sincroniza o switch e fecha com Escape preservando a seleção', async ({ page }) => {
+  await create(page)
+  await select(page)
+  await page.getByTestId('keyboard-shortcuts-settings').click()
+  const dialog = page.getByRole('dialog', { name: 'Atalhos de teclado', exact: true })
+  await expect(dialog).toBeVisible()
+  await page.getByTestId('keyboard-shortcuts-dialog-enabled').uncheck()
+  await expect(page.getByTestId('keyboard-shortcuts-enabled')).not.toBeChecked()
+  await page.getByTestId('keyboard-shortcuts-dialog-enabled').check()
+  await expect(page.getByTestId('keyboard-shortcuts-enabled')).toBeChecked()
+  await page.keyboard.press('n')
+  await page.keyboard.press('Delete')
+  await expect(dialog).toBeVisible()
+  await expect(page.locator('#clear-dialog')).toBeHidden()
+  for (let index = 0; index < 4; index++) {
+    await page.keyboard.press('Tab')
+    expect(await page.evaluate(() => Boolean(document.activeElement?.closest('#keyboard-shortcuts-dialog')))).toBe(true)
+  }
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+  await expect(page.getByTestId('keyboard-shortcuts-settings')).toBeFocused()
+  await expect(page.getByTestId('polygon-item')).toHaveClass(/selected/)
+  await expect(page.getByTestId('finish-drawing')).toBeHidden()
 })

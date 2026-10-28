@@ -36,6 +36,25 @@ export interface PolygonGroup {
   locked: boolean
 }
 
+export function cloneGeometryBeside(source: Graphic, graphics: Graphic[]): Polygon | null {
+  const reference = new SpatialReference({ wkid: 3857 })
+  const original = project(source.geometry, reference)
+  if (original?.type !== 'polygon' || !original.extent) return null
+  const occupied = graphics.map(graphic => project(graphic.geometry, reference)?.extent).filter(extent => extent != null)
+  const width = Math.max(original.extent.width, 1) * 1.3
+  const height = Math.max(original.extent.height, 1) * 1.3
+  for (let step = 1; step <= graphics.length + 1; step++) {
+    for (const [dx, dy] of [[width * step, 0], [-width * step, 0], [0, height * step], [0, -height * step]]) {
+      const copy = original.clone()
+      copy.rings = original.rings.map(ring => ring.map(([x, y, ...rest]) => [x + dx, y + dy, ...rest]))
+      const extent = copy.extent!
+      if (Math.max(Math.abs(extent.xmin), Math.abs(extent.xmax), Math.abs(extent.ymin), Math.abs(extent.ymax)) > 20037508) continue
+      if (!occupied.some(other => other.intersects(extent))) return project(copy, source.geometry!.spatialReference) as Polygon
+    }
+  }
+  return null
+}
+
 // Preparar toda a operação antes de modificar a camada. A união preserva
 // concavidades, buracos e anéis; não é uma caixa ou um contorno aproximado.
 export function groupOverlappingPolygons(graphics: Graphic[], preferred?: Graphic | null): PolygonGroup[] {

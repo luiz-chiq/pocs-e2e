@@ -143,6 +143,8 @@ async function create(driver: chrome.Driver, offset = 0) {
   await driver.wait(until.elementIsNotVisible(await element(driver, s.finish)), 10_000)
   const items = await driver.findElements(By.css(s.items))
   await items[items.length - 1].click()
+  const expand = (await driver.findElements(By.css('[data-testid="expand-polygon"]'))).at(-1)!
+  if (await expand.getAttribute('aria-expanded') !== 'true') await expand.click()
   await count(driver, s.vertices, 3)
 }
 
@@ -260,6 +262,8 @@ async function createDetached(driver: chrome.Driver, main: string, popup: string
   await driver.wait(until.elementIsNotVisible(await element(driver, s.finish)), 10_000)
   const items = await driver.findElements(By.css(s.items))
   await items[items.length - 1].click()
+  const expand = (await driver.findElements(By.css('[data-testid="expand-polygon"]'))).at(-1)!
+  if (await expand.getAttribute('aria-expanded') !== 'true') await expand.click()
   await count(driver, s.vertices, 3)
 }
 

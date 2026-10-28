@@ -105,7 +105,7 @@ test('nome não tem label visível e tooltip só aparece com erro ou a partir de
   await expect(tooltip).toBeHidden()
 })
 
-test('cadeado e lixeira permanecem alinhados com nomes longos e durante edição, em desktop e celular', async ({ page }, testInfo) => {
+test('ações alinhadas fora da edição e ocultas ao editar, em desktop e celular', async ({ page }, testInfo) => {
   await create(page)
   await edit(page)
   await page.getByTestId('polygon-name').fill('A'.repeat(30))
@@ -114,17 +114,23 @@ test('cadeado e lixeira permanecem alinhados com nomes longos e durante edição
     await page.setViewportSize({ width, height: 900 })
     for (const editing of [false, true]) {
       if (editing) await edit(page)
+      if (editing) {
+        await expect(page.getByTestId('toggle-polygon-lock')).toBeHidden()
+        await expect(page.getByTestId('delete-polygon')).toBeHidden()
+        await expect(page.getByTestId('clone-polygon')).toBeHidden()
+        await page.screenshot({ path: testInfo.outputPath(`appearance-${width}.png`), fullPage: true })
+        await page.getByTestId('cancel-editing').click()
+        await expect(page.getByTestId('finish-drawing')).toBeHidden()
+        continue
+      }
+      await expect(page.getByTestId('toggle-polygon-lock')).toBeVisible()
+      await expect(page.getByTestId('delete-polygon')).toBeVisible()
       const lock = await page.getByTestId('toggle-polygon-lock').boundingBox()
       const remove = await page.getByTestId('delete-polygon').boundingBox()
       if (!lock || !remove) throw new Error('Ações ausentes')
       expect(lock.y + lock.height / 2).toBeCloseTo(remove.y + remove.height / 2, 1)
       expect(lock.height).toBe(remove.height)
       expect(remove.x).toBeGreaterThan(lock.x + lock.width)
-      if (editing) {
-        await page.screenshot({ path: testInfo.outputPath(`appearance-${width}.png`), fullPage: true })
-        await page.getByTestId('cancel-editing').click()
-        await expect(page.locator('.polygon-label')).toBeVisible()
-      }
     }
   }
 })

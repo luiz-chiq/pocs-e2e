@@ -79,6 +79,23 @@ test('confirmar Delete salva a exclusão e encerra a edição sem outro Salvar',
   await reloadAndCount(page, 1)
 })
 
+test('Backspace também confirma antes de remover o desenho do mapa', async ({ page }, testInfo) => {
+  await edit(page)
+  await page.locator('#map .esri-view-surface').focus()
+  await page.keyboard.press('Backspace')
+  await expect(page.locator('#clear-dialog')).toBeVisible()
+  await expect(page.getByTestId('polygon-map-label')).toHaveCount(2)
+  await page.screenshot({ path: testInfo.outputPath('geometry-before-confirmation.png') })
+  await page.locator('#dismiss-clear').click()
+  await expect(page.getByTestId('finish-drawing')).toBeVisible()
+  await expect(page.getByTestId('polygon-map-label')).toHaveCount(2)
+  await page.keyboard.press('Backspace')
+  await expect(page.locator('#clear-dialog')).toBeVisible()
+  await page.locator('#confirm-clear').click()
+  await expect(page.getByTestId('polygon-map-label')).toHaveCount(1)
+  await expect(page.getByTestId('finish-drawing')).toBeHidden()
+})
+
 for (const choice of ['Voltar', 'Escape']) {
   test(`${choice} cancela só a exclusão e mantém o rascunho em edição`, async ({ page }) => {
     await edit(page)
@@ -148,3 +165,24 @@ test('alças maiores permitem arrastar vértices e inserir pela alça intermedi�
   await page.getByTestId('finish-drawing').click()
   await reloadAndCount(page, 2)
 })
+
+
+for (const key of ['Delete', 'Backspace']) {
+  test(`${key} remove vértice selecionado sem confirmar a exclusão do polígono`, async ({ page }) => {
+    await edit(page)
+    const points = () => page.evaluate(() => (window as TestWindow).polygonTestApi.getSelectedScreenPoints().vertices)
+    const box = (await page.getByTestId('arcgis-map').boundingBox())!
+    const vertices = await points()
+    await page.mouse.click(box.x + (vertices[0].x + vertices[1].x) / 2, box.y + (vertices[0].y + vertices[1].y) / 2)
+    await expect(page.locator('.vertex-list li')).toHaveCount(4)
+    const inserted = await points()
+    await page.mouse.click(box.x + inserted[1].x, box.y + inserted[1].y)
+    await page.keyboard.press(key)
+    await expect(page.locator('#clear-dialog')).toBeHidden()
+    await expect(page.locator('.vertex-list li')).toHaveCount(3)
+    await expect(page.getByTestId('finish-drawing')).toBeVisible()
+    await expect(page.getByTestId('polygon-map-label')).toHaveCount(2)
+    await page.getByTestId('finish-drawing').click()
+    await reloadAndCount(page, 2)
+  })
+}

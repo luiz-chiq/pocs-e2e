@@ -106,7 +106,7 @@ h1 { margin: 0; font-size: 1.65rem; font-weight: 650; letter-spacing: -.045em; l
 .collection-heading { flex-shrink: 0; margin: 0 2px 10px; color: var(--muted); font-size: .64rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .polygon-list { display: grid; flex: none; align-content: start; gap: 10px; min-height: 0; margin: 0; padding: 4px 0 16px; list-style: none; }
 .polygon-list:empty { flex: 0; margin: 0; padding: 0; }
-.pin { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto 28px 28px; align-items: center; gap: 6px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: #fff; color: var(--ink); cursor: pointer; box-shadow: 0 2px 3px #16372c03; transition: border-color .15s ease, box-shadow .15s ease; }
+.pin { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto 28px 28px 28px; align-items: center; gap: 6px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: #fff; color: var(--ink); cursor: pointer; box-shadow: 0 2px 3px #16372c03; transition: border-color .15s ease, box-shadow .15s ease; }
 .pin:hover { border-color: #9ebbac; box-shadow: var(--shadow); }
 .pin.selected { border-color: #d7b773; background: #fffdf5; box-shadow: inset 3px 0 0 #c9a04b, 0 2px 5px #8b69100a; }
 .polygon-lock-button[aria-pressed="true"] { color: var(--forest); background: #e8f1ea; }
@@ -115,7 +115,9 @@ h1 { margin: 0; font-size: 1.65rem; font-weight: 650; letter-spacing: -.045em; l
 .polygon-lock-editor small { display: block; margin-top: 5px; color: var(--muted); font-size: .7rem; line-height: 1.5; }
 .switch-edit-actions { flex-direction: column; }
 .polygon-label { flex: 1; min-width: 0; padding-block: 5px; font-size: .86rem; font-weight: 650; line-height: 1.4; overflow-wrap: anywhere; cursor: pointer; }
-.expand-polygon, .delete-polygon, .polygon-lock-button { width: 28px; height: 28px; min-height: 28px; border-radius: 8px; background: transparent; color: #74837a; }
+.expand-polygon, .delete-polygon, .polygon-lock-button, .clone-polygon { width: 28px; height: 28px; min-height: 28px; border-radius: 8px; background: transparent; color: #74837a; }
+.clone-polygon svg { width: 15px; height: 15px; }
+.clone-polygon:hover { background: #edf4ee; color: var(--forest); }
 .polygon-lock-button svg { width: 15px; height: 15px; }
 .expand-polygon:hover { background: #edf4ee; color: var(--forest); }
 .expand-polygon svg { width: 15px; height: 15px; transition: transform .15s ease; }
@@ -145,22 +147,32 @@ h1 { margin: 0; font-size: 1.65rem; font-weight: 650; letter-spacing: -.045em; l
 .color-swatch:hover:not(:disabled) { background: var(--swatch-color); box-shadow: 0 0 0 2px #91a99b; }
 .color-swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--forest); }
 .sidebar-actions { display: grid; flex-shrink: 0; gap: 10px; margin: 0 20px; padding: 16px 0 20px; border-top: 1px solid var(--line); }
-.keyboard-shortcuts { min-width: 0; font-size: .73rem; }
-.keyboard-shortcuts summary { display: flex; align-items: center; gap: 8px; padding: 5px 0; color: var(--muted); cursor: pointer; list-style: none; }
-.keyboard-shortcuts summary::-webkit-details-marker { display: none; }
-.keyboard-shortcuts summary::before { content: '›'; font-size: 1rem; transition: transform .15s; }
-.keyboard-shortcuts[open] summary::before { transform: rotate(90deg); }
-.keyboard-shortcuts summary:focus-visible { outline: 2px solid var(--forest); outline-offset: 3px; border-radius: 4px; }
+.sidebar-actions button { height: 44px; min-height: 44px; }
+.sidebar-utility-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: center; gap: 8px; }
+.sidebar-utility-row > .detach-button { width: 100%; min-width: 0; padding-inline: 8px; font-size: .73rem; }
+.sidebar-utility-row > .keyboard-shortcuts { min-width: 0; gap: 4px; }
+.sidebar-utility-row:has(> .detach-button[hidden]) > .keyboard-shortcuts { grid-column: 2; }
+.keyboard-shortcuts { display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 36px; font-size: .73rem; }
+.keyboard-shortcuts > .keyboard-shortcuts-toggle { flex: 1; }
 #keyboard-shortcuts-status { margin-left: auto; font-size: .65rem; }
 #keyboard-shortcuts-status[data-enabled="true"] { color: var(--forest); }
-.keyboard-shortcuts-content { max-height: min(38dvh, 300px); padding: 10px 4px 5px 0; overflow-y: auto; scrollbar-gutter: stable; }
-.keyboard-shortcuts-toggle { display: flex; align-items: center; gap: 8px; color: var(--ink); cursor: pointer; }
-.keyboard-shortcuts-toggle input { width: 18px; height: 18px; margin: 0; accent-color: var(--forest); }
-.keyboard-shortcuts-content p { color: var(--muted); font-size: .65rem; line-height: 1.5; }
-.keyboard-shortcuts dl { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px 10px; margin: 12px 0 0; font-size: .65rem; }
-.keyboard-shortcuts dt { white-space: nowrap; }
-.keyboard-shortcuts dd { margin: 0; color: var(--muted); line-height: 1.4; }
-.keyboard-shortcuts kbd { padding: 2px 4px; border: 1px solid #cdd8ce; border-bottom-width: 2px; border-radius: 4px; background: #fff; color: #385547; font: inherit; font-size: .61rem; }
+.keyboard-shortcuts .icon-button { flex: none; width: 44px; height: 44px; min-height: 44px; border: 0; background: transparent; color: var(--muted); }
+.keyboard-shortcuts-toggle { display: flex; align-items: center; gap: 9px; min-height: 36px; color: var(--ink); cursor: pointer; }
+.keyboard-shortcuts-toggle input { appearance: none; flex: none; position: relative; width: 34px; height: 20px; margin: 0; border-radius: 20px; background: #c4cfc6; cursor: pointer; transition: background .15s; }
+.keyboard-shortcuts-toggle input::before { position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px #14382d26; content: ''; transition: transform .15s; }
+.keyboard-shortcuts-toggle input:checked { background: var(--forest); }
+.keyboard-shortcuts-toggle input:checked::before { transform: translateX(14px); }
+.keyboard-shortcuts-toggle input:focus-visible { outline: 3px solid #639578; outline-offset: 3px; }
+.keyboard-shortcuts-dialog { width: min(calc(100% - 2rem), 30rem); max-height: calc(100dvh - 2rem); }
+.keyboard-shortcuts-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.keyboard-shortcuts-header h2 { margin: 0; }
+.keyboard-shortcuts-header .icon-button { flex: none; width: 36px; height: 36px; min-height: 36px; }
+.keyboard-shortcuts-body { max-height: 65dvh; margin-top: 14px; padding-right: 4px; overflow-y: auto; scrollbar-gutter: stable; font-size: .8rem; }
+.keyboard-shortcuts-body p { color: var(--muted); font-size: .75rem; line-height: 1.6; }
+.keyboard-shortcuts-list { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px 14px; margin: 20px 0 4px; font-size: .75rem; }
+.keyboard-shortcuts-list dt { white-space: nowrap; }
+.keyboard-shortcuts-list dd { margin: 0; color: var(--muted); line-height: 1.4; }
+.keyboard-shortcuts-list kbd { padding: 2px 4px; border: 1px solid #cdd8ce; border-bottom-width: 2px; border-radius: 4px; background: #fff; color: #385547; font: inherit; font-size: .68rem; }
 .polygon-actions { display: flex; align-items: center; gap: 8px; min-height: 44px; }
 .polygon-actions > button { flex: 1 1 0; min-width: 0; width: 0; height: 44px; padding: 9px 10px; font-size: .76rem; white-space: nowrap; }
 .polygon-actions > button span { min-width: 0; }
@@ -188,6 +200,7 @@ h1 { margin: 0; font-size: 1.65rem; font-weight: 650; letter-spacing: -.045em; l
 .polygon-map-label { position: absolute; width: max-content; max-width: min(16rem, calc(100% - 2rem)); transform: translate(-50%, -50%); color: #153c34; font-size: .78rem; font-weight: 700; line-height: 1.4; text-align: center; overflow-wrap: anywhere; -webkit-text-stroke: 3px #fffffff2; paint-order: stroke fill; text-shadow: 0 1px 4px #ffffffc9; }
 .polygon-map-label.is-selected { color: #6e4b0b; }
 #map:focus, #map .esri-view-surface:focus { outline: none; }
+#map .esri-view-surface:focus::after { outline: none; box-shadow: none; }
 .map-controls { position: absolute; z-index: 1; top: .75rem; left: .75rem; }
 .map-navigation { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .map-controls button { border-color: #ffffffab; box-shadow: 0 3px 12px #1536291c, 0 1px 2px #15362912; }
