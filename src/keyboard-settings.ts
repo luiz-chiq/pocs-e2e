@@ -12,13 +12,6 @@ export function attachKeyboardSettings(onChange: () => void) {
   openButton.addEventListener('click', () => { if (!dialog.open) dialog.showModal() })
   document.querySelector('#close-keyboard-shortcuts')!.addEventListener('click', () => dialog.close())
   dialog.addEventListener('close', () => openButton.focus({ preventScroll: true }))
-  dialog.addEventListener('keydown', event => {
-    if (event.key !== 'Tab') return
-    const controls = [...dialog.querySelectorAll<HTMLElement>('button, input')]
-    const first = controls[0], last = controls.at(-1)!
-    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
-    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
-  })
   const update = () => {
     toggles.forEach(toggle => { toggle.checked = enabled })
     statuses.forEach(status => {

@@ -130,6 +130,9 @@ disponíveis quando os atalhos globais estão desativados.
 | Tecla | Ação |
 | --- | --- |
 | N | Criar outro polígono, mesmo com uma área selecionada |
+| A | Levar o foco à lista lateral e selecionar o polígono atual ou o primeiro |
+| ↑ / ↓ / ← / → | Navegar entre polígonos na lista ou controles dos modais |
+| D | Na lista, pedir confirmação para excluir o polígono com foco |
 | E ou Enter | Editar o polígono selecionado e destravado |
 | Enter | Concluir criação ou edição |
 | Escape | Sair e desselecionar; salvar ou descartar se houver alterações |
@@ -142,6 +145,14 @@ disponíveis quando os atalhos globais estão desativados.
 | + / − | Aumentar / diminuir o zoom |
 | 0 | Retornar o norte para cima |
 | M | Separar / reunir o mapa, quando disponível |
+
+Na lista, as setas selecionam e enquadram a área sem expandir os vértices;
+**E** ou **Enter** inicia a edição do item com foco, respeitando o bloqueio.
+**D** abre a confirmação e mantém a área no mapa até a exclusão ser confirmada.
+Nos modais, as setas circulam entre os controles; **Enter** aciona o botão,
+**Espaço** alterna o switch e **Esc** preserva a ação de voltar ou fechar.
+As setas e Tab continuam disponíveis como navegação mesmo com atalhos globais
+desativados; nesse caso A, D e E não executam ações.
 
 Desenhos com menos de três pontos diferentes ou sem área são bloqueados com um alerta;
 a confirmação por teclado segue a mesma validação.

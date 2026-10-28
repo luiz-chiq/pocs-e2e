@@ -22,6 +22,9 @@ import { attachCompass } from './compass'
 import { attachSidebarScrollbar } from './sidebar-scroll'
 import { cloneGeometryBeside, defaultPolygonColor, fixedPolygonColor, groupOverlappingPolygons, isPolygonColor, polygonPalette } from './polygon-rules'
 import { attachKeyboardSettings, shortcutsEnabled } from './keyboard-settings'
+import { attachDialogNavigation } from './dialog-navigation'
+
+attachDialogNavigation()
 
 const fileActions = document.querySelector<HTMLDivElement>('#polygon-file-actions')!
 const importButton = document.querySelector<HTMLButtonElement>('#import-polygons')!
@@ -1164,6 +1167,19 @@ function clearSelection() {
   render()
 }
 
+function focusPolygonLabel(id: string | null) {
+  const item = [...list.children].find(item => (item as HTMLElement).dataset.polygonId === id)
+  const label = item?.querySelector<HTMLElement>('.polygon-label')
+  label?.focus({ preventScroll: true })
+  label?.scrollIntoView({ block: 'nearest' })
+}
+
+function focusPolygonList(graphic = selectedGraphic ?? orderedGraphics()[0]) {
+  if (activeAction !== null || windowMode === 'map' || list.inert || !graphic) return
+  selectPolygon(graphic)
+  focusPolygonLabel(graphicId(graphic))
+}
+
 function toggleVertices(graphic: Graphic) {
   if (detachedMap.command({ type: 'expand', id: graphicId(graphic)! })) return
   const closing = expandedGraphic === graphic
@@ -1204,6 +1220,9 @@ function deletePolygons(target: Graphic | 'all') {
 
 function render() {
   const nameFocused = document.activeElement === nameInput
+  const focusedListId = document.activeElement?.matches('.polygon-label')
+    ? (document.activeElement.closest('[data-testid="polygon-item"]') as HTMLElement | null)?.dataset.polygonId
+    : null
   const selectionStart = nameInput.selectionStart
   const selectionEnd = nameInput.selectionEnd
   const actionsContainer = windowMode === 'map' ? mapWindowActions : sidebarEditor
@@ -1223,6 +1242,7 @@ function render() {
   orderedGraphics().forEach((graphic) => {
     const item = document.createElement('li')
     item.dataset.testid = 'polygon-item'
+    item.dataset.polygonId = graphicId(graphic)!
     item.className = 'pin'
     item.hidden = activeAction !== null && graphic !== activeGraphic
     if (graphic === selectedGraphic) item.classList.add('selected')
@@ -1242,7 +1262,7 @@ function render() {
         event.preventDefault()
         event.stopPropagation()
         if (event.repeat) return
-        if (shortcutsEnabled() && event.key === 'Enter' && activeAction === null && selectedGraphic === graphic) void startEditing(graphic)
+        if (shortcutsEnabled() && event.key === 'Enter' && activeAction === null) void startEditing(graphic)
         else selectPolygon(graphic)
       }
     })
@@ -1316,6 +1336,7 @@ function render() {
   renderIcons()
   updateWindowControls()
   scheduleMapLabels()
+  if (focusedListId && activeAction === null && !document.querySelector('dialog[open]')) focusPolygonLabel(focusedListId)
   if (nameFocused && !nameEditor.hidden) {
     nameInput.focus({ preventScroll: true })
     nameInput.setSelectionRange(selectionStart, selectionEnd)
@@ -1555,6 +1576,16 @@ window.addEventListener('keydown', (event) => {
   const textControl = target?.closest('input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]), textarea, select, [contenteditable]:not([contenteditable="false"])')
   const key = event.key.toLowerCase()
   const modified = event.ctrlKey || event.metaKey || event.altKey
+  const listItem = target?.closest<HTMLElement>('[data-testid="polygon-item"]')
+  const listGraphic = findGraphic(listItem?.dataset.polygonId ?? null)
+  if (!modified && !textControl && activeAction === null && listGraphic && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
+    event.preventDefault()
+    event.stopImmediatePropagation()
+    const graphics = orderedGraphics()
+    const direction = event.key === 'ArrowUp' || event.key === 'ArrowLeft' ? -1 : 1
+    focusPolygonList(graphics[(graphics.indexOf(listGraphic) + direction + graphics.length) % graphics.length])
+    return
+  }
   if (!shortcutsEnabled()) {
     // Desligar também os atalhos do SDK no canvas; Tab e ativação de botões
     // continuam disponíveis como navegação acessível, assim como a edição de texto.
@@ -1583,14 +1614,21 @@ window.addEventListener('keydown', (event) => {
     return
   }
   if (modified) return
-  if (!textControl && ['n', 'e', 'c', 'l', 'm', 'z', 'r', '+', '=', '-', '0', '1', '2', '3', '4', '5', '6'].includes(key)) {
+  if (key === 'd' && !textControl && activeAction === null && listGraphic) {
+    event.preventDefault()
+    event.stopImmediatePropagation()
+    if (!event.repeat) requestDeletion(listGraphic)
+    return
+  }
+  if (!textControl && ['a', 'n', 'e', 'c', 'l', 'm', 'z', 'r', '+', '=', '-', '0', '1', '2', '3', '4', '5', '6'].includes(key)) {
     event.preventDefault()
     event.stopImmediatePropagation()
     if (event.repeat || !mapInitialized || (windowMode !== 'main' && !windowConnected)) return
     if (key === 'n' && activeAction === null) {
       if (!detachedMap.command({ type: 'draw' })) void beginDrawing()
     }
-    if (key === 'e' && activeAction === null && selectedGraphic) void startEditing(selectedGraphic)
+    if (key === 'a') focusPolygonList()
+    if (key === 'e' && activeAction === null && (listGraphic ?? selectedGraphic)) void startEditing((listGraphic ?? selectedGraphic)!)
     if (key === 'c' && activeAction === null && selectedGraphic) clonePolygon(selectedGraphic)
     if (key === 'l') toggleCurrentLock()
     if (key === 'm' && activeAction === null) {
