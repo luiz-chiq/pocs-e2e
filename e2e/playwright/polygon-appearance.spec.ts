@@ -52,7 +52,7 @@ test('cor escolhida na criação colore o símbolo, persiste e pode ser alterada
   expect(saved.attributes.color).toBe('#cf4949')
   expect(saved.symbol.outline.color.slice(0, 3)).toEqual([207, 73, 73])
   expect(saved.symbol.color.slice(0, 3)).toEqual([207, 73, 73])
-  expect(saved.symbol.color[3]).toBe(102) // 40% de opacidade no JSON ArcGIS (0–255).
+  expect(saved.symbol.color[3]).toBe(128) // Aproximadamente 50% de opacidade no JSON ArcGIS (0–255).
   await page.reload()
   await expect(page.getByTestId('map-ready')).toBeVisible()
   await page.getByTestId('polygon-item').locator('.polygon-label').click()

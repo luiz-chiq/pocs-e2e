@@ -290,11 +290,11 @@ function polygonColor(graphic: Graphic) {
 }
 
 function polygonSymbol(color: string) {
-  return new SimpleFillSymbol({ color: `${color}66`, outline: { color, width: 2 } })
+  return new SimpleFillSymbol({ color: `${color}80`, outline: { color, width: 2 } })
 }
 
 function editingSymbol(color: string) {
-  return new SimpleFillSymbol({ color: `${color}66`, outline: { color: '#ffffff', width: 3 } })
+  return new SimpleFillSymbol({ color: `${color}80`, outline: { color: '#ffffff', width: 3 } })
 }
 
 function updateColorControls() {

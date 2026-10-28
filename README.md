@@ -81,7 +81,7 @@ inválidos ou ao atingir 24 dos 30 caracteres; desaparece ao corrigir o nome
 ou ficar abaixo desse limite.
 Durante a criação e edição, escolha uma das seis cores fixas: azul, verde,
 dourado, vermelho, roxo ou rosa.
-A prévia aparece no mapa, com preenchimento a 40% de opacidade.
+A prévia aparece no mapa, com preenchimento a 50% de opacidade.
 **Concluir edição** salva nome, desenho e cor;
 **Cancelar** restaura os valores anteriores. A cor persiste após recarregar,
 fica sincronizada nas duas telas e acompanha os arquivos importados/exportados.
