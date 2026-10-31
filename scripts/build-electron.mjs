@@ -13,11 +13,11 @@ const staging = resolve('.cache/electron-staging')
 await rm(staging, { recursive: true, force: true })
 await mkdir(staging, { recursive: true })
 for (const path of ['dist', 'electron', 'public/icons']) await cp(path, resolve(staging, path), { recursive: true })
-await writeFile(resolve(staging, 'package.json'), JSON.stringify({ name: 'poligonos-poc', version: '0.1.0', main: 'electron/main.cjs', description: 'Editor de polígonos em React e TypeScript', author: 'Polígonos' }, null, 2))
+await writeFile(resolve(staging, 'package.json'), JSON.stringify({ name: 'poligonos-poc', version: '0.1.0', main: 'electron/main.cjs', description: 'Editor de áreas e pontos no mapa', author: 'Mapa' }, null, 2))
 const { version } = JSON.parse(await readFile('node_modules/electron/package.json', 'utf8'))
 const config = resolve('.cache/electron-builder.json')
 await writeFile(config, JSON.stringify({
-  appId: 'com.example.poligonos.poc', productName: 'Poligonos POC', asar: true,
+  appId: 'com.example.poligonos.poc', productName: 'Mapa', asar: true,
   electronVersion: version, electronDist: resolve('node_modules/electron/dist'),
   directories: { output: resolve('release/electron') }, files: ['**/*'],
   mac: { identity: null, icon: resolve('public/icons/pwa-512.png') }, npmRebuild: false

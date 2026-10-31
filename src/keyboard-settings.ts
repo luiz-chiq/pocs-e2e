@@ -1,8 +1,10 @@
 const preferenceKey = 'polygon-keyboard-shortcuts'
+const mobileLayout = matchMedia('(max-width: 720px)')
 let enabled = true
 try { enabled = localStorage.getItem(preferenceKey) !== 'false' } catch { /* Preferência em memória. */ }
 const listeners = new Set<() => void>()
-export function shortcutsEnabled() { return enabled }
+export function shortcutsEnabled() { return enabled && !mobileLayout.matches }
+function onLayoutChange() { listeners.forEach(listener => listener()) }
 export function setShortcutsEnabled(value: boolean) {
   enabled = value
   try { localStorage.setItem(preferenceKey, String(value)) } catch { /* Armazenamento indisponível. */ }
@@ -14,10 +16,16 @@ function onStorage(event: StorageEvent) {
   listeners.forEach(listener => listener())
 }
 export function subscribeShortcuts(listener: () => void) {
-  if (!listeners.size) window.addEventListener('storage', onStorage)
+  if (!listeners.size) {
+    window.addEventListener('storage', onStorage)
+    mobileLayout.addEventListener('change', onLayoutChange)
+  }
   listeners.add(listener)
   return () => {
     listeners.delete(listener)
-    if (!listeners.size) window.removeEventListener('storage', onStorage)
+    if (!listeners.size) {
+      window.removeEventListener('storage', onStorage)
+      mobileLayout.removeEventListener('change', onLayoutChange)
+    }
   }
 }

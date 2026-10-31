@@ -3,12 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="only light" />
     <meta name="theme-color" content="#123c34" />
-    <meta name="description" content="Desenhe, organize e edite suas áreas no mapa." />
-    <meta name="apple-mobile-web-app-title" content="Polígonos" />
+    <script>
+      try {
+        let theme = localStorage.getItem('polygon-theme');
+        if (theme === 'dark' || theme === 'dark-soft') {
+          theme = 'dark-black';
+          localStorage.setItem('polygon-theme', theme);
+        }
+        const dark = theme === 'dark-black' || (theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+        const highContrast = localStorage.getItem('polygon-high-contrast') === 'true';
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        document.documentElement.dataset.contrast = highContrast ? 'high' : 'normal';
+        document.querySelector('meta[name="color-scheme"]').content = dark ? 'dark' : 'only light';
+        document.querySelector('meta[name="theme-color"]').content = highContrast ? (dark ? '#000000' : '#ffffff') : (dark ? '#080808' : '#123c34');
+      } catch { /* O tema claro é usado quando o armazenamento está indisponível. */ }
+    </script>
+    <meta name="description" content="Desenhe áreas e marque pontos no mapa." />
+    <meta name="apple-mobile-web-app-title" content="Mapa" />
     <link rel="apple-touch-icon" href="%BASE_URL%icons/apple-touch-icon.png" />
     <link rel="icon" type="image/png" href="%BASE_URL%icons/pwa-192.png" />
-    <title>Polígonos no mapa</title>
+    <title>Mapa</title>
   </head>
   <body>
     <div id="root"></div>

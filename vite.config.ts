@@ -5,6 +5,8 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   base: './',
   preview: { port: 4173, strictPort: true },
+  // Preparar as ferramentas de áreas e pontos evita nova otimização ao editar.
+  optimizeDeps: { include: ['@arcgis/core/views/draw/support/Reshape.js', '@arcgis/core/views/draw/support/GraphicMover.js'] },
   plugins: [
     react(),
     VitePWA({
@@ -12,9 +14,9 @@ export default defineConfig({
       includeAssets: ['icons/apple-touch-icon.png'],
       manifest: {
         id: './',
-        name: 'Polígonos no mapa',
-        short_name: 'Polígonos',
-        description: 'Desenhe, edite e salve polígonos no mapa.',
+        name: 'Mapa',
+        short_name: 'Mapa',
+        description: 'Desenhe, edite e salve áreas e pontos no mapa.',
         lang: 'pt-BR',
         theme_color: '#123c34',
         background_color: '#f4f6f2',

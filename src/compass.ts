@@ -1,3 +1,5 @@
+import { shortcutsEnabled } from './keyboard-settings'
+
 interface CompassOptions {
   getRotation(): number
   setRotation(rotation: number): void
@@ -87,15 +89,13 @@ export function attachCompass(button: HTMLButtonElement, options: CompassOptions
   }, { signal })
 
   button.addEventListener('keydown', (event) => {
+    if (!shortcutsEnabled()) return
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
       event.preventDefault()
       options.stopAnimation()
       const delta = event.key === 'ArrowLeft' ? -15 : 15
       options.setRotation((options.getRotation() + delta + 360) % 360)
       options.onChange()
-    } else if (event.key === 'Home') {
-      event.preventDefault()
-      options.resetNorth()
     }
   }, { signal })
   return () => lifetime.abort()

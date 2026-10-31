@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import '@arcgis/core/assets/esri/themes/light/main.css'
 import './styles.css'
+import './theme-settings'
 import './native-files'
 import { App } from './App'
 
