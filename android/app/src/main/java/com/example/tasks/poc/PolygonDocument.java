@@ -11,7 +11,7 @@ import android.util.JsonToken;
 import java.io.StringReader;
 import java.io.IOException;
 
-/** Contrato versão 1 compartilhado com o Electron, normalizado por lista branca. */
+/** Versão 1 para áreas; versão 2 também aceita pontos. Normalização por lista branca. */
 final class PolygonDocument {
     static final int MAX_BYTES = 10 * 1024 * 1024;
 
@@ -54,21 +54,21 @@ final class PolygonDocument {
     static JSONObject validate(JSONObject value) throws JSONException {
         JSONArray input = value.optJSONArray("polygons");
         Object version = value.opt("version");
-        if (!"poligonos".equals(value.optString("format")) || !(version instanceof Number) || ((Number) version).doubleValue() != 1 || input == null) {
-            throw invalid("Formato inválido. Escolha um JSON exportado pelo aplicativo (versão 1).");
+        if (!"poligonos".equals(value.optString("format")) || !(version instanceof Number) || (((Number) version).doubleValue() != 1 && ((Number) version).doubleValue() != 2) || input == null) {
+            throw invalid("Formato inválido. Escolha um JSON exportado pelo aplicativo (versão 1 ou 2).");
         }
-        if (input.length() < 1 || input.length() > 1000) throw invalid("O arquivo deve conter de 1 a 1.000 polígonos.");
+        if (input.length() < 1 || input.length() > 1000) throw invalid("O arquivo deve conter de 1 a 1.000 áreas ou pontos.");
         JSONArray polygons = new JSONArray();
         int vertices = 0;
         for (int i = 0; i < input.length(); i++) {
             JSONObject polygon = input.optJSONObject(i);
-            String prefix = "Polígono " + (i + 1) + ": ";
+            String prefix = "Elemento " + (i + 1) + ": ";
             if (polygon == null || !(polygon.opt("name") instanceof String)) throw invalid(prefix + "nome inválido.");
             if (polygon.has("locked") && !(polygon.opt("locked") instanceof Boolean)) throw invalid(prefix + "bloqueio inválido.");
             if (polygon.has("color") && (!(polygon.opt("color") instanceof String) || !polygon.getString("color").matches("^#[0-9a-fA-F]{6}$"))) throw invalid(prefix + "cor inválida.");
             String name = Normalizer.normalize(polygon.getString("name"), Normalizer.Form.NFC).trim().replaceAll(" +", " ");
-            if (name.isEmpty() || name.codePointCount(0, name.length()) > 30 || !name.matches("^[\\p{L}\\p{N}][\\p{L}\\p{M}\\p{N} ]*$")) {
-                throw invalid(prefix + "use de 1 a 30 letras, números ou espaços no nome; acentos são permitidos.");
+            if (name.isEmpty() || name.codePointCount(0, name.length()) > 30 || !name.matches("^[\\p{L}\\p{N}][\\p{L}\\p{M}\\p{N} ]*(?: \\([1-9]\\d*\\))?$")) {
+                throw invalid(prefix + "use até 30 caracteres no nome; cópias podem terminar com (1), (2), etc.");
             }
             JSONObject geometry = polygon.optJSONObject("geometry");
             JSONObject sr = geometry == null ? null : geometry.optJSONObject("spatialReference");
@@ -79,6 +79,19 @@ final class PolygonDocument {
                 throw invalid(prefix + "referência espacial não suportada.");
             }
             int wkid = (int) referenceNumber;
+            if (geometry.has("x") || geometry.has("y")) {
+                if (((Number) version).intValue() != 2 || geometry.has("rings")) throw invalid(prefix + "formato de ponto inválido. Use a versão 2 para pontos.");
+                if (!(geometry.opt("x") instanceof Number) || !(geometry.opt("y") instanceof Number)) throw invalid(prefix + "coordenadas inválidas.");
+                double x = geometry.getDouble("x"), y = geometry.getDouble("y");
+                if (!Double.isFinite(x) || !Double.isFinite(y)) throw invalid(prefix + "coordenadas inválidas.");
+                if (wkid == 4326 ? Math.abs(x) > 180 || Math.abs(y) > 90 : Math.abs(x) > 20037509 || Math.abs(y) > 20037509) throw invalid(prefix + "coordenadas fora dos limites da referência espacial.");
+                if (++vertices > 100000) throw invalid("O arquivo excede o limite de 100.000 pontos.");
+                JSONObject output = new JSONObject().put("name", name).put("geometry", new JSONObject().put("x", x).put("y", y).put("spatialReference", new JSONObject().put("wkid", wkid)));
+                if (polygon.optBoolean("locked", false)) output.put("locked", true);
+                if (polygon.has("color")) output.put("color", polygon.getString("color").toLowerCase(java.util.Locale.ROOT));
+                polygons.put(output);
+                continue;
+            }
             JSONArray inputRings = geometry.optJSONArray("rings");
             if (inputRings == null || inputRings.length() == 0) throw invalid(prefix + "desenho ausente.");
             JSONArray rings = new JSONArray();
@@ -121,7 +134,7 @@ final class PolygonDocument {
             if (polygon.has("color")) outputPolygon.put("color", polygon.getString("color").toLowerCase(java.util.Locale.ROOT));
             polygons.put(outputPolygon);
         }
-        return new JSONObject().put("format", "poligonos").put("version", 1).put("polygons", polygons);
+        return new JSONObject().put("format", "poligonos").put("version", ((Number) version).intValue()).put("polygons", polygons);
     }
 
     private static JSONException invalid(String message) { return new JSONException(message); }

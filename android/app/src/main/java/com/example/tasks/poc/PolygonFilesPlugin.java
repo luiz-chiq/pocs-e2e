@@ -96,7 +96,14 @@ public class PolygonFilesPlugin extends Plugin {
     public void exportPolygons(PluginCall call) {
         if (!begin(call)) return;
         try {
-            JSONObject document = PolygonDocument.validate(new JSONObject().put("format", "poligonos").put("version", 1).put("polygons", call.getArray("polygons")));
+            JSArray input = call.getArray("polygons");
+            int version = 1;
+            if (input != null) for (int i = 0; i < input.length(); i++) {
+                JSONObject item = input.optJSONObject(i);
+                JSONObject geometry = item == null ? null : item.optJSONObject("geometry");
+                if (geometry != null && !geometry.has("rings")) version = 2;
+            }
+            JSONObject document = PolygonDocument.validate(new JSONObject().put("format", "poligonos").put("version", version).put("polygons", input));
             exportContent = (document.toString(2) + "\n").getBytes(StandardCharsets.UTF_8);
             exportCount = document.getJSONArray("polygons").length();
             if (exportContent.length > PolygonDocument.MAX_BYTES) throw new JSONException("A exportação excede o limite de 10 MB.");
@@ -123,7 +130,7 @@ public class PolygonFilesPlugin extends Plugin {
                 if ((data.getFlags() & Intent.FLAG_GRANT_WRITE_URI_PERMISSION) == 0 || content == null) throw new SecurityException("Pasta sem acesso de escrita");
                 Uri folder = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree));
                 // Um nome novo preserva arquivos anteriores e evita sobrescrita silenciosa.
-                String name = "poligonos-" + UUID.randomUUID() + ".json";
+                String name = "mapa-" + UUID.randomUUID() + ".json";
                 file = DocumentsContract.createDocument(getContext().getContentResolver(), folder, "application/json", name);
                 if (file == null) throw new java.io.IOException("Não foi possível criar o arquivo");
                 try (OutputStream stream = getContext().getContentResolver().openOutputStream(file, "wt")) {
@@ -146,6 +153,6 @@ public class PolygonFilesPlugin extends Plugin {
         try (Cursor cursor = getContext().getContentResolver().query(uri, new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null)) {
             if (cursor != null && cursor.moveToFirst()) return cursor.getString(0);
         } catch (Exception ignored) { }
-        return "poligonos.json";
+        return "mapa.json";
     }
 }

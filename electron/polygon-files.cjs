@@ -11,23 +11,31 @@ class InvalidFile extends Error {}
 // Normalizar uma lista branca: nunca carregar símbolos, IDs ou propriedades executáveis do arquivo.
 function validateDocument(value) {
   const invalid = (message) => { throw new InvalidFile(message) }
-  if (!value || value.format !== 'poligonos' || value.version !== 1 || !Array.isArray(value.polygons)) {
-    invalid('Formato inválido. Escolha um JSON exportado pelo aplicativo (versão 1).')
+  if (!value || value.format !== 'poligonos' || ![1, 2].includes(value.version) || !Array.isArray(value.polygons)) {
+    invalid('Formato inválido. Escolha um JSON exportado pelo aplicativo (versão 1 ou 2).')
   }
-  if (!value.polygons.length || value.polygons.length > MAX_POLYGONS) invalid('O arquivo deve conter de 1 a 1.000 polígonos.')
+  if (!value.polygons.length || value.polygons.length > MAX_POLYGONS) invalid('O arquivo deve conter de 1 a 1.000 áreas ou pontos.')
   let vertices = 0
   const polygons = value.polygons.map((polygon, index) => {
-    const prefix = `Polígono ${index + 1}: `
+    const prefix = `Elemento ${index + 1}: `
     if (!polygon || typeof polygon.name !== 'string') invalid(prefix + 'nome inválido.')
     if ('locked' in polygon && typeof polygon.locked !== 'boolean') invalid(prefix + 'bloqueio inválido.')
     if ('color' in polygon && (typeof polygon.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(polygon.color))) invalid(prefix + 'cor inválida.')
     const name = polygon.name.normalize('NFC').trim().replace(/ +/g, ' ')
-    if (!name || [...name].length > 30 || !/^[\p{L}\p{N}][\p{L}\p{M}\p{N} ]*$/u.test(name)) {
-      invalid(prefix + 'use de 1 a 30 letras, números ou espaços no nome; acentos são permitidos.')
+    if (!name || [...name].length > 30 || !/^[\p{L}\p{N}][\p{L}\p{M}\p{N} ]*(?: \([1-9]\d*\))?$/u.test(name)) {
+      invalid(prefix + 'use até 30 caracteres no nome; cópias podem terminar com (1), (2), etc.')
     }
     const geometry = polygon.geometry
     const wkid = geometry?.spatialReference?.wkid
     if (![4326, 3857, 102100, 102113].includes(wkid)) invalid(prefix + 'referência espacial não suportada.')
+    if ('x' in geometry || 'y' in geometry) {
+      if (value.version !== 2 || 'rings' in geometry) invalid(prefix + 'formato de ponto inválido. Use a versão 2 para pontos.')
+      const { x, y } = geometry
+      if (typeof x !== 'number' || typeof y !== 'number' || !Number.isFinite(x) || !Number.isFinite(y)) invalid(prefix + 'coordenadas inválidas.')
+      if (wkid === 4326 ? Math.abs(x) > 180 || Math.abs(y) > 90 : Math.abs(x) > 20037509 || Math.abs(y) > 20037509) invalid(prefix + 'coordenadas fora dos limites da referência espacial.')
+      if (++vertices > MAX_VERTICES) invalid('O arquivo excede o limite de 100.000 pontos.')
+      return { name, geometry: { x, y, spatialReference: { wkid } }, ...(polygon.locked === true ? { locked: true } : {}), ...(polygon.color ? { color: polygon.color.toLowerCase() } : {}) }
+    }
     if (!Array.isArray(geometry.rings) || !geometry.rings.length) invalid(prefix + 'desenho ausente.')
     const rings = geometry.rings.map((ring) => {
       if (!Array.isArray(ring) || ring.length < 4) invalid(prefix + 'desenhe pelo menos 3 pontos formando uma área.')
@@ -55,7 +63,7 @@ function validateDocument(value) {
     })
     return { name, geometry: { rings, spatialReference: { wkid } }, ...(polygon.locked === true ? { locked: true } : {}), ...(polygon.color ? { color: polygon.color.toLowerCase() } : {}) }
   })
-  return { format: 'poligonos', version: 1, polygons }
+  return { format: 'poligonos', version: value.version, polygons }
 }
 
 function createPolygonFiles({ dialog, files = fs }) {
@@ -71,7 +79,7 @@ function createPolygonFiles({ dialog, files = fs }) {
   return {
     importPolygons: (parent) => run(async () => {
       const result = await dialog.showOpenDialog(parent, {
-        title: 'Importar polígonos', filters: [{ name: 'Polígonos JSON', extensions: ['json'] }], properties: ['openFile']
+        title: 'Importar áreas e pontos', filters: [{ name: 'Mapa JSON', extensions: ['json'] }], properties: ['openFile']
       })
       if (result.canceled || !result.filePaths.length) return { status: 'cancelled' }
       const file = await files.open(result.filePaths[0], 'r')
@@ -96,12 +104,12 @@ function createPolygonFiles({ dialog, files = fs }) {
       return { status: 'success', polygons: document.polygons, fileName: path.basename(result.filePaths[0]) }
     }),
     exportPolygons: (parent, polygons) => run(async () => {
-      const document = validateDocument({ format: 'poligonos', version: 1, polygons })
+      const document = validateDocument({ format: 'poligonos', version: Array.isArray(polygons) && polygons.some(item => item?.geometry && !item.geometry.rings) ? 2 : 1, polygons })
       const content = JSON.stringify(document, null, 2) + '\n'
       if (Buffer.byteLength(content) > MAX_BYTES) throw new InvalidFile('A exportação excede o limite de 10 MB.')
       const result = await dialog.showSaveDialog(parent, {
-        title: 'Exportar polígonos', defaultPath: 'poligonos.json',
-        filters: [{ name: 'Polígonos JSON', extensions: ['json'] }], properties: ['showOverwriteConfirmation', 'createDirectory']
+        title: 'Exportar áreas e pontos', defaultPath: 'mapa.json',
+        filters: [{ name: 'Mapa JSON', extensions: ['json'] }], properties: ['showOverwriteConfirmation', 'createDirectory']
       })
       if (result.canceled || !result.filePath) return { status: 'cancelled' }
       const temporary = path.join(path.dirname(result.filePath), `.poligonos-${randomUUID()}.tmp`)

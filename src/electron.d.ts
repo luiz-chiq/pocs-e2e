@@ -2,7 +2,10 @@ interface PolygonFileData {
   name: string
   locked?: boolean
   color?: string
-  geometry: { rings: number[][][]; spatialReference: { wkid: number } }
+  geometry: { spatialReference: { wkid: number } } & (
+    | { rings: number[][][]; x?: never; y?: never }
+    | { x: number; y: number; rings?: never }
+  )
 }
 type PolygonFileResult =
   | { status: 'cancelled' }
