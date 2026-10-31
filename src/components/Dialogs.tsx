@@ -1,62 +1,117 @@
-import { useLayoutEffect, useRef, type ReactNode } from 'react'
-import { Download, Pencil, Save, Trash2, X } from 'lucide-react'
-import { useEditorContext } from './EditorContext'
-import { ShortcutSwitch } from './KeyboardShortcuts'
-import type { PwaState } from '../hooks/usePwa'
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { ChevronRight, FolderOpen, MapPin, Pencil, Save, Trash2, VectorPolygon, X } from 'lucide-react'
+import { useEditorContext, useShortcuts } from './EditorContext'
+import { SettingsContent } from './Settings'
 
-function Dialog({ id, title, open, onCancel, children, className }: { id: string; title: string; open: boolean; onCancel(): void; children: ReactNode; className?: string }) {
+function Dialog({ id, title, open, onCancel, children, className, initialFocus = '.dialog-actions button' }: { id: string; title: string; open: boolean; onCancel(): void; children: ReactNode; className?: string; initialFocus?: string }) {
   const ref = useRef<HTMLDialogElement>(null)
+  const { enabled } = useShortcuts()
   useLayoutEffect(() => {
     const dialog = ref.current!
-    if (open && !dialog.open) dialog.showModal()
+    if (open && !dialog.open) {
+      dialog.showModal()
+      if (enabled) {
+        const options = [...dialog.querySelectorAll<HTMLElement>(initialFocus)]
+        const option = options.find(control => !control.matches(':disabled') && !control.closest('[hidden], [inert]') && control.getClientRects().length > 0)
+        option?.focus({ preventScroll: true })
+      }
+    }
     if (!open && dialog.open) dialog.close()
-  }, [open])
-  return <dialog ref={ref} id={id} className={className} aria-labelledby={title} aria-describedby={id === 'keyboard-shortcuts-dialog' ? 'keyboard-shortcuts-description' : id === 'clear-dialog' || id === 'install-dialog' ? `${id}-description` : id.replace(/-dialog$/, '') + '-description'}
+  }, [open, enabled, initialFocus])
+  return <dialog ref={ref} id={id} className={className} data-shortcuts-active={enabled ? '' : undefined} aria-labelledby={title} aria-describedby={id === 'clear-dialog' ? `${id}-description` : id.replace(/-dialog$/, '') + '-description'}
     onCancel={event => { event.preventDefault(); onCancel() }}>{children}</dialog>
 }
-const shortcuts: [string, string][] = [
-  ['N', 'Novo polígono'], ['A', 'Ir para a lista de polígonos'], ['↑ / ↓ / ← / →', 'Navegar na lista ou nos modais'],
-  ['E / Enter', 'Editar a seleção'], ['D', 'Na lista, excluir com confirmação'], ['C', 'Clonar a seleção'], ['L', 'Travar / destravar'],
-  ['Enter', 'Concluir criação ou edição'], ['Esc', 'Sair da edição / limpar seleção'],
-  ['Delete', 'Remover vértices selecionados; sem seleção, confirmar exclusão da área (também Backspace)'],
-  ['1 – 6', 'Cor do polígono'], ['Z / Ctrl/⌘ Z', 'Desfazer'], ['R / Ctrl/⌘ ⇧ Z', 'Refazer (também Ctrl/⌘ Y)'],
-  ['+ / −', 'Aumentar / diminuir zoom'], ['0', 'Retornar o norte para cima'], ['M', 'Separar / reunir mapa']
-]
-export function Dialogs({ pwa, shortcutsOpen, closeShortcuts }: { pwa: PwaState; shortcutsOpen: boolean; closeShortcuts(): void }) {
+export function Dialogs({ settingsOpen, closeSettings }: { settingsOpen: boolean; closeSettings(): void }) {
   const { state, actions } = useEditorContext()
+  const [exportIds, setExportIds] = useState<string[]>([])
+  const [importMode, setImportMode] = useState<'add' | 'replace'>('add')
+  const [deletionScope, setDeletionScope] = useState<'polygon' | 'point' | 'all'>('all')
+  useLayoutEffect(() => { if (state.pendingDeletionId === 'all') setDeletionScope('all') }, [state.pendingDeletionId])
+  useLayoutEffect(() => {
+    if (state.fileDialog === 'export') setExportIds(state.items.map(item => item.id))
+    if (state.fileDialog === 'import') setImportMode('add')
+  }, [state.fileDialog])
+  const polygons = state.items.filter(item => item.kind === 'polygon')
+  const points = state.items.filter(item => item.kind === 'point')
+  const selectedIds = state.items.filter(item => exportIds.includes(item.id)).map(item => item.id)
+  const deletionCount = deletionScope === 'all' ? state.items.length : deletionScope === 'point' ? points.length : polygons.length
+  const replacementCount = (state.pendingImport?.areaCount ? polygons.length : 0) + (state.pendingImport?.pointCount ? points.length : 0)
+  const fileWaiting = state.fileBusy || Boolean(state.action) || (state.mode !== 'main' && !state.connected)
   const all = state.pendingDeletionId === 'all'
+  const deletingPoint = state.pendingDeletionKind === 'point'
+  const draftLabel = state.draftKind === 'point' ? 'ponto' : 'área'
   return <>
-    <Dialog id="clear-dialog" title="clear-dialog-title" open={Boolean(state.pendingDeletionId)} onCancel={() => actions?.dismissDeletion()}>
+    <Dialog id="creation-dialog" title="creation-title" open={state.creationMenuOpen} initialFocus=".creation-type-option" onCancel={() => actions?.dismissCreationMenu()}>
+      <h2 id="creation-title">O que deseja criar?</h2>
+      <p id="creation-description">Escolha o tipo e depois desenhe no mapa.</p>
+      <div className="creation-type-options">
+        <button className="secondary creation-type-option" type="button" onClick={() => actions?.chooseCreationType('polygon')}><VectorPolygon aria-hidden="true" /><span><strong>Área</strong><small>Desenhe um contorno no mapa.</small></span></button>
+        <button className="secondary creation-type-option" type="button" onClick={() => actions?.chooseCreationType('point')}><MapPin aria-hidden="true" /><span><strong>Ponto</strong><small>Marque uma posição no mapa.</small></span></button>
+      </div>
+      <div className="dialog-actions"><button className="secondary" type="button" onClick={() => actions?.dismissCreationMenu()}>Cancelar</button></div>
+    </Dialog>
+    <Dialog id="export-dialog" title="export-title" className="file-dialog" initialFocus=".file-select-all input" open={state.fileDialog === 'export'} onCancel={() => actions?.dismissFileDialog()}>
+      <div className="settings-header"><h2 id="export-title">Exportar áreas e pontos</h2><button className="secondary icon-button" type="button" aria-label="Fechar exportação" disabled={state.fileBusy} onClick={() => actions?.dismissFileDialog()}><X aria-hidden="true" /></button></div>
+      <p id="export-description">Escolha as áreas e os pontos que deseja salvar no arquivo JSON. Nomes, cores e bloqueios serão preservados.</p>
+      <label className="file-select-all"><input type="checkbox" checked={Boolean(state.items.length) && selectedIds.length === state.items.length}
+        ref={input => { if (input) input.indeterminate = selectedIds.length > 0 && selectedIds.length < state.items.length }} disabled={fileWaiting}
+        onChange={event => setExportIds(event.target.checked ? state.items.map(item => item.id) : [])} /><span>Selecionar todos</span><small>{selectedIds.length} de {state.items.length}</small></label>
+      <div className="file-polygon-list" role="group" aria-label="Áreas e pontos para exportar">
+        {(['polygon', 'point'] as const).map(kind => {
+          const items = state.items.filter(item => item.kind === kind)
+          if (!items.length) return null
+          const selected = items.filter(item => exportIds.includes(item.id)).length
+          return <details key={`${state.fileDialog}-${kind}`} className="file-export-group" aria-labelledby={`export-group-${kind}`}>
+            <summary id={`export-group-${kind}`} className="file-export-group-heading"><input aria-label={kind === 'point' ? 'Selecionar todos os pontos' : 'Selecionar todas as áreas'} onClick={event => event.stopPropagation()} type="checkbox" checked={selected === items.length} disabled={fileWaiting}
+              ref={input => { if (input) input.indeterminate = selected > 0 && selected < items.length }}
+              onChange={event => { const checked = event.target.checked; setExportIds(ids => checked ? [...new Set([...ids, ...items.map(item => item.id)])] : ids.filter(id => !items.some(item => item.id === id))) }} />
+              <span>{kind === 'point' ? 'Pontos' : 'Áreas'}</span><small>{selected} de {items.length}</small><ChevronRight aria-hidden="true" /></summary>
+            {items.map(item => <label key={item.id} className="file-polygon-option"><input type="checkbox" checked={exportIds.includes(item.id)} disabled={fileWaiting}
+              onChange={event => setExportIds(ids => event.target.checked ? [...ids, item.id] : ids.filter(id => id !== item.id))} />
+              <span className="file-color-dot" style={{ '--polygon-color': item.color } as CSSProperties} aria-hidden="true" /><span>{item.name}</span><small>{kind === 'point' ? 'Ponto' : `${item.vertexCount} vértices`}</small></label>)}
+          </details>
+        })}
+      </div>
+      {state.feedback && <p className="file-feedback" role="status">{state.feedback}</p>}
+      <div className="dialog-actions"><button className="secondary" type="button" disabled={state.fileBusy} onClick={() => actions?.dismissFileDialog()}>Cancelar</button>
+        <button id="confirm-export" type="button" disabled={fileWaiting || !selectedIds.length} onClick={() => void actions?.exportPolygons(selectedIds)}><Save aria-hidden="true" /><span>{state.fileBusy ? 'Exportando…' : `Exportar (${selectedIds.length})`}</span></button></div>
+    </Dialog>
+    <Dialog id="import-dialog" title="import-title" className="file-dialog" initialFocus=".import-mode-option input[value='add']" open={state.fileDialog === 'import'} onCancel={() => actions?.dismissFileDialog()}>
+      <div className="dialog-symbol" aria-hidden="true"><FolderOpen /></div><h2 id="import-title">Importar áreas e pontos</h2>
+      <p id="import-description">O arquivo <strong>{state.pendingImport?.fileName}</strong> contém {state.pendingImport?.areaCount} área(s) e {state.pendingImport?.pointCount} ponto(s). Como deseja importar?</p>
+      <fieldset className="import-mode-options" disabled={fileWaiting}><legend>Destino das áreas e pontos</legend>
+        <label className="import-mode-option"><input type="radio" name="import-mode" value="add" checked={importMode === 'add'} onChange={() => setImportMode('add')} /><span><strong>Adicionar aos atuais</strong><small>Manter as áreas e pontos atuais e acrescentar os itens do arquivo.</small></span></label>
+        <label className="import-mode-option"><input type="radio" name="import-mode" value="replace" checked={importMode === 'replace'} onChange={() => setImportMode('replace')} /><span><strong>Substituir os atuais</strong><small>Apagar {replacementCount} item(ns) atual(is) dos tipos presentes no arquivo. Tipos ausentes serão preservados.</small></span></label>
+      </fieldset>
+      <p className="file-import-note">Buracos serão preenchidos. Áreas sobrepostas da mesma cor serão fundidas.</p>
+      {state.feedback && <p className="file-feedback" role="status">{state.feedback}</p>}
+      <div className="dialog-actions"><button type="button" className="secondary" disabled={state.fileBusy} onClick={() => actions?.dismissFileDialog()}>Cancelar</button>
+        <button id="confirm-import" type="button" className={importMode === 'replace' ? 'danger' : undefined} disabled={fileWaiting} onClick={() => actions?.confirmImport(importMode)}>{importMode === 'replace' ? 'Substituir e importar' : 'Adicionar itens'}</button></div>
+    </Dialog>
+    <Dialog id="clear-dialog" title="clear-dialog-title" className={all ? 'file-dialog' : undefined} open={Boolean(state.pendingDeletionId)} onCancel={() => actions?.dismissDeletion()}>
       <div className="dialog-symbol is-danger" aria-hidden="true"><Trash2 /></div>
-      <h2 id="clear-dialog-title">{all ? 'Apagar todos os polígonos?' : 'Apagar este polígono?'}</h2>
-      <p id="clear-dialog-description">{all ? 'Essa ação removerá todos os polígonos desenhados no mapa.' : `Essa ação removerá “${state.pendingDeletionName}” do mapa.${state.action === 'update' ? ' Confirmar a exclusão também encerrará a edição.' : ''}`}</p>
-      <div className="dialog-actions"><button id="dismiss-clear" type="button" className="secondary" onClick={() => actions?.dismissDeletion()}>Voltar</button><button id="confirm-clear" type="button" className="danger" onClick={() => actions?.confirmDeletion()}>{all ? 'Apagar todos' : 'Excluir polígono'}</button></div>
+      <h2 id="clear-dialog-title">{all ? 'O que deseja apagar?' : deletingPoint ? 'Apagar este ponto?' : 'Apagar esta área?'}</h2>
+      <p id="clear-dialog-description">{all ? 'Escolha os tipos que deseja remover do mapa. A exclusão só acontece ao confirmar.' : `Essa ação removerá “${state.pendingDeletionName}” do mapa.${state.action === 'update' ? ' Confirmar a exclusão também encerrará a edição.' : ''}`}</p>
+      {all && <fieldset className="import-mode-options"><legend>Itens para excluir</legend>
+        <label className="import-mode-option"><input type="radio" name="deletion-scope" value="all" checked={deletionScope === 'all'} onChange={() => setDeletionScope('all')} /><span><strong>Áreas e pontos</strong><small>{polygons.length} área(s) e {points.length} ponto(s).</small></span></label>
+        <label className="import-mode-option"><input type="radio" name="deletion-scope" value="polygon" checked={deletionScope === 'polygon'} disabled={!polygons.length} onChange={() => setDeletionScope('polygon')} /><span><strong>Somente áreas</strong><small>{polygons.length} área(s). Os pontos serão mantidos.</small></span></label>
+        <label className="import-mode-option"><input type="radio" name="deletion-scope" value="point" checked={deletionScope === 'point'} disabled={!points.length} onChange={() => setDeletionScope('point')} /><span><strong>Somente pontos</strong><small>{points.length} ponto(s). As áreas serão mantidas.</small></span></label>
+      </fieldset>}
+      <div className="dialog-actions"><button id="dismiss-clear" type="button" className="secondary" onClick={() => actions?.dismissDeletion()}>Voltar</button><button id="confirm-clear" type="button" className="danger" disabled={all && !deletionCount} onClick={() => actions?.confirmDeletion(all ? deletionScope : 'all')}>{all ? `Apagar (${deletionCount})` : deletingPoint ? 'Excluir ponto' : 'Excluir área'}</button></div>
     </Dialog>
     <Dialog id="deleted-edit-dialog" title="deleted-edit-title" open={state.confirmingDeletedEdit} onCancel={() => void actions?.cancel()}>
-      <div className="dialog-symbol is-danger" aria-hidden="true"><Trash2 /></div><h2 id="deleted-edit-title">Excluir este polígono?</h2>
-      <p id="deleted-edit-description">O polígono foi apagado durante a edição. Deseja confirmar a exclusão ou cancelar a edição e restaurar o desenho original?</p>
-      <div className="dialog-actions"><button id="restore-deleted-edit" type="button" className="secondary" onClick={() => void actions?.cancel()}>Cancelar edição</button><button id="confirm-deleted-edit" type="button" className="danger" onClick={() => actions?.confirmDeletedEdit()}>Excluir polígono</button></div>
+      <div className="dialog-symbol is-danger" aria-hidden="true"><Trash2 /></div><h2 id="deleted-edit-title">Excluir {draftLabel}?</h2>
+      <p id="deleted-edit-description">Este item foi apagado durante a edição. Deseja confirmar a exclusão ou cancelar a edição e restaurar o desenho original?</p>
+      <div className="dialog-actions"><button id="restore-deleted-edit" type="button" className="secondary" onClick={() => void actions?.cancel()}>Cancelar edição</button><button id="confirm-deleted-edit" type="button" className="danger" onClick={() => actions?.confirmDeletedEdit()}>Excluir {draftLabel}</button></div>
     </Dialog>
     <Dialog id="switch-edit-dialog" title="switch-edit-title" open={Boolean(state.switchTargetName)} onCancel={() => void actions?.resolveSwitch('stay')}>
-      <div className="dialog-symbol" aria-hidden="true"><Pencil /></div><h2 id="switch-edit-title">Trocar de polígono?</h2>
-      <p id="switch-edit-description">Salve ou cancele a edição de “{state.draftName || 'polígono atual'}” antes de abrir “{state.switchTargetName}”.</p>
+      <div className="dialog-symbol" aria-hidden="true"><Pencil /></div><h2 id="switch-edit-title">Trocar de elemento?</h2>
+      <p id="switch-edit-description">Salve ou cancele a edição de “{state.draftName || 'elemento atual'}” antes de abrir “{state.switchTargetName}”.</p>
       <div className="dialog-actions switch-edit-actions"><button id="save-and-switch" type="button" onClick={() => void actions?.resolveSwitch('save')}>Salvar e trocar</button><button id="discard-and-switch" type="button" className="secondary" onClick={() => void actions?.resolveSwitch('discard')}>Cancelar edição e trocar</button><button id="dismiss-switch" type="button" className="secondary" onClick={() => void actions?.resolveSwitch('stay')}>Continuar editando</button></div>
     </Dialog>
-    <Dialog id="unsaved-edit-dialog" title="unsaved-edit-title" open={state.confirmingExit} onCancel={() => void actions?.resolveExit('stay')}>
-      <div className="dialog-symbol" aria-hidden="true"><Save /></div><h2 id="unsaved-edit-title">Salvar alterações antes de sair?</h2>
-      <p id="unsaved-edit-description">Há alterações não salvas neste polígono. Você pode salvar, descartar ou continuar editando.</p>
-      <div className="dialog-actions switch-edit-actions"><button id="save-and-exit" type="button" onClick={() => void actions?.resolveExit('save')}>Salvar e sair</button><button id="discard-and-exit" type="button" className="secondary" onClick={() => void actions?.resolveExit('discard')}>Descartar e sair</button><button id="stay-editing" type="button" className="secondary" onClick={() => void actions?.resolveExit('stay')}>Continuar editando</button></div>
-    </Dialog>
-    <Dialog id="keyboard-shortcuts-dialog" title="keyboard-shortcuts-title" className="keyboard-shortcuts-dialog" open={shortcutsOpen} onCancel={closeShortcuts}>
-      <div className="keyboard-shortcuts-header"><h2 id="keyboard-shortcuts-title">Atalhos de teclado</h2><button id="close-keyboard-shortcuts" className="secondary icon-button" type="button" aria-label="Fechar atalhos de teclado" title="Fechar" onClick={closeShortcuts}><X aria-hidden="true" /></button></div>
-      <div className="keyboard-shortcuts-body"><ShortcutSwitch inDialog /><p id="keyboard-shortcuts-description">Quando habilitados, funcionam fora dos campos de texto. Enter confirma. Esc solicita a saída e permite salvar ou descartar alterações pendentes, também no campo de nome.</p>
-        <dl className="keyboard-shortcuts-list">{shortcuts.map(([key, description], index) => <Shortcut key={index} name={key} description={description} />)}</dl>
-      </div>
-    </Dialog>
-    <Dialog id="install-dialog" title="install-dialog-title" open={Boolean(pwa.description)} onCancel={pwa.close}>
-      <div className="dialog-symbol" aria-hidden="true"><Download /></div><h2 id="install-dialog-title">Instalar Polígonos</h2><p id="install-dialog-description">{pwa.description}</p>
-      <form method="dialog" className="dialog-actions" onSubmit={event => { event.preventDefault(); pwa.close() }}><button type="submit">Entendi</button></form>
+    <Dialog id="settings-dialog" title="settings-title" className="settings-dialog" initialFocus="[role='tab'][aria-selected='true'], .mobile-settings-content input:checked" open={settingsOpen} onCancel={closeSettings}>
+      <div className="settings-header"><div><h2 id="settings-title">Configurações</h2><p id="settings-description">Personalize a aparência e os controles do aplicativo.</p><p id="map-ready" className="settings-map-status" role="status" data-ready={state.ready}>{state.ready ? 'Mapa ativo' : 'Aguardando o mapa'}</p></div><button id="close-settings" className="secondary icon-button" type="button" aria-label="Fechar configurações" title="Fechar" onClick={closeSettings}><X aria-hidden="true" /></button></div>
+      <SettingsContent />
     </Dialog>
   </>
 }
-function Shortcut({ name, description }: { name: string; description: string }) { return <><dt><kbd>{name}</kbd></dt><dd>{description}</dd></> }

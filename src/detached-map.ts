@@ -73,6 +73,10 @@ export class DetachedMap<State, Command> {
 
   focus() { this.popup?.focus() }
 
+  focusMenu() {
+    if (this.isMapWindow && !window.opener?.closed) window.opener?.focus()
+  }
+
   destroy() {
     this.lifetime.abort()
     window.clearInterval(this.monitor)

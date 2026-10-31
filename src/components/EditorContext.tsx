@@ -5,7 +5,7 @@ import { setShortcutsEnabled, shortcutsEnabled, subscribeShortcuts } from '../ke
 export const EditorContext = createContext<{ state: EditorSnapshot; controller: EditorController | null } | null>(null)
 export function useEditorContext() {
   const value = useContext(EditorContext)
-  if (!value) throw new Error('Os controles precisam do editor de polígonos.')
+  if (!value) throw new Error('Os controles precisam do editor de áreas.')
   return { ...value, actions: value.controller?.actions }
 }
 export function useShortcuts() {

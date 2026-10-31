@@ -18,15 +18,15 @@ export function useEditor() {
   useLayoutEffect(() => {
     document.body.classList.toggle('map-window', state.mode === 'map')
     document.body.classList.toggle('map-detached', state.mode === 'detached')
-    document.title = state.mode === 'map' ? 'Mapa — Polígonos' : 'Polígonos no mapa'
+    document.title = 'Mapa'
     return () => { document.body.classList.remove('map-window', 'map-detached') }
   }, [state.mode])
   useLayoutEffect(() => {
     const focus = state.focusRequest
-    if (!focus || document.querySelector('dialog[open]')) return
+    if (!focus || focus.kind === 'lists' || document.querySelector('dialog[open]')) return
     const element = focus.kind === 'name' ? document.querySelector<HTMLInputElement>('#polygon-name')
-      : [...document.querySelectorAll<HTMLElement>('#polygon-list > .pin')]
-        .find(item => item.dataset.polygonId === focus.id)?.querySelector<HTMLElement>('.polygon-label')
+      : [...document.querySelectorAll<HTMLElement>('.polygon-list > .pin')]
+        .find(item => item.dataset.polygonId === focus.id)
     element?.focus({ preventScroll: true })
     if (focus.kind === 'polygon') element?.scrollIntoView({ block: 'nearest' })
   }, [state.focusRequest])

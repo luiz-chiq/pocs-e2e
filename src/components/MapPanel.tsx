@@ -1,29 +1,36 @@
-import { useEffect, useRef, type RefObject } from 'react'
-import { Minus, Plus } from 'lucide-react'
-import { useEditorContext } from './EditorContext'
+import { type RefObject } from 'react'
+import { Capacitor } from '@capacitor/core'
+import { ExternalLink, Focus, Minus, Plus } from 'lucide-react'
+import { useEditorContext, useShortcuts } from './EditorContext'
 import { PolygonActions } from './PolygonActions'
 import { PolygonEditor } from './PolygonEditor'
-export function MapPanel({ mapRef }: { mapRef: RefObject<HTMLDivElement | null> }) {
-  const { state, actions, controller } = useEditorContext()
-  const compass = useRef<HTMLButtonElement>(null)
-  useEffect(() => { if (compass.current && controller) return controller.attachCompass(compass.current) }, [controller])
+import { ShortcutBadge } from './ShortcutBadge'
+import { CompassButton } from './CompassButton'
+export function MapPanel({ mapRef, compact, onMapInteract }: { mapRef: RefObject<HTMLDivElement | null>; compact: boolean; onMapInteract(): void }) {
+  const { state, actions } = useEditorContext()
+  const { enabled } = useShortcuts()
   const waiting = !state.ready || (state.mode === 'map' && !state.connected)
-  return <section className="map-panel" aria-label="Editor de polígonos">
-    <div id="map" ref={mapRef} aria-label="Mapa para desenhar polígonos" />
-    <div id="polygon-map-labels" className="polygon-map-labels" role="group" aria-label="Nomes dos polígonos no mapa">
+  const mapWindow = state.mode === 'map'
+  const canDetach = state.mode === 'main' && !compact && !Capacitor.isNativePlatform() && location.protocol !== 'file:'
+  const windowActionLabel = mapWindow ? 'Focar menu' : 'Separar mapa'
+  return <section className="map-panel" aria-label="Editor de áreas e pontos">
+    <div id="map" ref={mapRef} aria-label="Mapa para desenhar áreas e pontos" onPointerDown={onMapInteract} />
+    <div id="polygon-map-labels" className="polygon-map-labels" role="group" aria-label="Nomes das áreas e pontos no mapa">
       {state.labels.map(label => <span key={label.id} data-polygon-id={label.id} className={`polygon-map-label${label.selected ? ' is-selected' : ''}`} style={{ left: `${label.x}px`, top: `${label.y}px` }} hidden={label.hidden}>{label.name}</span>)}
     </div>
-    <div className="map-controls" aria-label="Ferramentas do mapa"><div className="map-navigation" role="group" aria-label="Navegação do mapa">
-      <button id="zoom-in" className="icon-button secondary" type="button" disabled={waiting || !state.canZoomIn} aria-label="Aumentar zoom" title="Aumentar zoom" onClick={() => void actions?.navigate('zoom-in')}><Plus aria-hidden="true" /></button>
-      <button id="zoom-out" className="icon-button secondary" type="button" disabled={waiting || !state.canZoomOut} aria-label="Diminuir zoom" title="Diminuir zoom" onClick={() => void actions?.navigate('zoom-out')}><Minus aria-hidden="true" /></button>
-      <button ref={compass} id="north-up" className="icon-button secondary compass-button" type="button" disabled={waiting} aria-label="Bússola: arraste para girar ou clique para retornar o norte para cima" title="Arraste para girar; clique para retornar o norte para cima. Use ← e → para girar pelo teclado.">
-        <svg className="compass-dial" viewBox="0 0 24 24" aria-hidden="true"><circle className="compass-ring" cx="12" cy="12" r="10" />
-          <g className="north-indicator" style={{ transform: `rotate(${state.rotation}deg)` }}><path className="compass-north" d="M12 3 16 12H8Z" /><path className="compass-south" d="m12 21-4-9h8Z" /></g><circle className="compass-pivot" cx="12" cy="12" r="1.5" /></svg>
+    <div className="map-controls" aria-label="Ferramentas do mapa"><div className="map-navigation" role="group" aria-label="Navegação e janelas do mapa">
+      <button id="zoom-in" className="icon-button secondary" type="button" disabled={waiting || !state.canZoomIn} aria-label="Aumentar zoom" title="Aumentar zoom" aria-keyshortcuts={enabled ? '+' : undefined} onClick={() => void actions?.navigate('zoom-in')}><Plus aria-hidden="true" /><ShortcutBadge>+</ShortcutBadge></button>
+      <button id="zoom-out" className="icon-button secondary" type="button" disabled={waiting || !state.canZoomOut} aria-label="Diminuir zoom" title="Diminuir zoom" aria-keyshortcuts={enabled ? '-' : undefined} onClick={() => void actions?.navigate('zoom-out')}><Minus aria-hidden="true" /><ShortcutBadge>−</ShortcutBadge></button>
+      {!(compact && state.mode === 'main') && <CompassButton />}
+      <button id={mapWindow ? 'focus-menu' : 'detach-map'} className="icon-button secondary map-window-toggle" type="button"
+        hidden={!mapWindow && !canDetach} disabled={waiting || (!mapWindow && Boolean(state.action))} aria-label={windowActionLabel}
+        title={mapWindow ? 'Trazer a janela do menu para frente' : 'Abrir o mapa em outra janela'} aria-keyshortcuts={enabled && (mapWindow || !state.action) ? 'M' : undefined}
+        onClick={() => mapWindow ? actions?.focusMenu() : actions?.detach()}>
+        {mapWindow ? <Focus aria-hidden="true" /> : <ExternalLink aria-hidden="true" />}<ShortcutBadge>M</ShortcutBadge>
       </button>
     </div></div>
     <div className="map-window-menu" aria-label="Ações do mapa separado" hidden={state.mode !== 'map'}>
       <div className="map-window-actions">{state.mode === 'map' && <><PolygonEditor /><PolygonActions /></>}</div>
     </div>
-    <p id="map-ready" hidden={!state.ready}>Mapa ativo</p>
   </section>
 }

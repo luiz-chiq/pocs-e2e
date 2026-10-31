@@ -1,10 +1,11 @@
-// Uma barra própria permanece visível mesmo quando o sistema oculta barras nativas.
+// O espaço da barra fica reservado; a barra só aparece quando há conteúdo para rolar.
 export function attachSidebarScrollbar(viewport: HTMLElement, track: HTMLElement) {
   const lifetime = new AbortController()
   const signal = lifetime.signal
   const thumb = track.firstElementChild as HTMLElement
   let pointer: number | null = null
   let grabOffset = 0
+  let frame: number | null = null
 
   function update() {
     const height = track.clientHeight
@@ -15,7 +16,14 @@ export function attachSidebarScrollbar(viewport: HTMLElement, track: HTMLElement
     track.setAttribute('aria-valuemax', String(maximum))
     track.setAttribute('aria-valuenow', String(Math.round(viewport.scrollTop)))
     track.setAttribute('aria-disabled', String(maximum === 0))
+    track.setAttribute('aria-hidden', String(maximum === 0))
     track.tabIndex = maximum ? 0 : -1
+    if (!maximum && document.activeElement === track) viewport.focus({ preventScroll: true })
+  }
+
+  function scheduleUpdate() {
+    if (frame !== null) return
+    frame = requestAnimationFrame(() => { frame = null; update() })
   }
 
   function move(clientY: number) {
@@ -49,9 +57,29 @@ export function attachSidebarScrollbar(viewport: HTMLElement, track: HTMLElement
     update()
   }, { signal })
   viewport.addEventListener('scroll', update, { passive: true, signal })
-  const observer = new ResizeObserver(update)
+  const observer = new ResizeObserver(scheduleUpdate)
   observer.observe(viewport)
-  Array.from(viewport.children).forEach((child) => observer.observe(child))
+  observer.observe(track)
+  const children = new Set<Element>()
+  function observeContent() {
+    const current = new Set(viewport.children)
+    for (const child of children) {
+      if (!current.has(child)) { observer.unobserve(child); children.delete(child) }
+    }
+    for (const child of current) {
+      if (!children.has(child)) { observer.observe(child); children.add(child) }
+    }
+    scheduleUpdate()
+  }
+  // Trocas de aba, expansão de cards e avisos podem substituir o conteúdo.
+  const contentObserver = new MutationObserver(observeContent)
+  contentObserver.observe(viewport, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['hidden', 'class', 'style'] })
+  observeContent()
   update()
-  return () => { lifetime.abort(); observer.disconnect() }
+  return () => {
+    lifetime.abort()
+    observer.disconnect()
+    contentObserver.disconnect()
+    if (frame !== null) cancelAnimationFrame(frame)
+  }
 }

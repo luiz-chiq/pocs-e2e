@@ -1,7 +1,8 @@
 import { useLayoutEffect, useRef, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { polygonPalette } from '../polygon-rules'
-import { useEditorContext } from './EditorContext'
+import { useEditorContext, useShortcuts } from './EditorContext'
+import { ShortcutBadge } from './ShortcutBadge'
 
 export function NameEditor() {
   const { state, actions } = useEditorContext()
@@ -28,7 +29,7 @@ export function NameEditor() {
   }, [state.nameHint])
   return <div id="polygon-name-editor" className="polygon-name-editor" ref={editor}>
     <input ref={input} id="polygon-name" type="text" maxLength={30} required autoComplete="off" spellCheck={false}
-      aria-label="Nome do polígono" placeholder="Nome" value={state.draftName} aria-invalid={Boolean(state.nameError)}
+      aria-label={state.draftKind === 'point' ? 'Nome do ponto' : 'Nome da área'} placeholder="Nome" value={state.draftName} aria-invalid={Boolean(state.nameError)}
       aria-describedby={state.nameHint ? 'polygon-name-error' : undefined}
       onChange={event => actions?.rename(event.target.value)} onKeyDown={event => event.stopPropagation()} />
     {createPortal(<div ref={tooltip} id="polygon-name-error" className={`name-tooltip${state.nameError ? ' is-error' : ''}`} role="tooltip" hidden={!state.nameHint}>{state.nameHint}</div>, document.body)}
@@ -36,17 +37,20 @@ export function NameEditor() {
 }
 export function PolygonEditor() {
   const { state, actions } = useEditorContext()
+  const { enabled } = useShortcuts()
   if (!state.action || state.deletedEditId) return null
   return <>
-    <div id="polygon-color-editor" className="polygon-color-editor" role="group" aria-label="Cor do polígono">
+    {state.action === 'create' && <NameEditor />}
+    <div id="polygon-color-editor" className="polygon-color-editor" role="group" aria-label={state.draftKind === 'point' ? 'Cor do ponto' : 'Cor da área'}>
       <span>Cor</span><div id="polygon-color-options" className="polygon-color-options">
-        {polygonPalette.map(([name, color]) => <button key={color} type="button" className="color-swatch" data-color={color}
-          aria-label={name} title={name} aria-pressed={state.draftColor === color} style={{ '--swatch-color': color } as CSSProperties} onClick={() => actions?.chooseColor(color)} />)}
+        {polygonPalette.map(([name, color, shortcut]) => <button key={color} type="button" className="color-swatch" data-color={color}
+          aria-label={name} title={name} aria-pressed={state.draftColor === color} aria-keyshortcuts={enabled ? shortcut : undefined} style={{ '--swatch-color': color } as CSSProperties} onClick={() => actions?.chooseColor(color)}><ShortcutBadge>{shortcut}</ShortcutBadge></button>)}
       </div>
     </div>
-    <label id="polygon-lock-editor" className="polygon-lock-editor">
-      <input id="polygon-locked" type="checkbox" checked={state.draftLocked} onChange={event => actions?.lockDraft(event.target.checked)} />
+    <label id="polygon-lock-editor" className="polygon-lock-editor" title="Para editar novamente, destrave pelo cadeado na lista.">
+      <input id="polygon-locked" type="checkbox" checked={state.draftLocked} aria-keyshortcuts={enabled ? 'T' : undefined} onChange={event => actions?.lockDraft(event.target.checked)} />
       <span>Travar ao salvar<small>Para editar novamente, destrave pelo cadeado na lista.</small></span>
+      <ShortcutBadge>T</ShortcutBadge>
     </label>
     {state.mode === 'map' && state.action === 'update' && <NameEditor />}
   </>

@@ -1,21 +1,23 @@
-import { Check, PanelsTopLeft, Pencil, Plus, Trash2, VectorPolygon, X } from 'lucide-react'
+import { Check, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { useEditorContext, useShortcuts } from './EditorContext'
-export function PolygonActions() {
+import { ShortcutBadge } from './ShortcutBadge'
+export function PolygonActions({ mobile = false }: { mobile?: boolean }) {
   const { state, actions } = useEditorContext()
   const { enabled } = useShortcuts()
   const selected = state.items.find(item => item.id === state.selectedId)
   const waiting = !state.ready || (state.mode !== 'main' && !state.connected)
-  const label = selected ? 'Editar polígono selecionado' : 'Criar um novo polígono'
-  const title = selected?.locked ? 'Destrave o polígono pelo cadeado na lista para editar.' : enabled
-    ? selected ? `${label} (E ou Enter). Esc limpa a seleção; N cria outro polígono.` : `${label} (N)` : label
-  return <div className="polygon-actions" role="group" aria-label="Ações dos polígonos">
-    {state.mode === 'map' ? <button id="return-map" className="secondary" type="button" hidden={Boolean(state.action)} title="Trazer o mapa de volta" onClick={() => actions?.reunite()}><PanelsTopLeft aria-hidden="true" /><span>Reunir telas</span></button> : <button id="clear-polygons" className="clear-all-button danger" type="button" title="Remover todos os polígonos"
-      hidden={Boolean(state.action)} disabled={!state.items.length || (state.mode === 'detached' && !state.connected)} onClick={() => actions?.requestDeletion('all')}><Trash2 aria-hidden="true" />Apagar todos</button>}
-    <button id="draw-polygon" data-mode={selected ? 'edit' : 'create'} className="icon-button add-polygon-button" type="button"
-      title={title} aria-label={label} aria-keyshortcuts={enabled ? selected ? 'E Enter' : 'N' : undefined} hidden={Boolean(state.action)} disabled={waiting || selected?.locked} onClick={() => actions?.draw()}>
-      <VectorPolygon aria-hidden="true" />{selected ? <Pencil aria-hidden="true" /> : <Plus aria-hidden="true" />}<span>{selected ? 'Editar' : 'Criar'}</span>
+  return <div className="polygon-actions" role="group" aria-label="Ações das áreas e pontos">
+    <button id="clear-polygons" className="clear-all-button danger icon-button delete-all-button" type="button" hidden={Boolean(state.action)} disabled={waiting || !state.items.length}
+      aria-label="Apagar áreas, pontos ou ambos" title="Apagar tudo: escolher áreas, pontos ou ambos" onClick={() => actions?.requestDeletion('all')}><Trash2 aria-hidden="true" /></button>
+    <button id="create-feature" className="add-polygon-button" type="button" title={enabled ? 'Criar área ou ponto (N)' : 'Criar área ou ponto'}
+      aria-haspopup="dialog" aria-controls="creation-dialog" aria-keyshortcuts={enabled ? 'N' : undefined} hidden={Boolean(state.action) || (mobile && Boolean(selected))} disabled={waiting} onClick={() => actions?.requestCreationMenu()}>
+      <Plus aria-hidden="true" /><span>Criar</span><ShortcutBadge>N</ShortcutBadge>
     </button>
-    <button id="finish-drawing" type="button" hidden={!state.action} disabled={waiting} title="Concluir a ação atual" onClick={() => actions?.finish()}><Check aria-hidden="true" /><span>Confirmar</span></button>
-    <button id="cancel-editing" className="secondary" type="button" hidden={!state.action} disabled={waiting} title="Cancelar desenho ou edição atual" onClick={() => void actions?.cancel()}><X aria-hidden="true" /><span>Cancelar</span></button>
+    <button id="edit-feature" className={mobile ? 'add-polygon-button' : 'secondary'} type="button" hidden={Boolean(state.action) || !selected} disabled={waiting || selected?.locked}
+      title={selected?.locked ? 'Destrave pelo cadeado na lista para editar.' : 'Editar seleção'} aria-keyshortcuts={enabled ? 'E Enter' : undefined} onClick={() => selected && actions?.edit(selected.id)}>
+      <Pencil aria-hidden="true" /><span>Editar</span><ShortcutBadge>E</ShortcutBadge>
+    </button>
+    <button id="finish-drawing" type="button" hidden={!state.action} disabled={waiting} title="Concluir a ação atual" aria-keyshortcuts={enabled ? 'Enter' : undefined} onClick={() => actions?.finish()}><Check aria-hidden="true" /><span>Confirmar</span><ShortcutBadge>Enter</ShortcutBadge></button>
+    <button id="cancel-editing" className="secondary" type="button" hidden={!state.action} disabled={waiting} title="Sair do desenho ou edição atual" aria-keyshortcuts={enabled ? 'Escape' : undefined} onClick={() => void actions?.requestExit()}><X aria-hidden="true" /><span>Cancelar</span><ShortcutBadge>Esc</ShortcutBadge></button>
   </div>
 }
