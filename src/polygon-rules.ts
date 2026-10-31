@@ -1,15 +1,19 @@
 import type Graphic from '@arcgis/core/Graphic.js'
-import type Polygon from '@arcgis/core/geometry/Polygon.js'
+import Polygon from '@arcgis/core/geometry/Polygon.js'
 import SpatialReference from '@arcgis/core/geometry/SpatialReference.js'
 import { project } from '@arcgis/core/geometry/support/webMercatorUtils.js'
 import * as intersectionOperator from '@arcgis/core/geometry/operators/intersectionOperator.js'
 import * as unionOperator from '@arcgis/core/geometry/operators/unionOperator.js'
 import * as areaOperator from '@arcgis/core/geometry/operators/areaOperator.js'
 import * as equalsOperator from '@arcgis/core/geometry/operators/equalsOperator.js'
+import * as simplifyOperator from '@arcgis/core/geometry/operators/simplifyOperator.js'
+import * as polygonOverlayOperator from '@arcgis/core/geometry/operators/polygonOverlayOperator.js'
 
 export const polygonPalette = [
-  ['Azul', '#1261a0'], ['Verde', '#23845b'], ['Dourado', '#d6a323'],
-  ['Vermelho', '#cf4949'], ['Roxo', '#8756b3'], ['Rosa', '#d65c94']
+  ['Azul', '#1261a0', '1'], ['Verde', '#23845b', '2'], ['Ciano', '#16868c', '3'],
+  ['Vermelho', '#cf4949', '4'], ['Roxo', '#8756b3', '5'], ['Rosa', '#d65c94', '6'],
+  ['Amarelo', '#d6a323', '7'], ['Laranja', '#ed8c2b', '8'],
+  ['Preto', '#000000', '9'], ['Branco', '#ffffff', '0']
 ] as const
 export const defaultPolygonColor = polygonPalette[0][1]
 
@@ -36,6 +40,25 @@ export interface PolygonGroup {
   locked: boolean
 }
 
+export function fillPolygonHoles(polygon: Polygon): Polygon {
+  const simple = simplifyOperator.execute(polygon)
+  if (simple?.type !== 'polygon' || !simple.rings.length) throw new Error('O desenho não forma uma área válida.')
+  // A orientação dos anéis não detecta vazios fechados entre partes que se
+  // tocam em vértices. O overlay também identifica esses buracos implícitos.
+  let filled = simple
+  for (let pass = 0; pass < 2; pass++) {
+    const holes = polygonOverlayOperator.executeMany([filled], { overlaps: false, noOverlaps: false, holes: true }).results
+    if (!holes.length) return filled.clone()
+    const united = unionOperator.executeMany([filled, ...holes])
+    if (united?.type !== 'polygon' || !united.rings.length) throw new Error('Não foi possível preencher os buracos da área.')
+    filled = united
+  }
+  if (polygonOverlayOperator.executeMany([filled], { overlaps: false, noOverlaps: false, holes: true }).results.length) {
+    throw new Error('A área ainda possui buracos e não pode ser salva.')
+  }
+  return filled.clone()
+}
+
 export function cloneGeometryBeside(source: Graphic, graphics: Graphic[]): Polygon | null {
   const reference = new SpatialReference({ wkid: 3857 })
   const original = project(source.geometry, reference)
@@ -56,11 +79,12 @@ export function cloneGeometryBeside(source: Graphic, graphics: Graphic[]): Polyg
 }
 
 // Preparar toda a operação antes de modificar a camada. A união preserva
-// concavidades, buracos e anéis; não é uma caixa ou um contorno aproximado.
+// concavidades e partes externas; os buracos são preenchidos antes e após a união.
 export function groupOverlappingPolygons(graphics: Graphic[], preferred?: Graphic | null): PolygonGroup[] {
   const reference = new SpatialReference({ wkid: 3857 })
   const groups: PolygonGroup[] = graphics.map(graphic => {
-    const geometry = project(graphic.geometry, reference)
+    if (graphic.geometry?.type !== 'polygon') throw new Error('Desenho inválido para fusão.')
+    const geometry = project(fillPolygonHoles(graphic.geometry), reference)
     if (geometry?.type !== 'polygon') throw new Error('Referência espacial não suportada para fusão.')
     const symbolColor = graphic.symbol?.type === 'simple-fill' ? graphic.symbol.outline?.color?.toHex() : undefined
     return {
@@ -77,8 +101,8 @@ export function groupOverlappingPolygons(graphics: Graphic[], preferred?: Graphi
       const intersection = intersectionOperator.execute(group.geometry, other.geometry)
       if (intersection?.type !== 'polygon' || Math.abs(areaOperator.execute(intersection)) === 0) { candidate++; continue }
       const geometry = unionOperator.execute(group.geometry, other.geometry)
-      if (geometry?.type !== 'polygon' || !geometry.rings.length) throw new Error('Não foi possível fundir os polígonos.')
-      group.geometry = geometry
+      if (geometry?.type !== 'polygon' || !geometry.rings.length) throw new Error('Não foi possível fundir as áreas.')
+      group.geometry = fillPolygonHoles(geometry)
       group.members.push(...other.members)
       group.locked ||= other.locked
       if (preferred && other.members.includes(preferred)) group.survivor = preferred
@@ -88,8 +112,7 @@ export function groupOverlappingPolygons(graphics: Graphic[], preferred?: Graphi
     }
   }
   return groups.map(group => {
-    if (group.members.length < 2) return group
-    const original = group.survivor.geometry as Polygon
+    const original = fillPolygonHoles(group.survivor.geometry as Polygon)
     const projected = project(original, reference)!
     // Reimportar a mesma área não deve mudar suas coordenadas por arredondamento.
     group.geometry = equalsOperator.execute(group.geometry, projected)
