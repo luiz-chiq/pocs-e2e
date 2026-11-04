@@ -16,6 +16,7 @@ import type { EditorSnapshot } from './types'
 import { initialEditorSnapshot } from './types'
 import { loadPersistedPolygons, persistPolygons, type SaveStatus } from './storage'
 import { createMapView } from './map-view'
+import { attachPrecision } from './precision'
 import { createFeatureItems } from './feature-items'
 import { attachEditorKeyboard } from './keyboard'
 import { createFileController } from './files'
@@ -65,6 +66,7 @@ export function createEditor(container: HTMLDivElement) {
 
   const { layer, view, sketch } = createMapView(container)
 
+  const disposePrecision = attachPrecision(view, layer, sketch)
   const spatialValidator = createSpatialValidator()
   const featureItems = createFeatureItems()
 
@@ -1286,6 +1288,7 @@ export function createEditor(container: HTMLDivElement) {
       listeners.clear()
       presentation.destroy()
       detachedMap.destroy()
+      disposePrecision()
       sketch.destroy()
       view.destroy()
     }

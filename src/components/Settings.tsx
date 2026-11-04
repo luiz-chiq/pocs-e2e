@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent } from 'react'
 import { Check, ChevronRight, Keyboard, Monitor, Moon, Palette, Settings, Sun } from 'lucide-react'
+import { PrecisionSettings } from './PrecisionSettings'
 import { useEditorContext, useShortcuts } from './EditorContext'
 import { shortcutReference, shortcutBinding, shortcutLabel } from '../shortcuts'
 import { highContrastEnabled, setHighContrast, setThemePreference, subscribeTheme, themePreference, type ThemePreference } from '../theme-settings'
@@ -84,6 +85,7 @@ function ThemeSelector({ compact = false }: { compact?: boolean }) {
     </fieldset>
     <p className={`settings-note${compact ? ' visually-hidden' : ''}`} id="theme-description">No modo Sistema, o tema acompanha a aparência do seu dispositivo.</p>
     <HighContrastSetting />
+    <PrecisionSettings />
   </section>
 }
 

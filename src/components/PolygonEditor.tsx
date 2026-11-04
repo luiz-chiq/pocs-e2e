@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { polygonPalette } from '../polygon-rules'
 import { useEditorContext, useShortcuts } from './EditorContext'
+import { PrecisionSettings } from './PrecisionSettings'
 import { ShortcutBadge } from './ShortcutBadge'
 import { colorShortcutKey, shortcutAriaKeys } from '../shortcuts'
 
@@ -53,6 +54,7 @@ export function PolygonEditor() {
       <span>Travar ao salvar<small>Para editar novamente, destrave pelo cadeado na lista.</small></span>
       <ShortcutBadge command="lock" />
     </label>
+    <PrecisionSettings compact />
     {state.mode === 'map' && state.action === 'update' && <NameEditor />}
   </>
 }
