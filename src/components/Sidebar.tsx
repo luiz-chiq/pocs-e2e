@@ -7,6 +7,7 @@ import { PolygonActions } from './PolygonActions'
 import { useEditorContext, useShortcuts } from './EditorContext'
 import { SettingsButton } from './Settings'
 import { ShortcutBadge } from './ShortcutBadge'
+import { shortcutAriaKeys, shortcutBinding, shortcutLabel } from '../shortcuts'
 import { SpatialValidation } from './SpatialValidation'
 
 const pages = [
@@ -72,21 +73,21 @@ export function Sidebar({ openSettings, mobile, mobileOpen, openMobile, closeMob
     if (target?.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return
     const inTabs = Boolean(target?.closest('.sidebar-tabs'))
     if (!inTabs && !enabled) return
-    if (!working && page !== 'validation' && ['ArrowUp', 'ArrowDown'].includes(event.key) && !target?.closest('.polygon-list') && target?.closest('.sidebar-tabs, .sidebar-panel, #sidebar-scroll-content')) {
+    if (!working && page !== 'validation' && shortcutBinding('listItems', event) && !target?.closest('.polygon-list') && target?.closest('.sidebar-tabs, .sidebar-panel, #sidebar-scroll-content')) {
       event.preventDefault()
       event.stopPropagation()
       setListNavigationActive(true)
       actions?.focusList(page)
       return
     }
-    if (!inTabs && !['ArrowLeft', 'ArrowRight'].includes(event.key)) return
+    if (!inTabs && !shortcutBinding('listTabs', event)) return
     const available = pages.filter(item => !working || item.id === 'validation' || item.id === state.draftKind)
     const index = available.findIndex(item => item.id === page)
     let next: number
-    if (event.key === 'ArrowRight') next = (index + 1) % available.length
-    else if (event.key === 'ArrowLeft') next = (index + available.length - 1) % available.length
-    else if (event.key === 'Home') next = 0
-    else if (event.key === 'End') next = available.length - 1
+    const direction = shortcutBinding('listTabs', event)?.step
+    if (direction) next = (index + direction + available.length) % available.length
+    else if (shortcutBinding('firstTab', event)) next = 0
+    else if (shortcutBinding('lastTab', event)) next = available.length - 1
     else return
     event.preventDefault()
     event.stopPropagation()
@@ -99,14 +100,14 @@ export function Sidebar({ openSettings, mobile, mobileOpen, openMobile, closeMob
   const isPoint = page === 'point'
   const EmptyIcon = isPoint ? MapPin : VectorPolygon
   const listTabs = (
-    <div className="sidebar-tabs" role="tablist" hidden={working} aria-label="Listagens: use as setas para a esquerda e direita para trocar de aba" aria-keyshortcuts={enabled && !working ? 'L ArrowLeft ArrowRight' : undefined}>
+    <div className="sidebar-tabs" role="tablist" hidden={working} aria-label={`Listagens: use ${shortcutLabel('listTabs')} para trocar de aba`} aria-keyshortcuts={enabled && !working ? shortcutAriaKeys('focusLists', 'listTabs') : undefined}>
       {pages.map(({ id, label, Icon }) => <button key={id} id={`sidebar-tab-${id}`} type="button" role="tab"
         aria-selected={page === id} aria-controls={`sidebar-panel-${id}`} tabIndex={page === id ? 0 : -1}
-        aria-keyshortcuts={enabled && page === id ? 'L' : undefined}
+        aria-keyshortcuts={enabled && page === id ? shortcutAriaKeys('focusLists') : undefined}
         disabled={working && id !== 'validation' && id !== state.draftKind} onClick={() => changePage(id)}>
-        <Icon aria-hidden="true" /><span>{label}</span><small>{counts[id]}</small><ShortcutBadge available={page === id}>L</ShortcutBadge>
+        <Icon aria-hidden="true" /><span>{label}</span><small>{counts[id]}</small><ShortcutBadge command="focusLists" available={page === id} />
         {page === id && <span className="sidebar-tab-hints" aria-hidden="true" hidden={!enabled || !listNavigationActive}>
-          <ShortcutBadge>←</ShortcutBadge><ShortcutBadge>→</ShortcutBadge>
+          <ShortcutBadge command="listTabs" /><ShortcutBadge command="listTabs" bindingIndex={1} />
         </span>}
       </button>)}
     </div>

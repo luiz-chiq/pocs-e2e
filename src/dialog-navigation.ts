@@ -1,3 +1,5 @@
+import { shortcutBinding } from './shortcuts'
+
 // Navegação dos diálogos permanece disponível mesmo com atalhos globais desligados.
 export function attachDialogNavigation() {
   const lifetime = new AbortController()
@@ -9,19 +11,20 @@ export function attachDialogNavigation() {
           control.getClientRects().length > 0 && getComputedStyle(control).visibility === 'visible')
       if (!controls.length) return
       const index = controls.indexOf(document.activeElement as HTMLElement)
-      if (event.key === 'Tab') {
+      if (shortcutBinding('controlFocus', event)) {
         if (event.shiftKey && index <= 0) { event.preventDefault(); controls.at(-1)!.focus() }
         else if (!event.shiftKey && (index === -1 || index === controls.length - 1)) { event.preventDefault(); controls[0].focus() }
         return
       }
-      if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return
+      const navigation = shortcutBinding('dialogNavigation', event)
+      if (!navigation) return
       if (matchMedia('(max-width: 720px)').matches) return
       // Respeitar o cursor de texto e os controles que já usam setas nativamente.
       const target = event.target instanceof Element ? event.target : null
       if (target?.closest('[role="tablist"], textarea, select, [contenteditable]:not([contenteditable="false"]), input:not([type="checkbox"]):not([type="button"]):not([type="submit"])')) return
       event.preventDefault()
       event.stopPropagation()
-      const direction = event.key === 'ArrowUp' || event.key === 'ArrowLeft' ? -1 : 1
+      const direction = navigation.step!
       const next = index < 0 ? (direction === 1 ? 0 : controls.length - 1) : (index + direction + controls.length) % controls.length
       controls[next].focus()
     }, { signal: lifetime.signal })

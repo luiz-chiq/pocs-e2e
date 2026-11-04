@@ -1,6 +1,7 @@
 import type Graphic from '@arcgis/core/Graphic.js'
 import { shortcutsEnabled } from '../keyboard-settings'
-import { polygonPalette } from '../polygon-rules'
+import { shortcutBinding, isSketchShortcut, shortcutKey } from '../shortcuts'
+import type { ShortcutId } from '../shortcuts'
 import type { EditorSnapshot } from './types'
 
 interface KeyboardHost {
@@ -40,15 +41,15 @@ export function attachEditorKeyboard(host: KeyboardHost, signal: AbortSignal) {
     if (target?.closest('dialog') || event.isComposing) return
     const control = target?.closest('button, a, summary, input, textarea, select, [contenteditable]:not([contenteditable="false"])')
     const textControl = target?.closest('input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]), textarea, select, [contenteditable]:not([contenteditable="false"])')
-    const key = event.key.toLowerCase()
+    const matches = (id: ShortcutId) => shortcutBinding(id, event)
     const modified = event.ctrlKey || event.metaKey || event.altKey
     const listItem = target?.closest<HTMLElement>('.polygon-list > .pin')
     const listGraphic = findGraphic(listItem?.dataset.polygonId ?? null)
-    if (shortcutsEnabled() && !modified && !textControl && activeAction === null && listGraphic && ['ArrowUp', 'ArrowDown'].includes(event.key)) {
+    if (shortcutsEnabled() && !modified && !textControl && activeAction === null && listGraphic && matches('listItems')) {
       event.preventDefault()
       event.stopImmediatePropagation()
       const graphics = orderedGraphics().filter(item => item.geometry?.type === listGraphic.geometry?.type)
-      const direction = event.key === 'ArrowUp' ? -1 : 1
+      const direction = matches('listItems')!.step!
       focusPolygonList(graphics[(graphics.indexOf(listGraphic) + direction + graphics.length) % graphics.length])
       return
     }
@@ -56,31 +57,31 @@ export function attachEditorKeyboard(host: KeyboardHost, signal: AbortSignal) {
       // Desligar também os atalhos do SDK no canvas; Tab e ativação de botões
       // continuam disponíveis como navegação acessível, assim como a edição de texto.
       const nativeControl = target?.closest('button, a, summary, input, textarea, select, [role="button"], [contenteditable]:not([contenteditable="false"])')
-      const sdkShortcut = key === 'delete' || key === 'backspace' || (!modified && ['enter', 'escape', 'z', 'r', 'f', '+', '=', '-', '0', 'h'].includes(key))
-      const historyShortcut = (event.ctrlKey || event.metaKey) && activeAction && (key === 'z' || key === 'y')
-      if (!nativeControl && (sdkShortcut || historyShortcut || (matchMedia('(max-width: 720px)').matches && event.key !== 'Tab'))) {
+      const sdkShortcut = isSketchShortcut(event) || (!modified && event.key.toLowerCase() === 'f')
+      const historyShortcut = (event.ctrlKey || event.metaKey) && activeAction && (matches('undo') || matches('redo'))
+      if (!nativeControl && (sdkShortcut || historyShortcut || (matchMedia('(max-width: 720px)').matches && event.key !== shortcutKey('controlFocus')))) {
         event.preventDefault()
         event.stopImmediatePropagation()
       }
       return
     }
     const deletionTarget = activeGraphic ?? selectedGraphic
-    if ((event.key === 'Delete' || event.key === 'Backspace') && !textControl && activeAction !== 'create' && deletionTarget && !host.hasSelectedVertices()) {
+    if (matches('remove') && !textControl && activeAction !== 'create' && deletionTarget && !host.hasSelectedVertices()) {
       event.preventDefault()
       // Interceptar antes do SDK remover o desenho ou os vértices selecionados.
       event.stopImmediatePropagation()
       if (!event.repeat) requestDeletion(deletionTarget)
       return
     }
-    if (!textControl && !event.altKey && (event.ctrlKey || event.metaKey) && (key === 'z' || key === 'y')) {
+    if (!textControl && (event.ctrlKey || event.metaKey) && (matches('undo') || matches('redo'))) {
       if (!activeAction) return
       event.preventDefault()
       event.stopImmediatePropagation()
-      if (!event.repeat) changeHistory(key === 'y' || event.shiftKey ? 'redo' : 'undo')
+      if (!event.repeat) changeHistory(matches('redo') ? 'redo' : 'undo')
       return
     }
     if (modified) return
-    if (!textControl && key === 'l') {
+    if (!textControl && matches('focusLists')) {
       event.preventDefault()
       event.stopImmediatePropagation()
       if (event.repeat || windowMode === 'map') return
@@ -90,45 +91,45 @@ export function attachEditorKeyboard(host: KeyboardHost, signal: AbortSignal) {
       requestFocusLists()
       return
     }
-    const colorOption = polygonPalette.find(([, , shortcut]) => !event.shiftKey && key === shortcut)
+    const colorOption = matches('color')
     if (!textControl && colorOption) {
       event.preventDefault()
       event.stopImmediatePropagation()
-      if (activeAction && !event.repeat && mapInitialized && (windowMode === 'main' || windowConnected)) chooseColor(colorOption[1])
+      if (activeAction && !event.repeat && mapInitialized && (windowMode === 'main' || windowConnected)) chooseColor(colorOption.value!)
       return
     }
-    if (key === 'd' && !textControl && activeAction === null && listGraphic) {
+    if (matches('deleteListItem') && !textControl && activeAction === null && listGraphic) {
       event.preventDefault()
       event.stopImmediatePropagation()
       if (!event.repeat) requestDeletion(listGraphic)
       return
     }
-    if (!textControl && ['n', 'p', 'e', 'c', 't', 'm', 'z', 'r', '+', '=', '-', 'h'].includes(key)) {
+    if (!textControl && (['create', 'createPoint', 'edit', 'clone', 'lock', 'mapWindow', 'undo', 'redo', 'zoomIn', 'zoomOut', 'north'] as const).some(id => matches(id))) {
       event.preventDefault()
       event.stopImmediatePropagation()
       if (event.repeat || !mapInitialized || (windowMode !== 'main' && !windowConnected)) return
-      if (key === 'n' && activeAction === null) {
+      if (matches('create') && activeAction === null) {
         requestCreationMenu()
       }
-      if (key === 'p' && activeAction === null) drawPoint()
-      if (key === 'e' && activeAction === null && (listGraphic ?? selectedGraphic)) void startEditing((listGraphic ?? selectedGraphic)!)
-      if (key === 'c' && activeAction === null && selectedGraphic) clonePolygon(selectedGraphic)
-      if (key === 't') toggleCurrentLock()
-      if (key === 'm') {
+      if (matches('createPoint') && activeAction === null) drawPoint()
+      if (matches('edit') && activeAction === null && (listGraphic ?? selectedGraphic)) void startEditing((listGraphic ?? selectedGraphic)!)
+      if (matches('clone') && activeAction === null && selectedGraphic) clonePolygon(selectedGraphic)
+      if (matches('lock')) toggleCurrentLock()
+      if (matches('mapWindow')) {
         if (windowMode === 'map') host.focusMenu()
         else if (activeAction === null) {
           if (windowMode === 'main') openMapWindow()
           else host.reunite()
         }
       }
-      if ((key === 'z' || key === 'r') && activeAction) changeHistory(key === 'z' ? 'undo' : 'redo')
-      if (key === '+' || key === '=') { if (mapInitialized && canZoomIn) void navigateMap('zoom-in') }
-      if (key === '-') { if (mapInitialized && canZoomOut) void navigateMap('zoom-out') }
-      if (key === 'h' && mapInitialized) void navigateMap('north-up')
+      if ((matches('undo') || matches('redo')) && activeAction) changeHistory(matches('undo') ? 'undo' : 'redo')
+      if (matches('zoomIn')) { if (mapInitialized && canZoomIn) void navigateMap('zoom-in') }
+      if (matches('zoomOut')) { if (mapInitialized && canZoomOut) void navigateMap('zoom-out') }
+      if (matches('north') && mapInitialized) void navigateMap('north-up')
       return
     }
     const checkbox = target instanceof HTMLInputElement && (target.type === 'checkbox' || target.type === 'radio')
-    if (event.key === 'Enter' && (!control || target?.id === 'polygon-name' || checkbox) && (activeAction !== null || (selectedGraphic && !target?.closest('.polygon-label')))) {
+    if (matches('confirm') && (!control || target?.id === 'polygon-name' || checkbox) && (activeAction !== null || (selectedGraphic && !target?.closest('.polygon-label')))) {
       event.preventDefault()
       event.stopPropagation()
       if (event.repeat) return
@@ -138,7 +139,7 @@ export function attachEditorKeyboard(host: KeyboardHost, signal: AbortSignal) {
       }
       host.finish()
     }
-    if (event.key === 'Escape') {
+    if (matches('cancel')) {
       event.preventDefault()
       event.stopImmediatePropagation()
       if (!event.repeat) void requestExit()

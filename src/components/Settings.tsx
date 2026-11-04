@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent } from 'react'
 import { Check, ChevronRight, Keyboard, Monitor, Moon, Palette, Settings, Sun } from 'lucide-react'
 import { useEditorContext, useShortcuts } from './EditorContext'
+import { shortcutReference, shortcutBinding, shortcutLabel } from '../shortcuts'
 import { highContrastEnabled, setHighContrast, setThemePreference, subscribeTheme, themePreference, type ThemePreference } from '../theme-settings'
 
 const themes = [
@@ -18,16 +19,8 @@ function subscribeLayout(listener: () => void) {
   return () => compactLayout.removeEventListener('change', listener)
 }
 function isCompactLayout() { return compactLayout.matches }
-const shortcuts: [string, string][] = [
-  ['L', 'Focar a listagem aberta'], ['← / →', 'Alternar entre Áreas, Pontos e Avisos no menu, fora da criação/edição'], ['P', 'Novo ponto'], ['N', 'Abrir criação e escolher Área ou Ponto'], ['↑ / ↓', 'Trocar a seleção na lista aberta'], ['↑ / ↓ / ← / →', 'Navegar nos modais'],
-  ['E / Enter', 'Editar a seleção'], ['D', 'Na lista, excluir com confirmação'], ['C', 'Clonar a seleção'], ['T', 'Travar / destravar'],
-  ['Enter', 'Concluir criação ou edição'], ['Esc', 'Cancelar e descartar a criação/edição; fora dela, limpar a seleção'],
-  ['Delete', 'Remover vértices selecionados; sem seleção, confirmar exclusão da área ou ponto (também Backspace)'],
-  ['1 – 9 / 0', 'Escolher a cor durante a criação/edição (0 seleciona branco)'], ['Z / Ctrl/⌘ Z', 'Desfazer'], ['R / Ctrl/⌘ ⇧ Z', 'Refazer (também Ctrl/⌘ Y)'],
-  ['+ / −', 'Aumentar / diminuir zoom'], ['H', 'Retornar o norte para cima'], ['← / → na bússola', 'Girar o mapa em passos de 15° com a bússola em foco'], ['M', 'Separar mapa; no mapa separado, focar menu; no menu separado, reunir telas']
-]
-const shortcutColumnSize = Math.ceil(shortcuts.length / 2)
-const shortcutColumns = [shortcuts.slice(0, shortcutColumnSize), shortcuts.slice(shortcutColumnSize)]
+const shortcutColumnSize = Math.ceil(shortcutReference.length / 2)
+const shortcutColumns = [shortcutReference.slice(0, shortcutColumnSize), shortcutReference.slice(shortcutColumnSize)]
 
 export function SettingsContent() {
   const { state } = useEditorContext()
@@ -39,10 +32,10 @@ export function SettingsContent() {
     if (event.altKey || event.ctrlKey || event.metaKey) return
     const index = pages.findIndex(item => item.id === page)
     let next: number
-    if (event.key === 'ArrowDown' || event.key === 'ArrowRight') next = (index + 1) % pages.length
-    else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') next = (index + pages.length - 1) % pages.length
-    else if (event.key === 'Home') next = 0
-    else if (event.key === 'End') next = pages.length - 1
+    const direction = shortcutBinding('dialogNavigation', event)?.step
+    if (direction) next = (index + direction + pages.length) % pages.length
+    else if (shortcutBinding('firstTab', event)) next = 0
+    else if (shortcutBinding('lastTab', event)) next = pages.length - 1
     else return
     event.preventDefault()
     event.stopPropagation()
@@ -109,9 +102,9 @@ function KeyboardSettings() {
   const { enabled, setEnabled } = useShortcuts()
   const reference = <>
     <div className="keyboard-shortcuts-columns">{shortcutColumns.map((column, index) => <dl key={index} className="keyboard-shortcuts-list">
-      {column.map(([key, description]) => <Shortcut key={key} name={key} description={description} />)}
+      {column.map(({ id, label, description }) => <Shortcut key={id} name={label} description={description} />)}
     </dl>)}</div>
-    <p className="settings-note">Os atalhos funcionam fora dos campos de texto. Enter confirma. Esc cancela e descarta as alterações diretamente, também no campo de nome.</p>
+    <p className="settings-note">Os atalhos funcionam fora dos campos de texto. {shortcutLabel('confirm')} confirma. {shortcutLabel('cancel')} cancela e descarta as alterações diretamente, também no campo de nome.</p>
   </>
   return <section aria-labelledby="keyboard-shortcuts-title">
     <div className="settings-page-heading">
@@ -121,7 +114,7 @@ function KeyboardSettings() {
       </div>
       <p id="shortcuts-description">Ativa os comandos e exibe as teclas nos botões correspondentes.</p>
     </div>
-    <h4 className="settings-subheading">Referência rápida<span>{shortcuts.length} atalhos</span></h4>{reference}
+    <h4 className="settings-subheading">Referência rápida<span>{shortcutReference.length} atalhos</span></h4>{reference}
   </section>
 }
 function Shortcut({ name, description }: { name: string; description: string }) { return <><dt><kbd>{name}</kbd></dt><dd>{description}</dd></> }

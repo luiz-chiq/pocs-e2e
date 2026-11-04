@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { polygonPalette } from '../polygon-rules'
 import { useEditorContext, useShortcuts } from './EditorContext'
 import { ShortcutBadge } from './ShortcutBadge'
+import { colorShortcutKey, shortcutAriaKeys } from '../shortcuts'
 
 export function NameEditor() {
   const { state, actions } = useEditorContext()
@@ -43,14 +44,14 @@ export function PolygonEditor() {
     {state.action === 'create' && <NameEditor />}
     <div id="polygon-color-editor" className="polygon-color-editor" role="group" aria-label={state.draftKind === 'point' ? 'Cor do ponto' : 'Cor da área'}>
       <span>Cor</span><div id="polygon-color-options" className="polygon-color-options">
-        {polygonPalette.map(([name, color, shortcut]) => <button key={color} type="button" className="color-swatch" data-color={color}
-          aria-label={name} title={name} aria-pressed={state.draftColor === color} aria-keyshortcuts={enabled ? shortcut : undefined} style={{ '--swatch-color': color } as CSSProperties} onClick={() => actions?.chooseColor(color)}><ShortcutBadge>{shortcut}</ShortcutBadge></button>)}
+        {polygonPalette.map(([name, color], index) => <button key={color} type="button" className="color-swatch" data-color={color}
+          aria-label={name} title={name} aria-pressed={state.draftColor === color} aria-keyshortcuts={enabled ? colorShortcutKey(color) : undefined} style={{ '--swatch-color': color } as CSSProperties} onClick={() => actions?.chooseColor(color)}><ShortcutBadge command="color" bindingIndex={index} /></button>)}
       </div>
     </div>
     <label id="polygon-lock-editor" className="polygon-lock-editor" title="Para editar novamente, destrave pelo cadeado na lista.">
-      <input id="polygon-locked" type="checkbox" checked={state.draftLocked} aria-keyshortcuts={enabled ? 'T' : undefined} onChange={event => actions?.lockDraft(event.target.checked)} />
+      <input id="polygon-locked" type="checkbox" checked={state.draftLocked} aria-keyshortcuts={enabled ? shortcutAriaKeys('lock') : undefined} onChange={event => actions?.lockDraft(event.target.checked)} />
       <span>Travar ao salvar<small>Para editar novamente, destrave pelo cadeado na lista.</small></span>
-      <ShortcutBadge>T</ShortcutBadge>
+      <ShortcutBadge command="lock" />
     </label>
     {state.mode === 'map' && state.action === 'update' && <NameEditor />}
   </>

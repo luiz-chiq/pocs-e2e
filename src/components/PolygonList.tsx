@@ -3,6 +3,7 @@ import { ChevronRight, Copy, Lock, LockOpen, MapPin, Trash2, VectorPolygon } fro
 import { useEditorContext, useShortcuts } from './EditorContext'
 import { NameEditor } from './PolygonEditor'
 import { ShortcutBadge } from './ShortcutBadge'
+import { shortcutAriaKeys, shortcutBinding, shortcutLabel } from '../shortcuts'
 
 export function PolygonList({ kind, compact = false }: { kind: 'polygon' | 'point'; compact?: boolean }) {
   const { state, actions } = useEditorContext()
@@ -35,13 +36,13 @@ export function PolygonList({ kind, compact = false }: { kind: 'polygon' | 'poin
       const navigationShortcuts = cardShortcuts && items.length > 1
       const vertices = <ul className="vertex-list">{item.vertices.map(([x, y], index) => <li key={index}>{item.kind === 'point' ? 'Posição' : `Vértice ${index + 1}`}: <code>{x.toFixed(5)}, {y.toFixed(5)}</code></li>)}</ul>
       return <li key={item.id} data-polygon-id={item.id} className={`pin${state.selectedId === item.id ? ' selected' : ''}`}
-        tabIndex={-1} aria-keyshortcuts={navigationShortcuts ? 'ArrowUp ArrowDown' : undefined}
+        tabIndex={-1} aria-keyshortcuts={navigationShortcuts ? shortcutAriaKeys('listItems') : undefined}
         onKeyDown={event => {
           if (event.target !== event.currentTarget && !(event.target as Element).matches('.polygon-label')) return
-          if (event.key !== 'Enter' && event.key !== ' ') return
+          if (!shortcutBinding('confirm', event) && event.key !== ' ') return
           event.preventDefault(); event.stopPropagation()
           if (event.repeat) return
-          if (enabled && event.key === 'Enter' && !state.action) actions?.edit(item.id)
+          if (enabled && shortcutBinding('confirm', event) && !state.action) actions?.edit(item.id)
           else actions?.select(item.id)
         }}
         hidden={Boolean(state.action) && !editing} onClick={event => {
@@ -51,19 +52,19 @@ export function PolygonList({ kind, compact = false }: { kind: 'polygon' | 'poin
         <button type="button" className="icon-button expand-polygon" hidden={Boolean(state.action)} aria-expanded={expanded}
           aria-label={`${expanded ? 'Ocultar' : 'Mostrar'} ${item.kind === 'point' ? 'coordenadas' : 'vértices'} de ${item.name}`} onClick={() => actions?.expand(item.id)}><ChevronRight aria-hidden="true" /></button>
         {editing && state.mode !== 'map' ? <NameEditor /> : <span className="polygon-label" tabIndex={0} role="button" title={item.name} aria-pressed={state.selectedId === item.id}>{item.name}</span>}
-        {navigationShortcuts && <span className="card-navigation-hints" role="note" aria-label="Use a seta para cima ou para baixo para trocar a área ou ponto selecionado">
-          <ShortcutBadge>↑</ShortcutBadge><ShortcutBadge>↓</ShortcutBadge>
+        {navigationShortcuts && <span className="card-navigation-hints" role="note" aria-label={`Use ${shortcutLabel('listItems')} para trocar a área ou ponto selecionado`}>
+          <ShortcutBadge command="listItems" /><ShortcutBadge command="listItems" bindingIndex={1} />
         </span>}
         <div className="polygon-meta" aria-label={item.kind === 'point' ? 'Ponto' : `Área com ${item.vertexCount} vértices`} title={item.kind === 'point' ? 'Ponto' : `Área com ${item.vertexCount} vértices`}>
           {item.kind === 'point' ? <MapPin aria-hidden="true" /> : <><VectorPolygon aria-hidden="true" /><span>{item.vertexCount}</span></>}
         </div>
-        <button type="button" className="icon-button clone-polygon" aria-label={`Clonar ${item.name}`} title={item.kind === 'point' ? 'Clonar ponto' : 'Clonar área'} aria-keyshortcuts={cardShortcuts ? 'C' : undefined} hidden={Boolean(state.action)} onClick={() => actions?.clone(item.id)}><Copy aria-hidden="true" /><ShortcutBadge available={cardShortcuts}>C</ShortcutBadge></button>
+        <button type="button" className="icon-button clone-polygon" aria-label={`Clonar ${item.name}`} title={item.kind === 'point' ? 'Clonar ponto' : 'Clonar área'} aria-keyshortcuts={cardShortcuts ? shortcutAriaKeys('clone') : undefined} hidden={Boolean(state.action)} onClick={() => actions?.clone(item.id)}><Copy aria-hidden="true" /><ShortcutBadge command="clone" available={cardShortcuts} /></button>
         <button type="button" className="icon-button polygon-lock-button" hidden={Boolean(state.action)} disabled={Boolean(state.action)}
-          aria-label={`${item.locked ? 'Destravar' : 'Travar'} ${item.name}`} title={`${item.locked ? 'Destravar' : 'Travar'} ${item.name}`} aria-pressed={item.locked} aria-keyshortcuts={cardShortcuts ? 'T' : undefined} onClick={() => actions?.toggleLock(item.id)}>
+          aria-label={`${item.locked ? 'Destravar' : 'Travar'} ${item.name}`} title={`${item.locked ? 'Destravar' : 'Travar'} ${item.name}`} aria-pressed={item.locked} aria-keyshortcuts={cardShortcuts ? shortcutAriaKeys('lock') : undefined} onClick={() => actions?.toggleLock(item.id)}>
           {item.locked ? <Lock aria-hidden="true" /> : <LockOpen aria-hidden="true" />}
-          <ShortcutBadge available={cardShortcuts}>T</ShortcutBadge>
+          <ShortcutBadge command="lock" available={cardShortcuts} />
         </button>
-        <button type="button" className="icon-button delete-polygon" hidden={Boolean(state.action)} aria-label={`Excluir ${item.name}`} title={`Excluir ${item.name}`} aria-keyshortcuts={cardShortcuts ? 'D' : undefined} onClick={() => actions?.requestDeletion(item.id)}><Trash2 aria-hidden="true" /><ShortcutBadge available={cardShortcuts}>D</ShortcutBadge></button>
+        <button type="button" className="icon-button delete-polygon" hidden={Boolean(state.action)} aria-label={`Excluir ${item.name}`} title={`Excluir ${item.name}`} aria-keyshortcuts={cardShortcuts ? shortcutAriaKeys('deleteListItem') : undefined} onClick={() => actions?.requestDeletion(item.id)}><Trash2 aria-hidden="true" /><ShortcutBadge command="deleteListItem" available={cardShortcuts} /></button>
         {compact && editing ? <details className="editing-coordinates"><summary>{item.kind === 'point' ? 'Coordenadas' : `Vértices (${item.vertexCount})`}</summary>{vertices}</details> : (expanded || editing) && vertices}
       </li>
     })}

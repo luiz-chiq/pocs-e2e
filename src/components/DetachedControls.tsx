@@ -1,6 +1,7 @@
 import { Focus, PanelsTopLeft } from 'lucide-react'
 import { useEditorContext, useShortcuts } from './EditorContext'
 import { ShortcutBadge } from './ShortcutBadge'
+import { shortcutAriaKeys } from '../shortcuts'
 import { MapStatus } from './MapStatus'
 
 export function DetachedControls() {
@@ -15,7 +16,7 @@ export function DetachedControls() {
         <p className="window-hint">Arraste a janela do mapa para o outro monitor. As ações nas duas telas ficam sincronizadas.</p>
         <div className="detached-actions">
           <button id="focus-map" type="button" className="secondary" onClick={() => actions?.focusMap()}><Focus aria-hidden="true" /><span>Focar mapa</span></button>
-          <button id="reunite-windows" type="button" className="secondary" title="Trazer o mapa de volta" aria-keyshortcuts={enabled ? 'M' : undefined} onClick={() => actions?.reunite()}><PanelsTopLeft aria-hidden="true" /><span>Reunir telas</span><ShortcutBadge>M</ShortcutBadge></button>
+          <button id="reunite-windows" type="button" className="secondary" title="Trazer o mapa de volta" aria-keyshortcuts={enabled ? shortcutAriaKeys('mapWindow') : undefined} onClick={() => actions?.reunite()}><PanelsTopLeft aria-hidden="true" /><span>Reunir telas</span><ShortcutBadge command="mapWindow" /></button>
         </div>
       </div>
     </div>
