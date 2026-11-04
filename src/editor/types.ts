@@ -13,6 +13,7 @@ export interface EditorSnapshot {
   saveMessage: string
   items: FeatureItem[]
   draftKind: FeatureKind
+  focusedValidationId: string | null
   validationIssues: SpatialValidationIssue[]
   pendingDeletionKind: 'polygon' | 'point' | 'all'
   action: 'create' | 'update' | null
@@ -56,7 +57,7 @@ export interface SpatialValidationIssue {
 }
 export const initialEditorSnapshot: EditorSnapshot = {
   saveStatus: 'idle', saveMessage: '',
-  items: [], draftKind: 'polygon', validationIssues: [], pendingDeletionKind: 'all', action: null, creationMenuOpen: false, selectedId: null, expandedId: null, activeId: null, selectedVertexCount: 0,
+  items: [], focusedValidationId: null, draftKind: 'polygon', validationIssues: [], pendingDeletionKind: 'all', action: null, creationMenuOpen: false, selectedId: null, expandedId: null, activeId: null, selectedVertexCount: 0,
   draftName: '', draftColor: '#1261a0', draftLocked: false, nameError: '', nameHint: '',
   mode: 'main', connected: false, ready: false, fileBusy: false, fileDialog: null, pendingImport: null,
   instructions: 'Pronto para desenhar.', lastEdit: 'Nenhuma edição executada.', warning: false, feedback: '', labels: [],

@@ -15,6 +15,7 @@ interface PresentationHost {
     action: EditorSnapshot['action']
     selected: Graphic | null
     active: Graphic | null
+    emphasized: Graphic[]
     draftName: string
   }
   getGraphics(): Graphic[]
@@ -29,7 +30,7 @@ export function createMapPresentation(view: MapView, host: PresentationHost) {
   let disposed = false
   let labels: MapLabel[] = []
   let highlight: { remove(): void } | null = null
-  let highlighted: Graphic | null = null
+  let highlighted: Graphic[] = []
 
   function scheduleLabels() {
     if (frame !== null || disposed) return
@@ -50,7 +51,7 @@ export function createMapPresentation(view: MapView, host: PresentationHost) {
           if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) continue
           labels.push({ id, name: state.action === 'update' && graphic === state.active
             ? normalizePolygonName(state.draftName) || host.name(graphic) : host.name(graphic),
-            x: point.x, y: point.y - (geometry?.type === 'point' ? 19 : 0), selected: graphic === state.selected,
+            x: point.x, y: point.y - (geometry?.type === 'point' ? 19 : 0), selected: graphic === state.selected || state.emphasized.includes(graphic),
             hidden: point.x < 0 || point.y < 0 || point.x > view.width || point.y > view.height })
         }
       }
@@ -60,11 +61,11 @@ export function createMapPresentation(view: MapView, host: PresentationHost) {
 
   function updateSelection() {
     const state = host.getState()
-    const target = state.action === 'update' && state.selected === state.active ? null : state.selected
+    const target = state.emphasized.length ? state.emphasized : state.action === 'update' && state.selected === state.active ? [] : state.selected ? [state.selected] : []
     const layerView = host.getLayerView()
-    if (!layerView || highlighted === target) return
+    if (!layerView || (highlighted.length === target.length && target.every((graphic, index) => graphic === highlighted[index]))) return
     highlight?.remove()
-    highlight = target ? layerView.highlight(target, { name: 'polygon-selection' }) : null
+    highlight = target.length ? layerView.highlight(target, { name: 'polygon-selection' }) : null
     highlighted = target
   }
 

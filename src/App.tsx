@@ -17,6 +17,7 @@ export function App() {
   const compact = useCompactLayout()
   const mobile = compact && state.mode === 'main'
   useLayoutEffect(() => { setMobileMenuOpen(false) }, [state.action, state.activeId])
+  useLayoutEffect(() => { if (state.focusedValidationId) setMobileMenuOpen(false) }, [state.focusedValidationId])
   useEffect(() => attachDialogNavigation(), [])
   function closeSettings() {
     setSettingsOpen(false)

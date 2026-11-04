@@ -37,6 +37,7 @@ export function createEditor(container: HTMLDivElement) {
   let saveMessage = ''
   let saveSequence = 0
   let storageLoaded = false
+  let focusedValidationId: string | null = null
   let validationIssues: EditorSnapshot['validationIssues'] = []
   let draftKind: 'polygon' | 'point' = 'polygon'
   let focusRequest: EditorSnapshot['focusRequest'] = null
@@ -111,7 +112,7 @@ export function createEditor(container: HTMLDivElement) {
 
   const presentation = createMapPresentation(view, {
     getState: () => ({ ready: mapInitialized, mode: windowMode, action: activeAction,
-      selected: selectedGraphic, active: activeGraphic, draftName }),
+      selected: selectedGraphic, active: activeGraphic, emphasized: focusedValidationGraphics(), draftName }),
     getGraphics: orderedGraphics, getLayerView: () => graphicsLayerView,
     name: polygonName, changed: notify
   })
@@ -119,7 +120,7 @@ export function createEditor(container: HTMLDivElement) {
 
   const detachedMap = new DetachedMap<MapState, MapCommand>({
     getState: () => ({
-      saveStatus, saveMessage,
+      saveStatus, saveMessage, focusedValidationId,
       polygons: orderedGraphics().map((graphic) => graphic.toJSON()),
       committed: committedPolygons,
       selectedId: graphicId(selectedGraphic),
@@ -144,6 +145,7 @@ export function createEditor(container: HTMLDivElement) {
     }),
     applyState: applyWindowState,
     executeCommand: (command) => {
+      if (command.type === 'focus-validation') void focusValidation(command.id)
       if (command.type === 'retry-save') retrySave()
       if (command.type === 'open-create') requestCreationMenu()
       if (command.type === 'close-create') dismissCreationMenu()
@@ -421,6 +423,22 @@ export function createEditor(container: HTMLDivElement) {
       activeAction === 'update' ? { id: graphicId(activeGraphic), name: normalizeName(draftName), color: draftColor } : undefined)
   }
 
+  function focusedValidationGraphics() {
+    const issue = validationIssues.find(item => item.id === focusedValidationId)
+    return issue ? [findGraphic(issue.pointId), findGraphic(issue.areaId)].filter((graphic): graphic is Graphic => graphic !== null) : []
+  }
+  async function focusValidation(id: string) {
+    if (activeAction || detachedMap.command({ type: 'focus-validation', id })) return
+    const issue = validationIssues.find(item => item.id === id)
+    if (!issue) return
+    focusedValidationId = id
+    selectedGraphic = null
+    setWarning(false)
+    instructions = issue.message
+    render()
+    try { await view.goTo(focusedValidationGraphics(), { duration: 400 }) } catch { /* Um gesto pode interromper o enquadramento. */ }
+  }
+
   function fillDraftHoles(graphic: Graphic | null) {
     if (graphic?.geometry?.type !== 'polygon') return
     try {
@@ -512,6 +530,7 @@ export function createEditor(container: HTMLDivElement) {
       layer.removeAll()
       state.polygons.forEach((polygon) => layer.add(Graphic.fromJSON(polygon)))
       committedPolygons = state.committed
+      focusedValidationId = state.focusedValidationId
       saveStatus = state.saveStatus
       saveMessage = state.saveMessage
       selectedGraphic = findGraphic(state.selectedId)
@@ -573,6 +592,7 @@ export function createEditor(container: HTMLDivElement) {
   }
 
   function forgetActiveEdit() {
+    focusedValidationId = null
     selectedGraphic = null
     activeGraphic = null
     draftKind = 'polygon'
@@ -830,6 +850,7 @@ export function createEditor(container: HTMLDivElement) {
   }
 
   function selectPolygon(graphic: Graphic) {
+    focusedValidationId = null
     selectedGraphic = graphic
     if (detachedMap.command({ type: 'select', id: graphicId(graphic)! })) { notify(); return }
     if (activeAction === null) {
@@ -845,6 +866,7 @@ export function createEditor(container: HTMLDivElement) {
   function clearSelection() {
     if (activeAction !== null || detachedMap.command({ type: 'deselect' })) return
     selectedGraphic = null
+    focusedValidationId = null
     setWarning(false)
     instructions = 'Seleção limpa. Pronto para desenhar uma nova área.'
     render()
@@ -1208,7 +1230,7 @@ export function createEditor(container: HTMLDivElement) {
     const nameError = validateName(draftName)
     const length = [...draftName.normalize('NFC')].length
     return {
-      saveStatus, saveMessage,
+      saveStatus, saveMessage, focusedValidationId,
       items: featureItems.build(orderedGraphics(), polygonName),
       draftKind, validationIssues, pendingDeletionKind: pendingDeletion === 'all' || !pendingDeletion ? 'all' : pendingDeletion.geometry?.type === 'point' ? 'point' : 'polygon',
       action: activeAction, creationMenuOpen, selectedId: graphicId(selectedGraphic), expandedId: graphicId(expandedGraphic), activeId: graphicId(activeGraphic),
@@ -1232,7 +1254,7 @@ export function createEditor(container: HTMLDivElement) {
     if (graphic) action(graphic)
   }
   const actions = {
-    retrySave, draw, drawPoint, requestCreationMenu, dismissCreationMenu, chooseCreationType, finish, cancel, rename, lockDraft, chooseColor, requestExit, resolveSwitch, deleteSelectedVertices,
+    focusValidation, retrySave, draw, drawPoint, requestCreationMenu, dismissCreationMenu, chooseCreationType, finish, cancel, rename, lockDraft, chooseColor, requestExit, resolveSwitch, deleteSelectedVertices,
     focusList: (kind: 'polygon' | 'point') => {
       const graphic = selectedGraphic?.geometry?.type === kind ? selectedGraphic : orderedGraphics().find(item => item.geometry?.type === kind)
       if (graphic) focusPolygonList(graphic)

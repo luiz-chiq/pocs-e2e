@@ -846,3 +846,9 @@ dialog p { margin: 12px 0 0; color: var(--muted); font-size: .85rem; line-height
 
 .save-warning { pointer-events: auto; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--warning-border); color: var(--warning-ink); }
 .save-warning button { min-height: 36px; margin-top: 8px; padding: 6px 12px; font-size: .72rem; }
+
+.spatial-validation li:has(.validation-focus) { padding: 0; }
+.validation-focus { display: flex; align-items: flex-start; justify-content: flex-start; gap: 10px; width: 100%; padding: 14px; border: 0; border-radius: inherit; background: transparent; color: inherit; text-align: left; font-weight: 400; }
+.validation-focus:hover:not(:disabled) { background: var(--surface-hover); }
+.validation-focus[aria-pressed="true"] { box-shadow: inset 0 0 0 2px currentColor; }
+.validation-focus svg { flex: none; width: 18px; height: 18px; }

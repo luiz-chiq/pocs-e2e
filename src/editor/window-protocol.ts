@@ -8,6 +8,7 @@ export type MapCommand =
   | { type: 'open-create' | 'close-create' | 'retry-save' }
   | { type: 'create-feature'; kind: 'polygon' | 'point' }
   | { type: 'draw-point' }
+  | { type: 'focus-validation'; id: string }
   | { type: 'draw' | 'finish' | 'cancel' | 'deselect' | 'confirm-edit-deletion' }
   | { type: 'select' | 'edit' | 'expand'; id: string }
   | { type: 'clone'; id: string }
@@ -25,6 +26,7 @@ export type MapCommand =
   | { type: 'toggle-lock'; id: string }
   | { type: 'resolve-switch'; choice: 'save' | 'discard' | 'stay' }
 export interface MapState {
+  focusedValidationId: string | null
   saveStatus: SaveStatus
   saveMessage: string
   polygons: PolygonJSON[]
