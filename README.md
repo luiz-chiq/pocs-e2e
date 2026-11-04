@@ -12,6 +12,11 @@ yarn install --frozen-lockfile
 yarn dev
 ```
 
+As dependências diretas usam versões exatas e o projeto registra Yarn 1.22.22.
+Atualize as versões e o lockfile juntos. Ao atualizar o ArcGIS, confira a criação,
+edição e remoção de vértices: a adaptação de alças em `src/sketch-handles.ts`
+usa componentes internos do SDK.
+
 O Vite informa a URL local. O mapa usa Esri World Imagery e não exige configurar
 uma API key. As imagens de satélite dependem de conexão com a internet.
 
