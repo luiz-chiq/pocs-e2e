@@ -80,7 +80,7 @@ export function cloneGeometryBeside(source: Graphic, graphics: Graphic[]): Polyg
 
 // Preparar toda a operação antes de modificar a camada. A união preserva
 // concavidades e partes externas; os buracos são preenchidos antes e após a união.
-export function groupOverlappingPolygons(graphics: Graphic[], preferred?: Graphic | null): PolygonGroup[] {
+export function groupOverlappingPolygons(graphics: Graphic[], preferred?: Graphic | null, colors?: ReadonlyMap<Graphic, string>): PolygonGroup[] {
   const reference = new SpatialReference({ wkid: 3857 })
   const groups: PolygonGroup[] = graphics.map(graphic => {
     if (graphic.geometry?.type !== 'polygon') throw new Error('Desenho inválido para fusão.')
@@ -89,7 +89,7 @@ export function groupOverlappingPolygons(graphics: Graphic[], preferred?: Graphi
     const symbolColor = graphic.symbol?.type === 'simple-fill' ? graphic.symbol.outline?.color?.toHex() : undefined
     return {
       survivor: graphic, members: [graphic], geometry,
-      color: fixedPolygonColor(graphic.attributes?.color ?? symbolColor),
+      color: fixedPolygonColor(colors?.get(graphic) ?? graphic.attributes?.color ?? symbolColor),
       locked: graphic.attributes?.locked === true
     }
   })

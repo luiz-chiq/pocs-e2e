@@ -31,14 +31,14 @@ const definitions = {
   listTabs: { bindings: [{ key: 'ArrowLeft', step: -1 }, { key: 'ArrowRight', step: 1 }], description: 'Alternar entre Áreas, Pontos e Avisos no menu, fora da criação/edição' },
   createPoint: { bindings: [{ key: 'p' }], description: 'Novo ponto' },
   create: { bindings: [{ key: 'n' }], description: 'Abrir criação e escolher Área ou Ponto' },
-  listItems: { bindings: [{ key: 'ArrowUp', step: -1 }, { key: 'ArrowDown', step: 1 }], description: 'Trocar a seleção na lista aberta' },
+  listItems: { bindings: [{ key: 'ArrowUp', step: -1 }, { key: 'ArrowDown', step: 1 }], description: 'Navegar entre os itens da lista aberta' },
   dialogNavigation: { bindings: [{ key: 'ArrowUp', step: -1 }, { key: 'ArrowDown', step: 1 }, { key: 'ArrowLeft', step: -1 }, { key: 'ArrowRight', step: 1 }], description: 'Navegar nos modais' },
-  edit: { bindings: [{ key: 'e' }], aliases: [enterBinding], description: 'Editar a seleção' },
-  deleteListItem: { bindings: [{ key: 'd' }], description: 'Na lista, excluir com confirmação' },
-  clone: { bindings: [{ key: 'c' }], description: 'Clonar a seleção' },
+  edit: { bindings: [{ key: 'e' }], aliases: [enterBinding], description: 'Editar a seleção individual' },
+  deleteListItem: { bindings: [{ key: 'd' }], description: 'Na lista, excluir um item com confirmação, fora da seleção múltipla' },
+  clone: { bindings: [{ key: 'c' }], description: 'Clonar a seleção individual' },
   lock: { bindings: [{ key: 't' }], description: 'Travar / destravar' },
   confirm: { bindings: [enterBinding], description: 'Concluir criação ou edição', sketch: true },
-  cancel: { bindings: [{ key: 'Escape' }], description: 'Cancelar e descartar a criação/edição; fora dela, limpar a seleção', sketch: true },
+  cancel: { bindings: [{ key: 'Escape' }], description: 'Cancelar e descartar a criação/edição; fora dela, limpar a seleção ou sair da seleção múltipla', sketch: true },
   remove: { bindings: [{ key: 'Delete' }, { key: 'Backspace' }], description: 'Remover vértices selecionados; sem seleção, confirmar exclusão da área ou ponto', sketch: true, allowModifiers: true },
   color: { bindings: polygonPalette.map(([, color, key]) => ({ key, value: color, shift: false })), label: '1 – 9 / 0', description: 'Escolher a cor durante a criação/edição (0 seleciona branco)', sketch: true },
   undo: { bindings: [{ key: 'z' }, { key: 'z', primary: true, shift: false }], description: 'Desfazer', sketch: true },
@@ -107,3 +107,5 @@ export const shortcutReference = referenceGroups.map(group => ({
   label: group.ids.map(id => `${shortcutLabel(id)}${definition(id).context ? ` (${definition(id).context})` : ''}`).join(' / '),
   description: group.description ?? definition(group.ids[0]).description
 }))
+
+shortcutReference.push({ id: 'multiSelection', label: 'Shift + clique', description: 'Adicionar ou remover uma área ou ponto da seleção múltipla na lista' })

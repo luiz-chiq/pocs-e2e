@@ -1,3 +1,4 @@
+import { createBatchSelection } from './batch-selection'
 import type { PlaceResult } from '../place-search'
 import { createPlaceFocus } from './place-focus'
 import { hasSelectedVertices, selectedVertexCount, removeSelectedVertices } from '../sketch-handles'
@@ -122,9 +123,16 @@ export function createEditor(container: HTMLDivElement) {
   })
   const { polygonFileOperation, dismissFileDialog, confirmImport, exportPolygons } = files
 
+  const batch = createBatchSelection({
+    layer, unavailable: () => Boolean(activeAction) || projectsBusy || files.busy || !mapInitialized || (windowMode !== 'main' && !windowConnected),
+    send: command => detachedMap.command(command), singleId: () => graphicId(selectedGraphic),
+    resetSingle: () => { selectedGraphic = null; expandedGraphic = null; focusedValidationId = null; placeFocus.set(null) },
+    commit: groups => { if (groups) applyPolygonGroups(groups); else { committedPolygons = orderedGraphics().map(graphic => graphic.toJSON()); void saveCommitted() } },
+    message: (text, warning = false) => { feedback = ''; instructions = text; setWarning(warning) }, changed: render
+  })
   const presentation = createMapPresentation(view, {
     getState: () => ({ ready: mapInitialized, mode: windowMode, action: activeAction,
-      selected: selectedGraphic, active: activeGraphic, emphasized: focusedValidationGraphics(), draftName }),
+      selected: selectedGraphic, active: activeGraphic, emphasized: batch.active ? orderedGraphics().filter(graphic => batch.has(graphicId(graphic)!)) : focusedValidationGraphics(), draftName }),
     getGraphics: orderedGraphics, getLayerView: () => graphicsLayerView,
     name: polygonName, changed: notify
   })
@@ -132,6 +140,7 @@ export function createEditor(container: HTMLDivElement) {
 
   const detachedMap = new DetachedMap<MapState, MapCommand>({
     getState: () => ({
+      multiSelect: batch.active, selectedIds: batch.ids, batchDeletionIds: batch.pending,
       searchLocation: placeFocus.current,
       saveStatus, saveMessage, focusedValidationId,
       activeProjectId: projects.activeId, projects: projects.summaries, projectsBusy, projectsError,
@@ -159,6 +168,14 @@ export function createEditor(container: HTMLDivElement) {
     }),
     applyState: applyWindowState,
     executeCommand: (command) => {
+      if (command.type === 'batch-mode') batch.setMode(command.enabled)
+      if (command.type === 'batch-toggle') batch.toggle(command.id)
+      if (command.type === 'batch-select') batch.selectMany(command.ids, command.checked)
+      if (command.type === 'batch-color') batch.color(command.value)
+      if (command.type === 'batch-lock') batch.lock(command.locked)
+      if (command.type === 'batch-request-delete') batch.requestDeletion()
+      if (command.type === 'batch-dismiss-delete') batch.dismissDeletion()
+      if (command.type === 'batch-confirm-delete') batch.confirmDeletion()
       if (command.type === 'locate-search') void locateSearch(command.result)
       if (command.type === 'clear-search') clearSearch()
       if (command.type === 'open-project') void openProject(command.id)
@@ -314,7 +331,7 @@ export function createEditor(container: HTMLDivElement) {
   }
 
   function toggleLock(graphic: Graphic, fromSidebar = false) {
-    if (activeAction || (windowMode === 'map' && !fromSidebar)) return
+    if (batch.active || activeAction || (windowMode === 'map' && !fromSidebar)) return
     if (detachedMap.command({ type: 'toggle-lock', id: graphicId(graphic)! })) return
     graphic.attributes = { ...graphic.attributes, locked: !isLocked(graphic) }
     setWarning(false)
@@ -326,7 +343,7 @@ export function createEditor(container: HTMLDivElement) {
   }
 
   function clonePolygon(source: Graphic) {
-    if (activeAction || !mapInitialized) return
+    if (activeAction || batch.active || !mapInitialized) return
     if (detachedMap.command({ type: 'clone', id: graphicId(source)! })) return
     const geometry = source.geometry?.type === 'point'
       ? new Point({ x: source.geometry.x + Math.max(view.resolution * 24, 1), y: source.geometry.y, spatialReference: source.geometry.spatialReference })
@@ -451,6 +468,7 @@ export function createEditor(container: HTMLDivElement) {
     const issue = validationIssues.find(item => item.id === id)
     if (!issue) return
     placeFocus.set(null)
+    batch.reset()
     focusedValidationId = id
     selectedGraphic = null
     setWarning(false)
@@ -553,6 +571,7 @@ export function createEditor(container: HTMLDivElement) {
         if (projects.activeId !== state.activeProjectId) projectsDialogOpen = false
         projects.adopt(state.activeProjectId, state.projects, state.committed, state.viewpoint)
       }
+      batch.adopt(state.multiSelect, state.selectedIds, state.batchDeletionIds)
       placeFocus.set(state.searchLocation)
       projectsBusy = state.projectsBusy
       projectsError = state.projectsError
@@ -602,6 +621,7 @@ export function createEditor(container: HTMLDivElement) {
   function setActiveAction(action: 'create' | 'update' | null) { setWarning(false); activeAction = action; notify() }
 
   function requestDeletion(target: Graphic | 'all') {
+    if (batch.active) return
     const id = target === 'all' ? 'all' : graphicId(target)!
     if (detachedMap.command({ type: 'request-deletion', id })) return
     pendingDeletion = target
@@ -649,6 +669,7 @@ export function createEditor(container: HTMLDivElement) {
 
   async function requestExit() {
     if (detachedMap.command({ type: 'request-exit' })) return
+    if (batch.active) { batch.setMode(false); return }
     // Cancelar é uma ação explícita; só a troca de elemento pede confirmação.
     if (activeAction) await cancelActiveAction()
     clearSelection()
@@ -742,6 +763,7 @@ export function createEditor(container: HTMLDivElement) {
       const candidates = [...retained, ...imported]
       // Validar a geometria e preparar todas as fusões antes de remover qualquer área.
       const groups = groupOverlappingPolygons(candidates.filter(graphic => graphic.geometry?.type === 'polygon'))
+      batch.reset()
       layer.removeAll()
       layer.addMany(candidates)
       selectedGraphic = imported[0] ?? null
@@ -807,7 +829,7 @@ export function createEditor(container: HTMLDivElement) {
   }
 
   async function startEditing(graphic: Graphic) {
-    if (projectsBusy) return
+    if (projectsBusy || batch.active) return
     if (switchingEdit) return
     if (detachedMap.command({ type: 'edit', id: graphicId(graphic)! })) return
     if (activeAction === 'create') return
@@ -879,6 +901,7 @@ export function createEditor(container: HTMLDivElement) {
   }
 
   function selectPolygon(graphic: Graphic) {
+    if (batch.active) { batch.toggle(graphicId(graphic)!); return }
     focusedValidationId = null
     selectedGraphic = graphic
     if (detachedMap.command({ type: 'select', id: graphicId(graphic)! })) { notify(); return }
@@ -894,10 +917,11 @@ export function createEditor(container: HTMLDivElement) {
 
   function clearSelection() {
     if (activeAction !== null || detachedMap.command({ type: 'deselect' })) return
+    batch.clear()
     selectedGraphic = null
     focusedValidationId = null
     setWarning(false)
-    instructions = 'Seleção limpa. Pronto para desenhar uma nova área.'
+    instructions = batch.active ? 'Seleção limpa. Marque áreas e pontos nas listas ou no mapa.' : 'Seleção limpa. Pronto para desenhar uma nova área.'
     render()
   }
 
@@ -908,7 +932,7 @@ export function createEditor(container: HTMLDivElement) {
       ?? selectedGraphic?.geometry?.type ?? 'polygon'
     graphic ??= selectedGraphic?.geometry?.type === kind ? selectedGraphic : orderedGraphics().find(item => item.geometry?.type === kind)
     if (activeAction !== null || windowMode === 'map' || (windowMode === 'detached' && !windowConnected) || !graphic) return
-    selectPolygon(graphic)
+    if (!batch.active) selectPolygon(graphic)
     focusPolygonCard(graphicId(graphic))
   }
 
@@ -953,6 +977,7 @@ export function createEditor(container: HTMLDivElement) {
   }
 
   function render() {
+    batch.prune()
     updateSpatialValidation()
     presentation.updateSelection()
     notify()
@@ -961,7 +986,7 @@ export function createEditor(container: HTMLDivElement) {
   }
 
   async function beginDrawing(kind: 'polygon' | 'point' = 'polygon') {
-    if (activeAction !== null || projectsBusy) return
+    if (activeAction !== null || projectsBusy || batch.active) return
     selectedGraphic = null
     draftVertices = []
     draftHistory = [[]]
@@ -991,7 +1016,7 @@ export function createEditor(container: HTMLDivElement) {
     if (!detachedMap.command({ type: 'draw' })) void beginDrawing()
   }
   function requestCreationMenu() {
-    if (projectsBusy || activeAction || !mapInitialized || files.busy || files.dialog || pendingDeletion || (windowMode !== 'main' && !windowConnected)) return
+    if (batch.active || projectsBusy || activeAction || !mapInitialized || files.busy || files.dialog || pendingDeletion || (windowMode !== 'main' && !windowConnected)) return
     if (detachedMap.command({ type: 'open-create' })) return
     creationMenuOpen = true
     publish()
@@ -1196,6 +1221,7 @@ export function createEditor(container: HTMLDivElement) {
     const hits = result.results.filter(item => item.type === 'graphic' && item.graphic.layer === layer)
     const hit = hits.find(item => item.type === 'graphic' && item.graphic.geometry?.type === 'point') ?? hits[0]
     if (hit?.type === 'graphic') {
+      if (batch.active) { batch.toggle(graphicId(hit.graphic)!); return }
       if (isLocked(hit.graphic)) { warnLocked(hit.graphic); return }
       void startEditing(hit.graphic)
     }
@@ -1209,7 +1235,7 @@ export function createEditor(container: HTMLDivElement) {
   }
 
   document.addEventListener('click', event => {
-    if (!selectedGraphic || activeAction || event.button !== 0) return
+    if ((!selectedGraphic && !batch.size) || activeAction || event.button !== 0) return
     const target = event.target instanceof Element ? event.target : null
     if (!target || target.closest('.pin, #map, dialog, button, a, input, textarea, select, label, summary, [role="button"], [role="tab"], [role="scrollbar"]')) return
     clearSelection()
@@ -1279,6 +1305,7 @@ export function createEditor(container: HTMLDivElement) {
     } finally { projectsBusy = false; render(); publish() }
   }
   function activateProject(record: Awaited<ReturnType<typeof projects.open>>) {
+    batch.reset()
     layer.removeAll()
     record.polygons.forEach(polygon => {
       try { const graphic = Graphic.fromJSON(polygon); if (isValidFeature(graphic.geometry)) layer.add(graphic) } catch { /* Preserva no arquivo; ignora geometria inválida na visualização. */ }
@@ -1330,6 +1357,7 @@ export function createEditor(container: HTMLDivElement) {
     const nameError = validateName(draftName)
     const length = [...draftName.normalize('NFC')].length
     return {
+      multiSelect: batch.active, selectedIds: batch.ids, batchDeletionIds: batch.pending,
       searchLocation: placeFocus.current,
       saveStatus, saveMessage, focusedValidationId,
       activeProjectId: projects.activeId, projects: projects.summaries, projectsBusy, projectsError,
@@ -1360,6 +1388,8 @@ export function createEditor(container: HTMLDivElement) {
     requestSearch: () => { if (!activeAction && !projectsBusy) { searchDialogOpen = true; notify() } },
     dismissSearch: () => { searchDialogOpen = false; notify() },
     locateSearch, clearSearch,
+    setMultiSelect: batch.setMode, toggleBatch: batch.toggle, selectBatch: batch.selectMany, colorBatch: batch.color, lockBatch: batch.lock,
+    requestBatchDeletion: batch.requestDeletion, dismissBatchDeletion: batch.dismissDeletion, confirmBatchDeletion: batch.confirmDeletion,
     openProject, createProject, renameProject,
     requestProjects: () => { if (!activeAction) { projectsDialogOpen = true; projectsError = ''; notify() } },
     dismissProjects: () => { if (!projectsBusy) { projectsDialogOpen = false; notify() } },

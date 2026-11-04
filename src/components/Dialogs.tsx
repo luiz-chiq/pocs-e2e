@@ -31,7 +31,7 @@ export function Dialogs({ settingsOpen, closeSettings }: { settingsOpen: boolean
   const [deletionScope, setDeletionScope] = useState<'polygon' | 'point' | 'all'>('all')
   useLayoutEffect(() => { if (state.pendingDeletionId === 'all') setDeletionScope('all') }, [state.pendingDeletionId])
   useLayoutEffect(() => {
-    if (state.fileDialog === 'export') setExportIds(state.items.map(item => item.id))
+    if (state.fileDialog === 'export') setExportIds(state.multiSelect && state.selectedIds.length ? state.selectedIds : state.items.map(item => item.id))
     if (state.fileDialog === 'import') setImportMode('add')
   }, [state.fileDialog])
   const polygons = state.items.filter(item => item.kind === 'polygon')
@@ -40,10 +40,17 @@ export function Dialogs({ settingsOpen, closeSettings }: { settingsOpen: boolean
   const deletionCount = deletionScope === 'all' ? state.items.length : deletionScope === 'point' ? points.length : polygons.length
   const replacementCount = (state.pendingImport?.areaCount ? polygons.length : 0) + (state.pendingImport?.pointCount ? points.length : 0)
   const fileWaiting = state.fileBusy || Boolean(state.action) || (state.mode !== 'main' && !state.connected)
+  const batchDeleting = state.items.filter(item => state.batchDeletionIds?.includes(item.id))
   const all = state.pendingDeletionId === 'all'
   const deletingPoint = state.pendingDeletionKind === 'point'
   const draftLabel = state.draftKind === 'point' ? 'ponto' : 'área'
   return <>
+    <Dialog id="batch-delete-dialog" title="batch-delete-title" className="file-dialog" open={Boolean(state.batchDeletionIds?.length)} onCancel={() => actions?.dismissBatchDeletion()}>
+      <div className="dialog-symbol is-danger" aria-hidden="true"><Trash2 /></div><h2 id="batch-delete-title">Excluir {batchDeleting.length} elemento(s)?</h2>
+      <p id="batch-delete-description">Somente as áreas e os pontos selecionados serão removidos deste projeto. A exclusão acontece ao confirmar.</p>
+      <ul className="batch-delete-list">{batchDeleting.map(item => <li key={item.id}>{item.kind === 'point' ? 'Ponto' : 'Área'} · {item.name}</li>)}</ul>
+      <div className="dialog-actions"><button type="button" className="secondary" onClick={() => actions?.dismissBatchDeletion()}>Cancelar</button><button type="button" className="danger" disabled={!batchDeleting.length} onClick={() => actions?.confirmBatchDeletion()}>Excluir ({batchDeleting.length})</button></div>
+    </Dialog>
     <Dialog id="search-dialog" title="search-title" className="file-dialog search-dialog" initialFocus="#place-query" open={state.searchDialogOpen} onCancel={() => actions?.dismissSearch()}>
       <div className="settings-header"><h2 id="search-title">Buscar no mapa</h2><button type="button" className="secondary icon-button" aria-label="Fechar busca" onClick={() => actions?.dismissSearch()}><X aria-hidden="true" /></button></div>
       <PlaceSearchContent />

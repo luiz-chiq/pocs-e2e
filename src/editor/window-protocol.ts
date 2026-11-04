@@ -7,6 +7,12 @@ import type Viewpoint from '@arcgis/core/Viewpoint.js'
 export type PolygonJSON = ReturnType<Graphic['toJSON']>
 export type DeletionScope = 'polygon' | 'point' | 'all'
 export type MapCommand =
+  | { type: 'batch-mode'; enabled: boolean }
+  | { type: 'batch-toggle'; id: string }
+  | { type: 'batch-select'; ids: string[]; checked: boolean }
+  | { type: 'batch-color'; value: string }
+  | { type: 'batch-lock'; locked: boolean }
+  | { type: 'batch-request-delete' | 'batch-dismiss-delete' | 'batch-confirm-delete' }
   | { type: 'open-create' | 'close-create' | 'retry-save' }
   | { type: 'create-feature'; kind: 'polygon' | 'point' }
   | { type: 'draw-point' }
@@ -33,6 +39,9 @@ export type MapCommand =
   | { type: 'toggle-lock'; id: string }
   | { type: 'resolve-switch'; choice: 'save' | 'discard' | 'stay' }
 export interface MapState {
+  multiSelect: boolean
+  selectedIds: string[]
+  batchDeletionIds: string[] | null
   searchLocation: PlaceResult | null
   activeProjectId: string | null
   projects: ProjectSummary[]

@@ -7,6 +7,7 @@ export function PolygonActions({ mobile = false }: { mobile?: boolean }) {
   const { enabled } = useShortcuts()
   const selected = state.items.find(item => item.id === state.selectedId)
   const waiting = !state.ready || (state.mode !== 'main' && !state.connected)
+  if (state.multiSelect) return <div className="polygon-actions"><button type="button" className="secondary" disabled={waiting || state.projectsBusy || state.fileBusy} onClick={() => actions?.setMultiSelect(false)}><X aria-hidden="true" /><span>Sair da seleção</span></button></div>
   return <div className="polygon-actions" role="group" aria-label="Ações das áreas e pontos">
     <button id="clear-polygons" className="clear-all-button danger icon-button delete-all-button" type="button" hidden={Boolean(state.action)} disabled={waiting || !state.items.length}
       aria-label="Apagar áreas, pontos ou ambos" title="Apagar tudo: escolher áreas, pontos ou ambos" onClick={() => actions?.requestDeletion('all')}><Trash2 aria-hidden="true" /></button>

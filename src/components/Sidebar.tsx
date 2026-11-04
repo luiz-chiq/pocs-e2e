@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { ChevronDown, FolderOpen, MapPin, Save, ShieldCheck, VectorPolygon } from 'lucide-react'
 import { attachSidebarScrollbar } from '../sidebar-scroll'
+import { BatchActions, BatchSelectAll, BatchToggle } from './BatchSelection'
 import { ProjectButton } from './Projects'
 import { PolygonList } from './PolygonList'
 import { PolygonEditor } from './PolygonEditor'
@@ -143,18 +144,20 @@ export function Sidebar({ openSettings, mobile, mobileOpen, openMobile, closeMob
         </section> : <section id={`sidebar-panel-${page}`} className="sidebar-panel" role="tabpanel" aria-labelledby={`sidebar-tab-${page}`} data-feature-kind={page}>
           <div className="collection-toolbar" hidden={working}>
             <h2 className="collection-heading"><span>{isPoint ? 'Pontos criados' : 'Áreas desenhadas'}</span></h2>
-
+            <BatchToggle />
           </div>
           <div id="empty-state" className="empty-state" hidden={working || counts[page] > 0}>
             <span className="empty-symbol" aria-hidden="true"><EmptyIcon /></span><h2>{isPoint ? 'Nenhum ponto criado' : 'Nenhuma área desenhada'}</h2>
             <p>{isPoint ? 'Use Criar e escolha Ponto para marcar uma posição.' : 'Use Criar e escolha Área para desenhar no mapa.'}</p>
           </div>
+          <BatchSelectAll kind={page} />
           <PolygonList kind={page} compact={mobile} />
           <div className="sidebar-editor" hidden={!working || page !== state.draftKind}>{state.mode !== 'map' && <PolygonEditor />}</div>
         </section>}
       </div>
       <div ref={scrollbar} className="sidebar-scrollbar" role="scrollbar" tabIndex={-1} aria-controls="sidebar-scroll-content" aria-label="Rolar menu lateral" aria-orientation="vertical" aria-valuemin={0} aria-valuemax={0} aria-valuenow={0} aria-disabled="true"><div className="sidebar-scrollbar-thumb" /></div>
     </div>
+    <BatchActions />
     {mobile && listTabs}
     {!mobile && <div className="sidebar-actions" aria-label="Ações da aplicação">
       {state.mode !== 'map' && <PolygonActions />}

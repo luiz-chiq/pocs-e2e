@@ -38,6 +38,7 @@ export function createMapPresentation(view: MapView, host: PresentationHost) {
       frame = null
       labels = []
       const state = host.getState()
+      const emphasized = new Set(state.emphasized)
       if (state.ready && view.ready && state.mode !== 'detached') {
         for (const graphic of host.getGraphics()) {
           const id = graphicId(graphic), geometry = graphic.geometry
@@ -51,7 +52,7 @@ export function createMapPresentation(view: MapView, host: PresentationHost) {
           if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) continue
           labels.push({ id, name: state.action === 'update' && graphic === state.active
             ? normalizePolygonName(state.draftName) || host.name(graphic) : host.name(graphic),
-            x: point.x, y: point.y - (geometry?.type === 'point' ? 19 : 0), selected: graphic === state.selected || state.emphasized.includes(graphic),
+            x: point.x, y: point.y - (geometry?.type === 'point' ? 19 : 0), selected: graphic === state.selected || emphasized.has(graphic),
             hidden: point.x < 0 || point.y < 0 || point.x > view.width || point.y > view.height })
         }
       }

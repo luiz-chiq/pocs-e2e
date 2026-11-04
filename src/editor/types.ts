@@ -11,6 +11,9 @@ export interface MapLabel {
   hidden: boolean
 }
 export interface EditorSnapshot {
+  multiSelect: boolean
+  selectedIds: string[]
+  batchDeletionIds: string[] | null
   searchDialogOpen: boolean
   searchLocation: PlaceResult | null
   projects: ProjectSummary[]
@@ -65,6 +68,7 @@ export interface SpatialValidationIssue {
   message: string
 }
 export const initialEditorSnapshot: EditorSnapshot = {
+  multiSelect: false, selectedIds: [], batchDeletionIds: null,
   searchDialogOpen: false, searchLocation: null,
   projects: [], activeProjectId: null, projectsBusy: false, projectsError: '', projectsDialogOpen: false,
   saveStatus: 'idle', saveMessage: '',
