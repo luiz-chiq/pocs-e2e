@@ -1,10 +1,11 @@
+import type { SaveStatus } from './storage'
 import type Graphic from '@arcgis/core/Graphic.js'
 import type Viewpoint from '@arcgis/core/Viewpoint.js'
 
 export type PolygonJSON = ReturnType<Graphic['toJSON']>
 export type DeletionScope = 'polygon' | 'point' | 'all'
 export type MapCommand =
-  | { type: 'open-create' | 'close-create' }
+  | { type: 'open-create' | 'close-create' | 'retry-save' }
   | { type: 'create-feature'; kind: 'polygon' | 'point' }
   | { type: 'draw-point' }
   | { type: 'draw' | 'finish' | 'cancel' | 'deselect' | 'confirm-edit-deletion' }
@@ -24,6 +25,8 @@ export type MapCommand =
   | { type: 'toggle-lock'; id: string }
   | { type: 'resolve-switch'; choice: 'save' | 'discard' | 'stay' }
 export interface MapState {
+  saveStatus: SaveStatus
+  saveMessage: string
   polygons: PolygonJSON[]
   committed: PolygonJSON[]
   selectedId: string | null

@@ -69,6 +69,7 @@ a ponte nativa do Capacitor e o seletor de documentos do Android.
 
 ## Funcionalidades
 
+- Salvar cópias locais versionadas no IndexedDB e localStorage, recuperar a mais recente e avisar quando uma gravação falhar, com opção de tentar novamente.
 - Criar pelo botão único Criar ou pelo atalho N, escolhendo Área ou Ponto no menu. Editar, clonar, excluir e nomear pela lista ou pelo mapa.
 - Trocar diretamente entre elementos quando a edição atual não tiver alterações; se houver mudanças pendentes, escolher entre salvar, descartar ou continuar editando.
 - Limpar a seleção ao concluir ou cancelar uma criação/edição, inclusive com o mapa em janela separada.

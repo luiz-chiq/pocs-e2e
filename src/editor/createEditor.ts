@@ -14,7 +14,7 @@ import { validatePolygonDocument } from '../polygon-document'
 
 import type { EditorSnapshot } from './types'
 import { initialEditorSnapshot } from './types'
-import { loadPersistedPolygons, persistPolygons } from './storage'
+import { loadPersistedPolygons, persistPolygons, type SaveStatus } from './storage'
 import { createMapView } from './map-view'
 import { attachEditorKeyboard } from './keyboard'
 import { createFileController } from './files'
@@ -32,6 +32,10 @@ export function createEditor(container: HTMLDivElement) {
   let instructions = 'Pronto para desenhar.'
   let lastEditText = 'Nenhuma edição executada.'
   let feedback = ''
+  let saveStatus: SaveStatus = 'idle'
+  let saveMessage = ''
+  let saveSequence = 0
+  let storageLoaded = false
   let validationIssues: EditorSnapshot['validationIssues'] = []
   let draftKind: 'polygon' | 'point' = 'polygon'
   let focusRequest: EditorSnapshot['focusRequest'] = null
@@ -53,6 +57,9 @@ export function createEditor(container: HTMLDivElement) {
   }
   function publish() { notify(); detachedMap.publish() }
   function openMapWindow() { feedback = ''; detachedMap.open(); notify() }
+  window.addEventListener('beforeunload', event => {
+    if (storageLoaded && (saveStatus === 'saving' || saveStatus === 'error')) { event.preventDefault(); event.returnValue = '' }
+  }, { signal: lifetime.signal })
 
   const { layer, view, sketch } = createMapView(container)
 
@@ -108,6 +115,7 @@ export function createEditor(container: HTMLDivElement) {
 
   const detachedMap = new DetachedMap<MapState, MapCommand>({
     getState: () => ({
+      saveStatus, saveMessage,
       polygons: orderedGraphics().map((graphic) => graphic.toJSON()),
       committed: committedPolygons,
       selectedId: graphicId(selectedGraphic),
@@ -132,6 +140,7 @@ export function createEditor(container: HTMLDivElement) {
     }),
     applyState: applyWindowState,
     executeCommand: (command) => {
+      if (command.type === 'retry-save') retrySave()
       if (command.type === 'open-create') requestCreationMenu()
       if (command.type === 'close-create') dismissCreationMenu()
       if (command.type === 'create-feature') chooseCreationType(command.kind)
@@ -196,7 +205,7 @@ export function createEditor(container: HTMLDivElement) {
       setActiveAction(null)
       forgetActiveEdit()
       restoreCommittedPolygons()
-      void persistPolygons(committedPolygons)
+      void saveCommitted()
       instructions = 'Mapa reunido à aplicação.'
       notify()
     },
@@ -499,6 +508,8 @@ export function createEditor(container: HTMLDivElement) {
       layer.removeAll()
       state.polygons.forEach((polygon) => layer.add(Graphic.fromJSON(polygon)))
       committedPolygons = state.committed
+      saveStatus = state.saveStatus
+      saveMessage = state.saveMessage
       selectedGraphic = findGraphic(state.selectedId)
       expandedGraphic = findGraphic(state.expandedId)
       activeGraphic = findGraphic(state.activeId)
@@ -637,9 +648,27 @@ export function createEditor(container: HTMLDivElement) {
       graphic.symbol = pointSymbol(polygonColor(graphic))
     }
     committedPolygons = orderedGraphics().map((graphic) => graphic.toJSON())
-    void persistPolygons(committedPolygons)
+    void saveCommitted()
     if (merged) lastEditText = `${merged} área(s) incorporada(s) por fusão de áreas da mesma cor.`
     return merged
+  }
+
+  async function saveCommitted() {
+    const sequence = ++saveSequence
+    saveStatus = 'saving'
+    saveMessage = 'Salvando alterações…'
+    notify()
+    const result = await persistPolygons(committedPolygons)
+    if (disposed || sequence !== saveSequence) return result
+    saveStatus = result.status
+    saveMessage = result.message
+    publish()
+    return result
+  }
+  function retrySave() {
+    if (detachedMap.command({ type: 'retry-save' })) return
+    if (!storageLoaded) { location.reload(); return }
+    void saveCommitted()
   }
 
   function fileFeedback(text: string) { feedback = text; notify() }
@@ -1138,11 +1167,12 @@ export function createEditor(container: HTMLDivElement) {
     graphicsLayerView = await view.whenLayerView(layer) as GraphicsLayerView
     if (disposed) return
     const stored = await loadPersistedPolygons()
+    storageLoaded = true
     if (disposed) return
     committedPolygons = stored.filter((polygon) => {
       try { return isValidFeature(Graphic.fromJSON(polygon).geometry) } catch { return false }
     })
-    if (committedPolygons.length !== stored.length) void persistPolygons(committedPolygons)
+    if (committedPolygons.length !== stored.length) void saveCommitted()
     committedPolygons.forEach((polygon) => layer.add(Graphic.fromJSON(polygon)))
     ensureGraphicIds()
     syncCommittedPolygons()
@@ -1151,7 +1181,11 @@ export function createEditor(container: HTMLDivElement) {
     render()
     detachedMap.start()
   }).catch(() => {
-    if (!disposed) { feedback = 'Não foi possível iniciar o mapa. Recarregue a aplicação para tentar novamente.'; notify() }
+    if (!disposed) {
+      saveStatus = 'error'
+      saveMessage = storageLoaded ? 'Não foi possível iniciar o mapa. Recarregue a aplicação.' : 'Não foi possível recuperar seus dados. Tente novamente antes de editar.'
+      notify()
+    }
   })
   track(watch(() => view.stationary, (stationary) => {
     if (stationary && !applyingWindowState) publish()
@@ -1164,6 +1198,7 @@ export function createEditor(container: HTMLDivElement) {
     const nameError = validateName(draftName)
     const length = [...draftName.normalize('NFC')].length
     return {
+      saveStatus, saveMessage,
       items: orderedGraphics().map(graphic => ({ kind: graphic.geometry?.type === 'point' ? 'point' : 'polygon', id: graphicId(graphic)!, name: polygonName(graphic),
         locked: isLocked(graphic), color: polygonColor(graphic),
         vertices: graphic.geometry?.type === 'point' ? [[graphic.geometry.x, graphic.geometry.y]] : (graphic.geometry as Polygon).rings[0]?.slice(0, -1).map(point => [...point]) ?? [],
@@ -1190,7 +1225,7 @@ export function createEditor(container: HTMLDivElement) {
     if (graphic) action(graphic)
   }
   const actions = {
-    draw, drawPoint, requestCreationMenu, dismissCreationMenu, chooseCreationType, finish, cancel, rename, lockDraft, chooseColor, requestExit, resolveSwitch, deleteSelectedVertices,
+    retrySave, draw, drawPoint, requestCreationMenu, dismissCreationMenu, chooseCreationType, finish, cancel, rename, lockDraft, chooseColor, requestExit, resolveSwitch, deleteSelectedVertices,
     focusList: (kind: 'polygon' | 'point') => {
       const graphic = selectedGraphic?.geometry?.type === kind ? selectedGraphic : orderedGraphics().find(item => item.geometry?.type === kind)
       if (graphic) focusPolygonList(graphic)

@@ -1,3 +1,4 @@
+import type { SaveStatus } from './storage'
 export interface PolygonItem {
   kind: 'polygon' | 'point'
   id: string
@@ -16,6 +17,8 @@ export interface MapLabel {
   hidden: boolean
 }
 export interface EditorSnapshot {
+  saveStatus: SaveStatus
+  saveMessage: string
   items: PolygonItem[]
   draftKind: 'polygon' | 'point'
   validationIssues: SpatialValidationIssue[]
@@ -60,6 +63,7 @@ export interface SpatialValidationIssue {
   message: string
 }
 export const initialEditorSnapshot: EditorSnapshot = {
+  saveStatus: 'idle', saveMessage: '',
   items: [], draftKind: 'polygon', validationIssues: [], pendingDeletionKind: 'all', action: null, creationMenuOpen: false, selectedId: null, expandedId: null, activeId: null, selectedVertexCount: 0,
   draftName: '', draftColor: '#1261a0', draftLocked: false, nameError: '', nameHint: '',
   mode: 'main', connected: false, ready: false, fileBusy: false, fileDialog: null, pendingImport: null,
