@@ -1,13 +1,5 @@
+import type { FeatureItem, FeatureKind } from './feature-model'
 import type { SaveStatus } from './storage'
-export interface PolygonItem {
-  kind: 'polygon' | 'point'
-  id: string
-  name: string
-  locked: boolean
-  color: string
-  vertices: number[][]
-  vertexCount: number
-}
 export interface MapLabel {
   id: string
   name: string
@@ -19,8 +11,8 @@ export interface MapLabel {
 export interface EditorSnapshot {
   saveStatus: SaveStatus
   saveMessage: string
-  items: PolygonItem[]
-  draftKind: 'polygon' | 'point'
+  items: FeatureItem[]
+  draftKind: FeatureKind
   validationIssues: SpatialValidationIssue[]
   pendingDeletionKind: 'polygon' | 'point' | 'all'
   action: 'create' | 'update' | null
