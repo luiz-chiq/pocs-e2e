@@ -866,3 +866,21 @@ dialog p { margin: 12px 0 0; color: var(--muted); font-size: .85rem; line-height
 .area-measurements dd { margin: 0; font-variant-numeric: tabular-nums; }
 .area-measurements small { display: block; margin-top: 3px; color: var(--muted); font-size: .64rem; }
 .area-measurements button { min-height: 32px; padding: 4px 8px; font-size: .65rem; }
+
+.project-switcher { display: flex; flex: none; justify-content: flex-start; gap: 8px; margin: 10px 16px; min-height: 36px; padding: 6px 10px; background: var(--surface); color: var(--ink); border-color: var(--line); text-align: left; font-size: .75rem; }
+.project-switcher:hover:not(:disabled) { background: var(--surface-hover); }
+.project-switcher > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.project-switcher svg { width: 16px; height: 16px; flex: none; }
+.project-create { display: grid; gap: 8px; margin: 20px 0; font-size: .8rem; }
+.project-create > div { display: flex; gap: 8px; }
+.project-create input, .project-rename input { flex: 1; min-width: 0; width: 100%; min-height: 44px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink); }
+.project-list { display: grid; gap: 8px; padding: 0; margin: 0; list-style: none; }
+.project-list > li { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.project-open { display: grid; justify-content: start; flex: 1; min-width: 0; padding: 12px; text-align: left; }
+.project-open strong { overflow-wrap: anywhere; }
+.project-open small { color: var(--muted); font-size: .68rem; font-weight: 400; }
+.project-open[aria-pressed="true"] { border-color: var(--forest); background: var(--selected); }
+.project-rename { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+.project-rename input { flex-basis: 100%; }
+.project-error { color: var(--danger-ink); }
+@media (max-width:720px) { .projects-dialog { max-height: calc(100dvh - 24px); } .project-switcher { margin: 4px 12px 8px; } }

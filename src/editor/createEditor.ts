@@ -14,7 +14,8 @@ import { validatePolygonDocument } from '../polygon-document'
 
 import type { EditorSnapshot } from './types'
 import { initialEditorSnapshot } from './types'
-import { loadPersistedPolygons, persistPolygons, type SaveStatus } from './storage'
+import type { SaveStatus } from './storage'
+import { createProjectStore } from './projects'
 import { createMapView } from './map-view'
 import { attachPrecision } from './precision'
 import { createFeatureItems } from './feature-items'
@@ -38,6 +39,11 @@ export function createEditor(container: HTMLDivElement) {
   let saveMessage = ''
   let saveSequence = 0
   let storageLoaded = false
+  let projectsBusy = false
+  let projectsError = ''
+  let projectsDialogOpen = false
+  let viewSaveTimer: ReturnType<typeof setTimeout> | null = null
+  const projects = createProjectStore(notify)
   let focusedValidationId: string | null = null
   let validationIssues: EditorSnapshot['validationIssues'] = []
   let draftKind: 'polygon' | 'point' = 'polygon'
@@ -123,6 +129,7 @@ export function createEditor(container: HTMLDivElement) {
   const detachedMap = new DetachedMap<MapState, MapCommand>({
     getState: () => ({
       saveStatus, saveMessage, focusedValidationId,
+      activeProjectId: projects.activeId, projects: projects.summaries, projectsBusy, projectsError,
       polygons: orderedGraphics().map((graphic) => graphic.toJSON()),
       committed: committedPolygons,
       selectedId: graphicId(selectedGraphic),
@@ -147,6 +154,9 @@ export function createEditor(container: HTMLDivElement) {
     }),
     applyState: applyWindowState,
     executeCommand: (command) => {
+      if (command.type === 'open-project') void openProject(command.id)
+      if (command.type === 'create-project') void createProject(command.name)
+      if (command.type === 'rename-project') void renameProject(command.id, command.name)
       if (command.type === 'focus-validation') void focusValidation(command.id)
       if (command.type === 'retry-save') retrySave()
       if (command.type === 'open-create') requestCreationMenu()
@@ -531,6 +541,12 @@ export function createEditor(container: HTMLDivElement) {
       sketch.cancel()
       layer.removeAll()
       state.polygons.forEach((polygon) => layer.add(Graphic.fromJSON(polygon)))
+      if (state.activeProjectId) {
+        if (projects.activeId !== state.activeProjectId) projectsDialogOpen = false
+        projects.adopt(state.activeProjectId, state.projects, state.committed, state.viewpoint)
+      }
+      projectsBusy = state.projectsBusy
+      projectsError = state.projectsError
       committedPolygons = state.committed
       focusedValidationId = state.focusedValidationId
       saveStatus = state.saveStatus
@@ -684,7 +700,7 @@ export function createEditor(container: HTMLDivElement) {
     saveStatus = 'saving'
     saveMessage = 'Salvando alterações…'
     notify()
-    const result = await persistPolygons(committedPolygons)
+    const result = await projects.saveActive(committedPolygons, view.viewpoint?.toJSON() ?? null)
     if (disposed || sequence !== saveSequence) return result
     saveStatus = result.status
     saveMessage = result.message
@@ -782,6 +798,7 @@ export function createEditor(container: HTMLDivElement) {
   }
 
   async function startEditing(graphic: Graphic) {
+    if (projectsBusy) return
     if (switchingEdit) return
     if (detachedMap.command({ type: 'edit', id: graphicId(graphic)! })) return
     if (activeAction === 'create') return
@@ -934,7 +951,7 @@ export function createEditor(container: HTMLDivElement) {
   }
 
   async function beginDrawing(kind: 'polygon' | 'point' = 'polygon') {
-    if (activeAction !== null) return
+    if (activeAction !== null || projectsBusy) return
     selectedGraphic = null
     draftVertices = []
     draftHistory = [[]]
@@ -963,7 +980,7 @@ export function createEditor(container: HTMLDivElement) {
     if (!detachedMap.command({ type: 'draw' })) void beginDrawing()
   }
   function requestCreationMenu() {
-    if (activeAction || !mapInitialized || files.busy || files.dialog || pendingDeletion || (windowMode !== 'main' && !windowConnected)) return
+    if (projectsBusy || activeAction || !mapInitialized || files.busy || files.dialog || pendingDeletion || (windowMode !== 'main' && !windowConnected)) return
     if (detachedMap.command({ type: 'open-create' })) return
     creationMenuOpen = true
     publish()
@@ -1200,7 +1217,9 @@ export function createEditor(container: HTMLDivElement) {
     view.ui.remove('zoom')
     graphicsLayerView = await view.whenLayerView(layer) as GraphicsLayerView
     if (disposed) return
-    const stored = await loadPersistedPolygons()
+    const project = await projects.initialize()
+    const stored = project.polygons
+    if (project.viewpoint) view.viewpoint = Viewpoint.fromJSON(project.viewpoint)
     storageLoaded = true
     if (disposed) return
     committedPolygons = stored.filter((polygon) => {
@@ -1222,17 +1241,67 @@ export function createEditor(container: HTMLDivElement) {
     }
   })
   track(watch(() => view.stationary, (stationary) => {
-    if (stationary && !applyingWindowState) publish()
+    if (stationary && !applyingWindowState) {
+      publish()
+      if (viewSaveTimer !== null) clearTimeout(viewSaveTimer)
+      if (mapInitialized && storageLoaded && windowMode !== 'detached' && !activeAction && !projectsBusy) {
+        viewSaveTimer = setTimeout(() => { viewSaveTimer = null; if (!disposed && !activeAction && !projectsBusy) void saveCommitted() }, 600)
+      }
+    }
   }))
   track(watch(() => [view.canZoomIn, view.canZoomOut, view.rotation], updateNavigationControls))
   track(watch(() => [view.extent, view.rotation, view.width, view.height], scheduleMapLabels))
   track(watch(() => selectedVertexCount(sketch), () => { if (!applyingWindowState) publish() }))
+
+  async function projectOperation(operation: () => Promise<unknown>) {
+    if (projectsBusy || activeAction || files.busy || !mapInitialized) return
+    if (viewSaveTimer !== null) { clearTimeout(viewSaveTimer); viewSaveTimer = null }
+    projectsBusy = true; projectsError = ''; publish()
+    try {
+      const saved = await saveCommitted()
+      if (!saved || saved.status === 'error') throw new Error(saveMessage)
+      await operation()
+    } catch (error) {
+      projectsError = error instanceof Error ? error.message : 'Não foi possível abrir o projeto.'
+      feedback = projectsError
+    } finally { projectsBusy = false; render(); publish() }
+  }
+  function activateProject(record: Awaited<ReturnType<typeof projects.open>>) {
+    layer.removeAll()
+    record.polygons.forEach(polygon => {
+      try { const graphic = Graphic.fromJSON(polygon); if (isValidFeature(graphic.geometry)) layer.add(graphic) } catch { /* Preserva no arquivo; ignora geometria inválida na visualização. */ }
+    })
+    committedPolygons = layer.graphics.map(graphic => graphic.toJSON()).toArray()
+    selectedGraphic = null; expandedGraphic = null; focusedValidationId = null
+    forgetActiveEdit()
+    ensureGraphicIds()
+    projectsDialogOpen = false
+    if (record.viewpoint) view.viewpoint = Viewpoint.fromJSON(record.viewpoint)
+    else if (layer.graphics.length) void view.goTo(layer.graphics.toArray()).catch(() => undefined)
+    else void view.goTo({ center: [-46.6333, -23.5505], zoom: 11, rotation: 0 }).catch(() => undefined)
+    instructions = `Projeto “${record.name}” aberto.`
+    syncCommittedPolygons()
+  }
+  function openProject(id: string) {
+    if (detachedMap.command({ type: 'open-project', id })) return Promise.resolve()
+    return projectOperation(async () => { activateProject(await projects.open(id)) })
+  }
+  function createProject(name: string) {
+    if (detachedMap.command({ type: 'create-project', name })) return Promise.resolve()
+    return projectOperation(async () => { activateProject(await projects.create(name)) })
+  }
+  function renameProject(id: string, name: string) {
+    if (detachedMap.command({ type: 'rename-project', id, name })) return Promise.resolve()
+    return projectOperation(async () => { await projects.rename(id, name) })
+  }
 
   function buildSnapshot(): EditorSnapshot {
     const nameError = validateName(draftName)
     const length = [...draftName.normalize('NFC')].length
     return {
       saveStatus, saveMessage, focusedValidationId,
+      activeProjectId: projects.activeId, projects: projects.summaries, projectsBusy, projectsError,
+      projectsDialogOpen,
       items: featureItems.build(orderedGraphics(), polygonName),
       draftKind, validationIssues, pendingDeletionKind: pendingDeletion === 'all' || !pendingDeletion ? 'all' : pendingDeletion.geometry?.type === 'point' ? 'point' : 'polygon',
       action: activeAction, creationMenuOpen, selectedId: graphicId(selectedGraphic), expandedId: graphicId(expandedGraphic), activeId: graphicId(activeGraphic),
@@ -1256,6 +1325,9 @@ export function createEditor(container: HTMLDivElement) {
     if (graphic) action(graphic)
   }
   const actions = {
+    openProject, createProject, renameProject,
+    requestProjects: () => { if (!activeAction) { projectsDialogOpen = true; projectsError = ''; notify() } },
+    dismissProjects: () => { if (!projectsBusy) { projectsDialogOpen = false; notify() } },
     focusValidation, retrySave, draw, drawPoint, requestCreationMenu, dismissCreationMenu, chooseCreationType, finish, cancel, rename, lockDraft, chooseColor, requestExit, resolveSwitch, deleteSelectedVertices,
     focusList: (kind: 'polygon' | 'point') => {
       const graphic = selectedGraphic?.geometry?.type === kind ? selectedGraphic : orderedGraphics().find(item => item.geometry?.type === kind)
@@ -1288,6 +1360,7 @@ export function createEditor(container: HTMLDivElement) {
       listeners.clear()
       presentation.destroy()
       detachedMap.destroy()
+      if (viewSaveTimer !== null) clearTimeout(viewSaveTimer)
       disposePrecision()
       sketch.destroy()
       view.destroy()

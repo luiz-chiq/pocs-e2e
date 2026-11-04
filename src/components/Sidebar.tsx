@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { ChevronDown, FolderOpen, MapPin, Save, ShieldCheck, VectorPolygon } from 'lucide-react'
 import { attachSidebarScrollbar } from '../sidebar-scroll'
+import { ProjectButton } from './Projects'
 import { PolygonList } from './PolygonList'
 import { PolygonEditor } from './PolygonEditor'
 import { PolygonActions } from './PolygonActions'
@@ -132,6 +133,7 @@ export function Sidebar({ openSettings, mobile, mobileOpen, openMobile, closeMob
         {mobile && <button id="close-mobile-lists" className="mobile-drawer-close" type="button" aria-label="Recolher listagens e ver o mapa" aria-controls="polygon-sidebar" aria-expanded={mobileOpen} onClick={closeMobile}><ChevronDown aria-hidden="true" /></button>}
       </div>
     </div></header>
+    <ProjectButton />
     {!mobile && listTabs}
     <div className="sidebar-scroll-area">
       <div ref={viewport} id="sidebar-scroll-content" className="sidebar-scroll" aria-label="Conteúdo do menu lateral" tabIndex={0}>

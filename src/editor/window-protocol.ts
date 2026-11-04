@@ -1,3 +1,4 @@
+import type { ProjectSummary } from './projects'
 import type { SaveStatus } from './storage'
 import type Graphic from '@arcgis/core/Graphic.js'
 import type Viewpoint from '@arcgis/core/Viewpoint.js'
@@ -9,6 +10,9 @@ export type MapCommand =
   | { type: 'create-feature'; kind: 'polygon' | 'point' }
   | { type: 'draw-point' }
   | { type: 'focus-validation'; id: string }
+  | { type: 'open-project'; id: string }
+  | { type: 'create-project'; name: string }
+  | { type: 'rename-project'; id: string; name: string }
   | { type: 'draw' | 'finish' | 'cancel' | 'deselect' | 'confirm-edit-deletion' }
   | { type: 'select' | 'edit' | 'expand'; id: string }
   | { type: 'clone'; id: string }
@@ -26,6 +30,10 @@ export type MapCommand =
   | { type: 'toggle-lock'; id: string }
   | { type: 'resolve-switch'; choice: 'save' | 'discard' | 'stay' }
 export interface MapState {
+  activeProjectId: string | null
+  projects: ProjectSummary[]
+  projectsBusy: boolean
+  projectsError: string
   focusedValidationId: string | null
   saveStatus: SaveStatus
   saveMessage: string

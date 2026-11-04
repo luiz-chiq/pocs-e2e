@@ -98,3 +98,22 @@ export function persistStoredValue<T>(key: string, value: T): Promise<SaveResult
 const isCollection = (value: unknown): value is ReturnType<Graphic['toJSON']>[] => Array.isArray(value)
 export async function loadPersistedPolygons() { return await loadStoredValue(storageKey, isCollection) ?? [] }
 export function persistPolygons(polygons: ReturnType<Graphic['toJSON']>[]) { return persistStoredValue(storageKey, polygons) }
+
+export async function listStoredKeys(prefix: string): Promise<string[]> {
+  const copies = await Promise.allSettled([
+    (async () => {
+      const database = await openDatabase()
+      try {
+        return await new Promise<string[]>((resolve, reject) => {
+          const request = database.transaction(storeName, 'readonly').objectStore(storeName).getAllKeys()
+          request.onsuccess = () => resolve(request.result.filter((key): key is string => typeof key === 'string' && key.startsWith(prefix)))
+          request.onerror = () => reject(request.error)
+        })
+      } finally { database.close() }
+    })(),
+    Promise.resolve().then(() => Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index)).filter((key): key is string => key !== null && key.startsWith(prefix)))
+  ])
+  const keys = [...new Set(copies.flatMap(copy => copy.status === 'fulfilled' ? copy.value : []))]
+  if (!keys.length && copies.some(copy => copy.status === 'rejected')) throw new Error('Não foi possível recuperar a lista de projetos.')
+  return keys
+}

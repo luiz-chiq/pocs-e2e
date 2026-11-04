@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { ChevronRight, FolderOpen, MapPin, Pencil, Save, Trash2, VectorPolygon, X } from 'lucide-react'
 import { useEditorContext, useShortcuts } from './EditorContext'
+import { ProjectsContent } from './Projects'
 import { SettingsContent } from './Settings'
 
 function Dialog({ id, title, open, onCancel, children, className, initialFocus = '.dialog-actions button' }: { id: string; title: string; open: boolean; onCancel(): void; children: ReactNode; className?: string; initialFocus?: string }) {
@@ -41,6 +42,10 @@ export function Dialogs({ settingsOpen, closeSettings }: { settingsOpen: boolean
   const deletingPoint = state.pendingDeletionKind === 'point'
   const draftLabel = state.draftKind === 'point' ? 'ponto' : 'área'
   return <>
+    <Dialog id="projects-dialog" title="projects-title" className="file-dialog projects-dialog" initialFocus="#new-project-name" open={state.projectsDialogOpen} onCancel={() => actions?.dismissProjects()}>
+      <div className="settings-header"><h2 id="projects-title">Projetos</h2><button type="button" className="secondary icon-button" aria-label="Fechar projetos" disabled={state.projectsBusy} onClick={() => actions?.dismissProjects()}><X aria-hidden="true" /></button></div>
+      <ProjectsContent />
+    </Dialog>
     <Dialog id="creation-dialog" title="creation-title" open={state.creationMenuOpen} initialFocus=".creation-type-option" onCancel={() => actions?.dismissCreationMenu()}>
       <h2 id="creation-title">O que deseja criar?</h2>
       <p id="creation-description">Escolha o tipo e depois desenhe no mapa.</p>
