@@ -3,6 +3,7 @@ export type Position = [number, number]
 interface ItemBase { id: string; name: string; locked: boolean; color: string }
 export interface AreaItem extends ItemBase {
   kind: 'polygon'
+  spatialReference: { wkid: number }
   rings: number[][][]
   vertices: number[][]
   vertexCount: number

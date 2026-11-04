@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ChevronRight, Copy, Lock, LockOpen, MapPin, Trash2, VectorPolygon } from 'lucide-react'
 import { useEditorContext, useShortcuts } from './EditorContext'
+import { AreaMeasurements } from './AreaMeasurements'
 import { NameEditor } from './PolygonEditor'
 import { ShortcutBadge } from './ShortcutBadge'
 import { shortcutAriaKeys, shortcutBinding, shortcutLabel } from '../shortcuts'
@@ -65,6 +66,7 @@ export function PolygonList({ kind, compact = false }: { kind: 'polygon' | 'poin
           <ShortcutBadge command="lock" available={cardShortcuts} />
         </button>
         <button type="button" className="icon-button delete-polygon" hidden={Boolean(state.action)} aria-label={`Excluir ${item.name}`} title={`Excluir ${item.name}`} aria-keyshortcuts={cardShortcuts ? shortcutAriaKeys('deleteListItem') : undefined} onClick={() => actions?.requestDeletion(item.id)}><Trash2 aria-hidden="true" /><ShortcutBadge command="deleteListItem" available={cardShortcuts} /></button>
+        {item.kind === 'polygon' && (expanded || editing) && <AreaMeasurements area={item} />}
         {compact && editing ? <details className="editing-coordinates"><summary>{item.kind === 'point' ? 'Coordenadas' : `Vértices (${item.vertexCount})`}</summary>{vertices}</details> : (expanded || editing) && vertices}
       </li>
     })}

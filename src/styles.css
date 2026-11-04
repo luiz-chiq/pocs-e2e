@@ -860,3 +860,9 @@ dialog p { margin: 12px 0 0; color: var(--muted); font-size: .85rem; line-height
 .precision-preferences input { width: 18px; height: 18px; accent-color: var(--primary); flex: none; }
 .precision-details { color: var(--muted); font-size: .72rem; }
 .precision-details summary { padding: 5px 0; cursor: pointer; }
+
+.area-measurements { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 12px; width: 100%; margin: 8px 0 0; color: var(--ink); font-size: .72rem; }
+.area-measurements dt { margin-bottom: 4px; color: var(--muted); font-size: .64rem; }
+.area-measurements dd { margin: 0; font-variant-numeric: tabular-nums; }
+.area-measurements small { display: block; margin-top: 3px; color: var(--muted); font-size: .64rem; }
+.area-measurements button { min-height: 32px; padding: 4px 8px; font-size: .65rem; }
