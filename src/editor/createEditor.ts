@@ -1,3 +1,5 @@
+import type { PlaceResult } from '../place-search'
+import { createPlaceFocus } from './place-focus'
 import { hasSelectedVertices, selectedVertexCount, removeSelectedVertices } from '../sketch-handles'
 import Graphic from '@arcgis/core/Graphic.js'
 import Polygon from '@arcgis/core/geometry/Polygon.js'
@@ -72,6 +74,8 @@ export function createEditor(container: HTMLDivElement) {
 
   const { layer, view, sketch } = createMapView(container)
 
+  let searchDialogOpen = false
+  const placeFocus = createPlaceFocus(view)
   const disposePrecision = attachPrecision(view, layer, sketch)
   const spatialValidator = createSpatialValidator()
   const featureItems = createFeatureItems()
@@ -128,6 +132,7 @@ export function createEditor(container: HTMLDivElement) {
 
   const detachedMap = new DetachedMap<MapState, MapCommand>({
     getState: () => ({
+      searchLocation: placeFocus.current,
       saveStatus, saveMessage, focusedValidationId,
       activeProjectId: projects.activeId, projects: projects.summaries, projectsBusy, projectsError,
       polygons: orderedGraphics().map((graphic) => graphic.toJSON()),
@@ -154,6 +159,8 @@ export function createEditor(container: HTMLDivElement) {
     }),
     applyState: applyWindowState,
     executeCommand: (command) => {
+      if (command.type === 'locate-search') void locateSearch(command.result)
+      if (command.type === 'clear-search') clearSearch()
       if (command.type === 'open-project') void openProject(command.id)
       if (command.type === 'create-project') void createProject(command.name)
       if (command.type === 'rename-project') void renameProject(command.id, command.name)
@@ -443,6 +450,7 @@ export function createEditor(container: HTMLDivElement) {
     if (activeAction || detachedMap.command({ type: 'focus-validation', id })) return
     const issue = validationIssues.find(item => item.id === id)
     if (!issue) return
+    placeFocus.set(null)
     focusedValidationId = id
     selectedGraphic = null
     setWarning(false)
@@ -545,6 +553,7 @@ export function createEditor(container: HTMLDivElement) {
         if (projects.activeId !== state.activeProjectId) projectsDialogOpen = false
         projects.adopt(state.activeProjectId, state.projects, state.committed, state.viewpoint)
       }
+      placeFocus.set(state.searchLocation)
       projectsBusy = state.projectsBusy
       projectsError = state.projectsError
       committedPolygons = state.committed
@@ -833,6 +842,7 @@ export function createEditor(container: HTMLDivElement) {
     draftLocked = isLocked(graphic)
     nameChangeId = null
     pendingNameChangeId = null
+    placeFocus.set(null); searchDialogOpen = false
     setActiveAction('update')
     instructions = draftKind === 'point'
       ? 'Edite o nome, a cor ou arraste o ponto. Use “Confirmar” para salvar.'
@@ -962,6 +972,7 @@ export function createEditor(container: HTMLDivElement) {
     sketch.pointSymbol = pointSymbol(defaultColor)
     sketch.polygonSymbol = polygonSymbol(defaultColor)
     sketch.activeFillSymbol = polygonSymbol(defaultColor)
+    placeFocus.set(null); searchDialogOpen = false
     setActiveAction('create')
     instructions = kind === 'point'
       ? 'Escolha o nome e a cor, depois clique no mapa para posicionar o ponto.'
@@ -1145,6 +1156,7 @@ export function createEditor(container: HTMLDivElement) {
     if (event.state === 'start') {
       activeGraphic = event.graphics[0] ?? null
       selectedGraphic = activeGraphic
+      placeFocus.set(null); searchDialogOpen = false
       setActiveAction('update')
       render()
     }
@@ -1276,6 +1288,7 @@ export function createEditor(container: HTMLDivElement) {
     forgetActiveEdit()
     ensureGraphicIds()
     projectsDialogOpen = false
+    placeFocus.set(null); searchDialogOpen = false
     if (record.viewpoint) view.viewpoint = Viewpoint.fromJSON(record.viewpoint)
     else if (layer.graphics.length) void view.goTo(layer.graphics.toArray()).catch(() => undefined)
     else void view.goTo({ center: [-46.6333, -23.5505], zoom: 11, rotation: 0 }).catch(() => undefined)
@@ -1295,13 +1308,32 @@ export function createEditor(container: HTMLDivElement) {
     return projectOperation(async () => { await projects.rename(id, name) })
   }
 
+  async function locateSearch(result: PlaceResult) {
+    if (activeAction || projectsBusy || !mapInitialized || !Number.isFinite(result.latitude) || !Number.isFinite(result.longitude) || Math.abs(result.latitude) > 90 || Math.abs(result.longitude) > 180) return
+    searchDialogOpen = false
+    if (detachedMap.command({ type: 'locate-search', result })) { notify(); return }
+    focusedValidationId = null
+    selectedGraphic = null; expandedGraphic = null
+    feedback = ''; setWarning(false)
+    instructions = `Localizado: ${result.label}`
+    const navigation = placeFocus.locate(result)
+    render(); publish()
+    try { await navigation }
+    catch (error) { if (!(error instanceof Error) || error.name !== 'AbortError') feedback = 'Não foi possível centralizar o local. Tente novamente.' }
+    publish()
+  }
+  function clearSearch() {
+    if (detachedMap.command({ type: 'clear-search' })) return
+    placeFocus.set(null); instructions = 'Marcador da busca removido.'; publish()
+  }
   function buildSnapshot(): EditorSnapshot {
     const nameError = validateName(draftName)
     const length = [...draftName.normalize('NFC')].length
     return {
+      searchLocation: placeFocus.current,
       saveStatus, saveMessage, focusedValidationId,
       activeProjectId: projects.activeId, projects: projects.summaries, projectsBusy, projectsError,
-      projectsDialogOpen,
+      projectsDialogOpen, searchDialogOpen: searchDialogOpen && !activeAction,
       items: featureItems.build(orderedGraphics(), polygonName),
       draftKind, validationIssues, pendingDeletionKind: pendingDeletion === 'all' || !pendingDeletion ? 'all' : pendingDeletion.geometry?.type === 'point' ? 'point' : 'polygon',
       action: activeAction, creationMenuOpen, selectedId: graphicId(selectedGraphic), expandedId: graphicId(expandedGraphic), activeId: graphicId(activeGraphic),
@@ -1325,6 +1357,9 @@ export function createEditor(container: HTMLDivElement) {
     if (graphic) action(graphic)
   }
   const actions = {
+    requestSearch: () => { if (!activeAction && !projectsBusy) { searchDialogOpen = true; notify() } },
+    dismissSearch: () => { searchDialogOpen = false; notify() },
+    locateSearch, clearSearch,
     openProject, createProject, renameProject,
     requestProjects: () => { if (!activeAction) { projectsDialogOpen = true; projectsError = ''; notify() } },
     dismissProjects: () => { if (!projectsBusy) { projectsDialogOpen = false; notify() } },
@@ -1361,6 +1396,7 @@ export function createEditor(container: HTMLDivElement) {
       presentation.destroy()
       detachedMap.destroy()
       if (viewSaveTimer !== null) clearTimeout(viewSaveTimer)
+      placeFocus.destroy()
       disposePrecision()
       sketch.destroy()
       view.destroy()

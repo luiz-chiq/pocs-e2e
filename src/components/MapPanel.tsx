@@ -6,6 +6,7 @@ import { PolygonActions } from './PolygonActions'
 import { PolygonEditor } from './PolygonEditor'
 import { ShortcutBadge } from './ShortcutBadge'
 import { shortcutAriaKeys } from '../shortcuts'
+import { PlaceSearchButton } from './PlaceSearch'
 import { CompassButton } from './CompassButton'
 export function MapPanel({ mapRef, compact, onMapInteract }: { mapRef: RefObject<HTMLDivElement | null>; compact: boolean; onMapInteract(): void }) {
   const { state, actions } = useEditorContext()
@@ -19,6 +20,7 @@ export function MapPanel({ mapRef, compact, onMapInteract }: { mapRef: RefObject
     <div id="polygon-map-labels" className="polygon-map-labels" role="group" aria-label="Nomes das áreas e pontos no mapa">
       {state.labels.map(label => <span key={label.id} data-polygon-id={label.id} className={`polygon-map-label${label.selected ? ' is-selected' : ''}`} style={{ left: `${label.x}px`, top: `${label.y}px` }} hidden={label.hidden}>{label.name}</span>)}
     </div>
+    <PlaceSearchButton />
     <div className="map-controls" aria-label="Ferramentas do mapa"><div className="map-navigation" role="group" aria-label="Navegação e janelas do mapa">
       <button id="zoom-in" className="icon-button secondary" type="button" disabled={waiting || !state.canZoomIn} aria-label="Aumentar zoom" title="Aumentar zoom" aria-keyshortcuts={enabled ? shortcutAriaKeys('zoomIn') : undefined} onClick={() => void actions?.navigate('zoom-in')}><Plus aria-hidden="true" /><ShortcutBadge command="zoomIn" /></button>
       <button id="zoom-out" className="icon-button secondary" type="button" disabled={waiting || !state.canZoomOut} aria-label="Diminuir zoom" title="Diminuir zoom" aria-keyshortcuts={enabled ? shortcutAriaKeys('zoomOut') : undefined} onClick={() => void actions?.navigate('zoom-out')}><Minus aria-hidden="true" /><ShortcutBadge command="zoomOut" /></button>

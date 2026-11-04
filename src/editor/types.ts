@@ -1,3 +1,4 @@
+import type { PlaceResult } from '../place-search'
 import type { ProjectSummary } from './projects'
 import type { FeatureItem, FeatureKind } from './feature-model'
 import type { SaveStatus } from './storage'
@@ -10,6 +11,8 @@ export interface MapLabel {
   hidden: boolean
 }
 export interface EditorSnapshot {
+  searchDialogOpen: boolean
+  searchLocation: PlaceResult | null
   projects: ProjectSummary[]
   activeProjectId: string | null
   projectsBusy: boolean
@@ -62,6 +65,7 @@ export interface SpatialValidationIssue {
   message: string
 }
 export const initialEditorSnapshot: EditorSnapshot = {
+  searchDialogOpen: false, searchLocation: null,
   projects: [], activeProjectId: null, projectsBusy: false, projectsError: '', projectsDialogOpen: false,
   saveStatus: 'idle', saveMessage: '',
   items: [], focusedValidationId: null, draftKind: 'polygon', validationIssues: [], pendingDeletionKind: 'all', action: null, creationMenuOpen: false, selectedId: null, expandedId: null, activeId: null, selectedVertexCount: 0,

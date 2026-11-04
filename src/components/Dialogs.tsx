@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { ChevronRight, FolderOpen, MapPin, Pencil, Save, Trash2, VectorPolygon, X } from 'lucide-react'
 import { useEditorContext, useShortcuts } from './EditorContext'
+import { PlaceSearchContent } from './PlaceSearch'
 import { ProjectsContent } from './Projects'
 import { SettingsContent } from './Settings'
 
@@ -43,6 +44,10 @@ export function Dialogs({ settingsOpen, closeSettings }: { settingsOpen: boolean
   const deletingPoint = state.pendingDeletionKind === 'point'
   const draftLabel = state.draftKind === 'point' ? 'ponto' : 'área'
   return <>
+    <Dialog id="search-dialog" title="search-title" className="file-dialog search-dialog" initialFocus="#place-query" open={state.searchDialogOpen} onCancel={() => actions?.dismissSearch()}>
+      <div className="settings-header"><h2 id="search-title">Buscar no mapa</h2><button type="button" className="secondary icon-button" aria-label="Fechar busca" onClick={() => actions?.dismissSearch()}><X aria-hidden="true" /></button></div>
+      <PlaceSearchContent />
+    </Dialog>
     <Dialog id="projects-dialog" title="projects-title" className="file-dialog projects-dialog" initialFocus="#new-project-name" open={state.projectsDialogOpen} onCancel={() => actions?.dismissProjects()}>
       <div className="settings-header"><h2 id="projects-title">Projetos</h2><button type="button" className="secondary icon-button" aria-label="Fechar projetos" disabled={state.projectsBusy} onClick={() => actions?.dismissProjects()}><X aria-hidden="true" /></button></div>
       <ProjectsContent />

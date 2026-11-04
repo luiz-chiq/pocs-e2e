@@ -1,3 +1,4 @@
+import type { PlaceResult } from '../place-search'
 import type { ProjectSummary } from './projects'
 import type { SaveStatus } from './storage'
 import type Graphic from '@arcgis/core/Graphic.js'
@@ -9,6 +10,8 @@ export type MapCommand =
   | { type: 'open-create' | 'close-create' | 'retry-save' }
   | { type: 'create-feature'; kind: 'polygon' | 'point' }
   | { type: 'draw-point' }
+  | { type: 'locate-search'; result: PlaceResult }
+  | { type: 'clear-search' }
   | { type: 'focus-validation'; id: string }
   | { type: 'open-project'; id: string }
   | { type: 'create-project'; name: string }
@@ -30,6 +33,7 @@ export type MapCommand =
   | { type: 'toggle-lock'; id: string }
   | { type: 'resolve-switch'; choice: 'save' | 'discard' | 'stay' }
 export interface MapState {
+  searchLocation: PlaceResult | null
   activeProjectId: string | null
   projects: ProjectSummary[]
   projectsBusy: boolean
