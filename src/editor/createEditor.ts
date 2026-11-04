@@ -2,7 +2,7 @@ import { hasSelectedVertices, selectedVertexCount, removeSelectedVertices } from
 import Graphic from '@arcgis/core/Graphic.js'
 import Polygon from '@arcgis/core/geometry/Polygon.js'
 import Point from '@arcgis/core/geometry/Point.js'
-import { validatePointsInAreas } from '../spatial-validation'
+import { createSpatialValidator } from '../spatial-validation'
 import Viewpoint from '@arcgis/core/Viewpoint.js'
 import type GraphicsLayerView from '@arcgis/core/views/layers/GraphicsLayerView.js'
 import { watch } from '@arcgis/core/core/reactiveUtils.js'
@@ -16,6 +16,7 @@ import type { EditorSnapshot } from './types'
 import { initialEditorSnapshot } from './types'
 import { loadPersistedPolygons, persistPolygons, type SaveStatus } from './storage'
 import { createMapView } from './map-view'
+import { createFeatureItems } from './feature-items'
 import { attachEditorKeyboard } from './keyboard'
 import { createFileController } from './files'
 import { createMapPresentation } from './map-presentation'
@@ -62,6 +63,9 @@ export function createEditor(container: HTMLDivElement) {
   }, { signal: lifetime.signal })
 
   const { layer, view, sketch } = createMapView(container)
+
+  const spatialValidator = createSpatialValidator()
+  const featureItems = createFeatureItems()
 
   const defaultColor = defaultPolygonColor
   let draftColor: string = defaultColor
@@ -413,7 +417,7 @@ export function createEditor(container: HTMLDivElement) {
   }
 
   function updateSpatialValidation() {
-    validationIssues = validatePointsInAreas(orderedGraphics().filter(graphic => isValidFeature(graphic.geometry)),
+    validationIssues = spatialValidator.validate(orderedGraphics().filter(graphic => isValidFeature(graphic.geometry)),
       activeAction === 'update' ? { id: graphicId(activeGraphic), name: normalizeName(draftName), color: draftColor } : undefined)
   }
 
@@ -1064,13 +1068,15 @@ export function createEditor(container: HTMLDivElement) {
     if (event.state === 'cancel') setActiveAction(null)
     publish()
   }))
-  track(sketch.on('undo', () => {
+  track(sketch.on('undo', (event) => {
+    event.graphics.forEach(graphic => { spatialValidator.invalidate(graphic); featureItems.invalidate(graphic) })
     if (activeAction === 'update') { render(); return }
     if (activeAction !== 'create') return
     draftHistoryIndex = Math.max(0, draftHistoryIndex - 1)
     draftVertices = draftHistory[draftHistoryIndex].map((point) => point.slice())
   }))
-  track(sketch.on('redo', () => {
+  track(sketch.on('redo', (event) => {
+    event.graphics.forEach(graphic => { spatialValidator.invalidate(graphic); featureItems.invalidate(graphic) })
     if (activeAction === 'update') { render(); return }
     if (activeAction !== 'create') return
     draftHistoryIndex = Math.min(draftHistory.length - 1, draftHistoryIndex + 1)
@@ -1089,7 +1095,11 @@ export function createEditor(container: HTMLDivElement) {
   }))
   track(sketch.on('update', (event) => {
     if (applyingWindowState) return
-    event.graphics.forEach((graphic) => presentation.invalidate(graphic))
+    const geometryChanged = ['move', 'move-stop', 'reshape', 'reshape-stop', 'vertex-add', 'vertex-remove'].includes(event.toolEventInfo?.type ?? '')
+    event.graphics.forEach(graphic => {
+      presentation.invalidate(graphic)
+      if (geometryChanged) { spatialValidator.invalidate(graphic); featureItems.invalidate(graphic) }
+    })
     scheduleMapLabels()
     if (event.state === 'start') {
       activeGraphic = event.graphics[0] ?? null
@@ -1199,10 +1209,7 @@ export function createEditor(container: HTMLDivElement) {
     const length = [...draftName.normalize('NFC')].length
     return {
       saveStatus, saveMessage,
-      items: orderedGraphics().map(graphic => ({ kind: graphic.geometry?.type === 'point' ? 'point' : 'polygon', id: graphicId(graphic)!, name: polygonName(graphic),
-        locked: isLocked(graphic), color: polygonColor(graphic),
-        vertices: graphic.geometry?.type === 'point' ? [[graphic.geometry.x, graphic.geometry.y]] : (graphic.geometry as Polygon).rings[0]?.slice(0, -1).map(point => [...point]) ?? [],
-        vertexCount: graphic.geometry?.type === 'point' ? 1 : (graphic.geometry as Polygon).rings.reduce((sum, ring) => sum + Math.max(0, ring.length - 1), 0) })),
+      items: featureItems.build(orderedGraphics(), polygonName),
       draftKind, validationIssues, pendingDeletionKind: pendingDeletion === 'all' || !pendingDeletion ? 'all' : pendingDeletion.geometry?.type === 'point' ? 'point' : 'polygon',
       action: activeAction, creationMenuOpen, selectedId: graphicId(selectedGraphic), expandedId: graphicId(expandedGraphic), activeId: graphicId(activeGraphic),
       selectedVertexCount: activeAction === 'update' && draftKind === 'polygon' ? selectedVertexCount(sketch) : 0,
