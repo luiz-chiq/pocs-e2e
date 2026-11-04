@@ -23,7 +23,7 @@ import { attachEditorKeyboard } from './keyboard'
 import { createFileController } from './files'
 import { createMapPresentation } from './map-presentation'
 import type { DeletionScope, MapCommand, MapState } from './window-protocol'
-import { graphicId, isLocked, polygonColor, polygonSymbol, pointSymbol, featureSymbol, isValidVertices, isValidPolygon, isValidFeature } from './features'
+import { sameFeatureGeometry, graphicId, isLocked, polygonColor, polygonSymbol, pointSymbol, featureSymbol, isValidVertices, isValidPolygon, isValidFeature } from './features'
 
 export function createEditor(container: HTMLDivElement) {
   let disposed = false
@@ -635,7 +635,7 @@ export function createEditor(container: HTMLDivElement) {
     if (!saved || deletedEditId) return true
     const original = Graphic.fromJSON(saved)
     return normalizeName(draftName) !== polygonName(original) || draftLocked !== isLocked(original) ||
-      draftColor !== polygonColor(original) || JSON.stringify(activeGraphic.geometry?.toJSON()) !== JSON.stringify(original.geometry?.toJSON())
+      draftColor !== polygonColor(original) || !sameFeatureGeometry(activeGraphic.geometry, original.geometry)
   }
 
   async function requestExit() {

@@ -24,6 +24,7 @@ function Dialog({ id, title, open, onCancel, children, className, initialFocus =
 }
 export function Dialogs({ settingsOpen, closeSettings }: { settingsOpen: boolean; closeSettings(): void }) {
   const { state, actions } = useEditorContext()
+  const [exportFormat, setExportFormat] = useState<'json' | 'geojson'>('json')
   const [exportIds, setExportIds] = useState<string[]>([])
   const [importMode, setImportMode] = useState<'add' | 'replace'>('add')
   const [deletionScope, setDeletionScope] = useState<'polygon' | 'point' | 'all'>('all')
@@ -57,7 +58,8 @@ export function Dialogs({ settingsOpen, closeSettings }: { settingsOpen: boolean
     </Dialog>
     <Dialog id="export-dialog" title="export-title" className="file-dialog" initialFocus=".file-select-all input" open={state.fileDialog === 'export'} onCancel={() => actions?.dismissFileDialog()}>
       <div className="settings-header"><h2 id="export-title">Exportar áreas e pontos</h2><button className="secondary icon-button" type="button" aria-label="Fechar exportação" disabled={state.fileBusy} onClick={() => actions?.dismissFileDialog()}><X aria-hidden="true" /></button></div>
-      <p id="export-description">Escolha as áreas e os pontos que deseja salvar no arquivo JSON. Nomes, cores e bloqueios serão preservados.</p>
+      <p id="export-description">Escolha as áreas e os pontos que deseja salvar no arquivo. Nomes, cores e bloqueios serão preservados.</p>
+      <label className="export-format">Formato<select value={exportFormat} disabled={fileWaiting} onChange={event => setExportFormat(event.target.value as 'json' | 'geojson')}><option value="json">JSON do Mapa</option><option value="geojson">GeoJSON · outros aplicativos</option></select></label>
       <label className="file-select-all"><input type="checkbox" checked={Boolean(state.items.length) && selectedIds.length === state.items.length}
         ref={input => { if (input) input.indeterminate = selectedIds.length > 0 && selectedIds.length < state.items.length }} disabled={fileWaiting}
         onChange={event => setExportIds(event.target.checked ? state.items.map(item => item.id) : [])} /><span>Selecionar todos</span><small>{selectedIds.length} de {state.items.length}</small></label>
@@ -79,7 +81,7 @@ export function Dialogs({ settingsOpen, closeSettings }: { settingsOpen: boolean
       </div>
       {state.feedback && <p className="file-feedback" role="status">{state.feedback}</p>}
       <div className="dialog-actions"><button className="secondary" type="button" disabled={state.fileBusy} onClick={() => actions?.dismissFileDialog()}>Cancelar</button>
-        <button id="confirm-export" type="button" disabled={fileWaiting || !selectedIds.length} onClick={() => void actions?.exportPolygons(selectedIds)}><Save aria-hidden="true" /><span>{state.fileBusy ? 'Exportando…' : `Exportar (${selectedIds.length})`}</span></button></div>
+        <button id="confirm-export" type="button" disabled={fileWaiting || !selectedIds.length} onClick={() => void actions?.exportPolygons(selectedIds, exportFormat)}><Save aria-hidden="true" /><span>{state.fileBusy ? 'Exportando…' : `Exportar (${selectedIds.length})`}</span></button></div>
     </Dialog>
     <Dialog id="import-dialog" title="import-title" className="file-dialog" initialFocus=".import-mode-option input[value='add']" open={state.fileDialog === 'import'} onCancel={() => actions?.dismissFileDialog()}>
       <div className="dialog-symbol" aria-hidden="true"><FolderOpen /></div><h2 id="import-title">Importar áreas e pontos</h2>
@@ -88,7 +90,7 @@ export function Dialogs({ settingsOpen, closeSettings }: { settingsOpen: boolean
         <label className="import-mode-option"><input type="radio" name="import-mode" value="add" checked={importMode === 'add'} onChange={() => setImportMode('add')} /><span><strong>Adicionar aos atuais</strong><small>Manter as áreas e pontos atuais e acrescentar os itens do arquivo.</small></span></label>
         <label className="import-mode-option"><input type="radio" name="import-mode" value="replace" checked={importMode === 'replace'} onChange={() => setImportMode('replace')} /><span><strong>Substituir os atuais</strong><small>Apagar {replacementCount} item(ns) atual(is) dos tipos presentes no arquivo. Tipos ausentes serão preservados.</small></span></label>
       </fieldset>
-      <p className="file-import-note">Buracos serão preenchidos. Áreas sobrepostas da mesma cor serão fundidas.</p>
+      <p className="file-import-note">Buracos serão preenchidos. No GeoJSON, nomes podem ser adaptados ao formato do app. Áreas sobrepostas da mesma cor serão fundidas.</p>
       {state.feedback && <p className="file-feedback" role="status">{state.feedback}</p>}
       <div className="dialog-actions"><button type="button" className="secondary" disabled={state.fileBusy} onClick={() => actions?.dismissFileDialog()}>Cancelar</button>
         <button id="confirm-import" type="button" className={importMode === 'replace' ? 'danger' : undefined} disabled={fileWaiting} onClick={() => actions?.confirmImport(importMode)}>{importMode === 'replace' ? 'Substituir e importar' : 'Adicionar itens'}</button></div>

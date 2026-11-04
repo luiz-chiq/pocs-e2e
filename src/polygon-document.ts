@@ -1,11 +1,13 @@
+import { readGeoJSON, writeGeoJSON } from './geojson'
 import { isValidPolygonName, normalizePolygonName } from './polygon-names.ts'
 
 export const maxPolygonFileBytes = 10 * 1024 * 1024
 
 export function validatePolygonDocument(value: unknown): PolygonFileData[] {
   const invalid = (message: string): never => { throw new Error(message) }
-  if (!value || typeof value !== 'object') return invalid('Formato inválido. Escolha um JSON exportado pelo aplicativo.')
-  const document = value as Record<string, unknown>
+  if (!value || typeof value !== 'object') return invalid('Formato inválido. Escolha um JSON do Mapa ou GeoJSON.')
+  let document = value as Record<string, unknown>
+  if (typeof document.type === 'string') document = { format: 'poligonos', version: 2, polygons: readGeoJSON(value) }
   if (document.format !== 'poligonos' || ![1, 2].includes(document.version as number) || !Array.isArray(document.polygons)) {
     return invalid('Formato inválido. Escolha um JSON exportado pelo aplicativo (versão 1 ou 2).')
   }
@@ -59,3 +61,11 @@ export function validatePolygonDocument(value: unknown): PolygonFileData[] {
       ...(polygon.locked === true ? { locked: true } : {}), ...(typeof polygon.color === 'string' ? { color: polygon.color.toLowerCase() } : {}) }
   })
 }
+
+export type ExportFormat = 'json' | 'geojson'
+export function createExportDocument(items: PolygonFileData[], format: ExportFormat) {
+  const version = items.some(item => !item.geometry.rings) ? 2 : 1
+  const polygons = validatePolygonDocument({ format: 'poligonos', version, polygons: items })
+  return format === 'geojson' ? writeGeoJSON(polygons) : { format: 'poligonos', version, polygons }
+}
+export type ExportDocument = ReturnType<typeof createExportDocument>

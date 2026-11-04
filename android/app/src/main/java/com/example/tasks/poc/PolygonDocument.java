@@ -137,5 +137,53 @@ final class PolygonDocument {
         return new JSONObject().put("format", "poligonos").put("version", ((Number) version).intValue()).put("polygons", polygons);
     }
 
+    // A conversão/projeção ocorre no renderer; reutilizar a validação do formato nativo na escrita.
+    static JSONObject validateGeoExport(JSONObject value) throws JSONException {
+        JSONArray features = value.optJSONArray("features");
+        if (features == null || features.length() < 1 || features.length() > 1000) throw invalid("GeoJSON deve conter de 1 a 1.000 elementos.");
+        JSONArray polygons = new JSONArray();
+        for (int i = 0; i < features.length(); i++) {
+            JSONObject feature = features.getJSONObject(i);
+            if (!"Feature".equals(feature.optString("type"))) throw invalid("GeoJSON inválido.");
+            JSONObject properties = feature.getJSONObject("properties"), source = feature.getJSONObject("geometry");
+            JSONObject item = new JSONObject().put("name", properties.get("name"));
+            if (properties.has("color")) item.put("color", properties.get("color"));
+            if (properties.has("locked")) item.put("locked", properties.get("locked"));
+            JSONArray coordinates = source.getJSONArray("coordinates");
+            JSONObject geometry = new JSONObject().put("spatialReference", new JSONObject().put("wkid", 4326));
+            String type = source.getString("type");
+            if ("Point".equals(type)) {
+                if (coordinates.length() != 2) throw invalid("Coordenadas inválidas.");
+                geometry.put("x", coordinates.get(0)).put("y", coordinates.get(1));
+            } else {
+                JSONArray parts = "Polygon".equals(type) ? new JSONArray().put(coordinates) : coordinates;
+                if ((!"Polygon".equals(type) && !"MultiPolygon".equals(type)) || parts.length() == 0) throw invalid("GeoJSON inválido.");
+                JSONArray rings = new JSONArray();
+                for (int r = 0; r < parts.length(); r++) {
+                    JSONArray part = parts.getJSONArray(r);
+                    if (part.length() != 1) throw invalid("Exporte áreas sem buracos.");
+                    rings.put(part.getJSONArray(0));
+                }
+                geometry.put("rings", rings);
+            }
+            polygons.put(item.put("geometry", geometry));
+        }
+        JSONArray normalized = validate(new JSONObject().put("format", "poligonos").put("version", 2).put("polygons", polygons)).getJSONArray("polygons");
+        JSONArray output = new JSONArray();
+        for (int i = 0; i < normalized.length(); i++) {
+            JSONObject item = normalized.getJSONObject(i), source = item.getJSONObject("geometry");
+            JSONObject properties = new JSONObject().put("name", item.get("name")), geometry = new JSONObject();
+            if (item.has("color")) properties.put("color", item.get("color"));
+            if (item.has("locked")) properties.put("locked", item.get("locked"));
+            if (source.has("rings")) {
+                JSONArray rings = source.getJSONArray("rings"), parts = new JSONArray();
+                for (int r = 0; r < rings.length(); r++) parts.put(new JSONArray().put(rings.getJSONArray(r)));
+                geometry.put("type", rings.length() == 1 ? "Polygon" : "MultiPolygon").put("coordinates", rings.length() == 1 ? parts.getJSONArray(0) : parts);
+            } else geometry.put("type", "Point").put("coordinates", new JSONArray().put(source.get("x")).put(source.get("y")));
+            output.put(new JSONObject().put("type", "Feature").put("properties", properties).put("geometry", geometry));
+        }
+        return new JSONObject().put("type", "FeatureCollection").put("features", output);
+    }
+
     private static JSONException invalid(String message) { return new JSONException(message); }
 }

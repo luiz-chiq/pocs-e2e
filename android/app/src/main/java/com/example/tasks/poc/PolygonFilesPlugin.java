@@ -7,7 +7,6 @@ import android.net.Uri;
 import android.provider.DocumentsContract;
 import android.provider.OpenableColumns;
 import androidx.activity.result.ActivityResult;
-import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -29,6 +28,7 @@ public class PolygonFilesPlugin extends Plugin {
     private final AtomicBoolean busy = new AtomicBoolean(false);
     private byte[] exportContent;
     private int exportCount;
+    private String exportExtension = ".json";
 
     private boolean begin(PluginCall call) {
         if (busy.compareAndSet(false, true)) return true;
@@ -86,26 +86,22 @@ public class PolygonFilesPlugin extends Plugin {
                 }
                 String content = bytes.toString(StandardCharsets.UTF_8.name()).replaceFirst("^\\uFEFF", "");
                 JSONObject parsed = PolygonDocument.parse(content);
-                JSONObject document = PolygonDocument.validate(parsed);
-                finish(call, new JSObject().put("status", "success").put("fileName", displayName(uri)).put("polygons", new JSArray(document.getJSONArray("polygons").toString())));
+                finish(call, new JSObject().put("status", "success").put("fileName", displayName(uri)).put("document", new JSObject(parsed.toString())));
             } catch (Exception error) { fail(call, error); }
         });
     }
 
     @PluginMethod
-    public void exportPolygons(PluginCall call) {
+    public void exportDocument(PluginCall call) {
         if (!begin(call)) return;
         try {
-            JSArray input = call.getArray("polygons");
-            int version = 1;
-            if (input != null) for (int i = 0; i < input.length(); i++) {
-                JSONObject item = input.optJSONObject(i);
-                JSONObject geometry = item == null ? null : item.optJSONObject("geometry");
-                if (geometry != null && !geometry.has("rings")) version = 2;
-            }
-            JSONObject document = PolygonDocument.validate(new JSONObject().put("format", "poligonos").put("version", version).put("polygons", input));
+            JSONObject input = call.getObject("document");
+            if (input == null) throw new JSONException("Documento ausente.");
+            boolean geojson = "FeatureCollection".equals(input.optString("type"));
+            JSONObject document = geojson ? PolygonDocument.validateGeoExport(input) : PolygonDocument.validate(input);
             exportContent = (document.toString(2) + "\n").getBytes(StandardCharsets.UTF_8);
-            exportCount = document.getJSONArray("polygons").length();
+            exportCount = document.getJSONArray(geojson ? "features" : "polygons").length();
+            exportExtension = geojson ? ".geojson" : ".json";
             if (exportContent.length > PolygonDocument.MAX_BYTES) throw new JSONException("A exportação excede o limite de 10 MB.");
             // A confirmação "Permitir" do Android autoriza somente esta pasta.
             Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
@@ -124,14 +120,15 @@ public class PolygonFilesPlugin extends Plugin {
         Uri tree = data.getData();
         byte[] content = exportContent;
         int count = exportCount;
+        String extension = exportExtension;
         getBridge().execute(() -> {
             Uri file = null;
             try {
                 if ((data.getFlags() & Intent.FLAG_GRANT_WRITE_URI_PERMISSION) == 0 || content == null) throw new SecurityException("Pasta sem acesso de escrita");
                 Uri folder = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree));
                 // Um nome novo preserva arquivos anteriores e evita sobrescrita silenciosa.
-                String name = "mapa-" + UUID.randomUUID() + ".json";
-                file = DocumentsContract.createDocument(getContext().getContentResolver(), folder, "application/json", name);
+                String name = "mapa-" + UUID.randomUUID() + extension;
+                file = DocumentsContract.createDocument(getContext().getContentResolver(), folder, extension.equals(".geojson") ? "application/geo+json" : "application/json", name);
                 if (file == null) throw new java.io.IOException("Não foi possível criar o arquivo");
                 try (OutputStream stream = getContext().getContentResolver().openOutputStream(file, "wt")) {
                     if (stream == null) throw new java.io.IOException("Não foi possível abrir o arquivo");

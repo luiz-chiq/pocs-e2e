@@ -66,6 +66,30 @@ function validateDocument(value) {
   return { format: 'poligonos', version: value.version, polygons }
 }
 
+// O renderer converte/projeta o GeoJSON. Aqui a escrita mantém a mesma lista branca e os mesmos limites do JSON nativo.
+function validateExportDocument(value) {
+  if (value?.type !== 'FeatureCollection') return validateDocument(value)
+  if (!Array.isArray(value.features)) throw new InvalidFile('GeoJSON inválido.')
+  const polygons = value.features.map(feature => {
+    if (feature?.type !== 'Feature' || !feature.properties || !feature.geometry) throw new InvalidFile('GeoJSON inválido.')
+    const { type, coordinates } = feature.geometry
+    const metadata = { name: feature.properties.name, color: feature.properties.color, locked: feature.properties.locked }
+    if (metadata.color === undefined) delete metadata.color
+    if (metadata.locked === undefined) delete metadata.locked
+    const spatialReference = { wkid: 4326 }
+    if (type === 'Point' && Array.isArray(coordinates) && coordinates.length === 2) return { ...metadata, geometry: { x: coordinates[0], y: coordinates[1], spatialReference } }
+    if (!Array.isArray(coordinates)) throw new InvalidFile('GeoJSON inválido.')
+    const parts = type === 'Polygon' ? [coordinates] : type === 'MultiPolygon' ? coordinates : []
+    if (!parts.length || parts.some(part => !Array.isArray(part) || part.length !== 1)) throw new InvalidFile('Exporte áreas sem buracos.')
+    return { ...metadata, geometry: { rings: parts.map(part => part[0]), spatialReference } }
+  })
+  const normalized = validateDocument({ format: 'poligonos', version: 2, polygons })
+  return { type: 'FeatureCollection', features: normalized.polygons.map(({ name, color, locked, geometry }) => ({
+    type: 'Feature', properties: { name, ...(color ? { color } : {}), ...(locked ? { locked: true } : {}) },
+    geometry: geometry.rings ? (geometry.rings.length === 1 ? { type: 'Polygon', coordinates: [geometry.rings[0]] } : { type: 'MultiPolygon', coordinates: geometry.rings.map(ring => [ring]) }) : { type: 'Point', coordinates: [geometry.x, geometry.y] }
+  })) }
+}
+
 function createPolygonFiles({ dialog, files = fs }) {
   let busy = false
   const run = async (operation) => {
@@ -79,7 +103,7 @@ function createPolygonFiles({ dialog, files = fs }) {
   return {
     importPolygons: (parent) => run(async () => {
       const result = await dialog.showOpenDialog(parent, {
-        title: 'Importar áreas e pontos', filters: [{ name: 'Mapa JSON', extensions: ['json'] }], properties: ['openFile']
+        title: 'Importar áreas e pontos', filters: [{ name: 'JSON ou GeoJSON', extensions: ['json', 'geojson'] }], properties: ['openFile']
       })
       if (result.canceled || !result.filePaths.length) return { status: 'cancelled' }
       const file = await files.open(result.filePaths[0], 'r')
@@ -100,16 +124,16 @@ function createPolygonFiles({ dialog, files = fs }) {
       } finally { await file.close() }
       let parsed
       try { parsed = JSON.parse(content) } catch { throw new InvalidFile('O arquivo não contém um JSON válido.') }
-      const document = validateDocument(parsed)
-      return { status: 'success', polygons: document.polygons, fileName: path.basename(result.filePaths[0]) }
+      return { status: 'success', document: parsed, fileName: path.basename(result.filePaths[0]) }
     }),
-    exportPolygons: (parent, polygons) => run(async () => {
-      const document = validateDocument({ format: 'poligonos', version: Array.isArray(polygons) && polygons.some(item => item?.geometry && !item.geometry.rings) ? 2 : 1, polygons })
+    exportDocument: (parent, input) => run(async () => {
+      const document = validateExportDocument(input)
+      const geojson = document.type === 'FeatureCollection'
       const content = JSON.stringify(document, null, 2) + '\n'
       if (Buffer.byteLength(content) > MAX_BYTES) throw new InvalidFile('A exportação excede o limite de 10 MB.')
       const result = await dialog.showSaveDialog(parent, {
-        title: 'Exportar áreas e pontos', defaultPath: 'mapa.json',
-        filters: [{ name: 'Mapa JSON', extensions: ['json'] }], properties: ['showOverwriteConfirmation', 'createDirectory']
+        title: 'Exportar áreas e pontos', defaultPath: geojson ? 'mapa.geojson' : 'mapa.json',
+        filters: [{ name: geojson ? 'GeoJSON' : 'Mapa JSON', extensions: [geojson ? 'geojson' : 'json'] }], properties: ['showOverwriteConfirmation', 'createDirectory']
       })
       if (result.canceled || !result.filePath) return { status: 'cancelled' }
       const temporary = path.join(path.dirname(result.filePath), `.poligonos-${randomUUID()}.tmp`)
@@ -117,7 +141,7 @@ function createPolygonFiles({ dialog, files = fs }) {
         await files.writeFile(temporary, content, { encoding: 'utf8', flag: 'wx', mode: 0o600 })
         await files.rename(temporary, result.filePath)
       } finally { await files.rm(temporary, { force: true }) }
-      return { status: 'success', count: document.polygons.length, fileName: path.basename(result.filePath) }
+      return { status: 'success', count: (document.polygons ?? document.features).length, fileName: path.basename(result.filePath) }
     })
   }
 }
@@ -132,7 +156,7 @@ function registerPolygonFiles({ ipcMain, BrowserWindow, dialog, origin }) {
       return `${url.protocol}//${url.host}` === origin && (url.pathname === '/' || url.pathname === '/index.html') && Boolean(BrowserWindow.fromWebContents(event.sender))
     } catch { return false }
   }
-  for (const [channel, operation] of [['polygons:import', 'importPolygons'], ['polygons:export', 'exportPolygons']]) {
+  for (const [channel, operation] of [['polygons:import', 'importPolygons'], ['polygons:export', 'exportDocument']]) {
     ipcMain.handle(channel, (event, polygons) => {
       if (!authorized(event)) return { status: 'error', message: 'Origem não autorizada.' }
       return service[operation](BrowserWindow.fromWebContents(event.sender), polygons)
@@ -140,4 +164,4 @@ function registerPolygonFiles({ ipcMain, BrowserWindow, dialog, origin }) {
   }
 }
 
-module.exports = { validateDocument, createPolygonFiles, registerPolygonFiles, MAX_BYTES }
+module.exports = { validateDocument, createPolygonFiles, registerPolygonFiles, validateExportDocument, MAX_BYTES }

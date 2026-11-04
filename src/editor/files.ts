@@ -1,7 +1,7 @@
 import Polygon from '@arcgis/core/geometry/Polygon.js'
 import Point from '@arcgis/core/geometry/Point.js'
 import { fillPolygonHoles } from '../polygon-rules'
-import { validatePolygonDocument } from '../polygon-document'
+import { createExportDocument, validatePolygonDocument, type ExportFormat } from '../polygon-document'
 import type { EditorSnapshot } from './types'
 import type { MapCommand, PolygonJSON } from './window-protocol'
 
@@ -38,8 +38,8 @@ export function createFileController(host: FileHost) {
       const result = await window.polygonFiles.importPolygons()
       if (result.status === 'cancelled') host.feedback('Importação cancelada.')
       else if (result.status === 'error') host.feedback(result.message)
-      else if (result.polygons) {
-        pendingImport = { polygons: validatePolygonDocument({ format: 'poligonos', version: 2, polygons: result.polygons }), fileName: result.fileName }
+      else if (result.polygons || result.document) {
+        pendingImport = { polygons: validatePolygonDocument(result.document ?? { format: 'poligonos', version: 2, polygons: result.polygons }), fileName: result.fileName }
         dialog = 'import'
       }
     } catch (error) {
@@ -63,7 +63,7 @@ export function createFileController(host: FileHost) {
     if (host.sendImport(command) || host.importPolygons(command.polygons, command.fileName, mode)) dismissFileDialog()
   }
 
-  async function exportPolygons(ids: string[]) {
+  async function exportPolygons(ids: string[], format: ExportFormat = 'json') {
     if (!window.polygonFiles || dialog !== 'export' || unavailable()) return
     const selected = new Set(ids)
     const polygons = host.getState().committed.filter(polygon => selected.has(polygon.attributes.polygonId))
@@ -72,11 +72,11 @@ export function createFileController(host: FileHost) {
     host.clearFeedback()
     host.changed()
     try {
-      const result = await window.polygonFiles.exportPolygons(polygons.map(polygon => ({
+      const result = await window.polygonFiles.exportDocument(createExportDocument(polygons.map(polygon => ({
         name: polygon.attributes.name, geometry: polygon.geometry?.rings ? fillPolygonHoles(new Polygon(polygon.geometry)).toJSON() : new Point(polygon.geometry).toJSON(),
         ...(polygon.attributes.locked === true ? { locked: true } : {}),
         ...(polygon.attributes.color ? { color: polygon.attributes.color } : {})
-      })))
+      })), format))
       if (result.status === 'success') {
         dialog = null
         host.feedback(`${result.count} área(s) ou ponto(s) exportado(s) para ${result.fileName}.`)

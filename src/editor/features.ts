@@ -1,3 +1,6 @@
+import SpatialReference from '@arcgis/core/geometry/SpatialReference.js'
+import { project } from '@arcgis/core/geometry/support/webMercatorUtils.js'
+import * as equalsOperator from '@arcgis/core/geometry/operators/equalsOperator.js'
 import type Graphic from '@arcgis/core/Graphic.js'
 import SimpleFillSymbol from '@arcgis/core/symbols/SimpleFillSymbol.js'
 import SimpleMarkerSymbol from '@arcgis/core/symbols/SimpleMarkerSymbol.js'
@@ -54,4 +57,20 @@ export function isValidFeature(geometry: Graphic['geometry']) {
   return geometry?.type === 'point'
     ? Number.isFinite(geometry.x) && Number.isFinite(geometry.y)
     : isValidPolygon(geometry)
+}
+
+/** O Sketch pode reprojetar e reordenar anéis ao abrir uma edição sem mudar o desenho. */
+export function sameFeatureGeometry(left: Graphic['geometry'], right: Graphic['geometry']): boolean {
+  if (!left || !right || left.type !== right.type) return false
+  try {
+    const reference = new SpatialReference({ wkid: 3857 })
+    const a = project(left, reference), b = project(right, reference)
+    const close = (x: number, y: number) => Math.abs(x - y) <= 1e-5
+    if (a?.type === 'point' && b?.type === 'point') return close(a.x, b.x) && close(a.y, b.y)
+    if (a?.type !== 'polygon' || b?.type !== 'polygon' || a.rings.length !== b.rings.length) return false
+    // Também comparar vértices: mover/adicionar um vértice colinear conta como edição.
+    const vertices = (rings: number[][][]) => rings.flatMap(ring => ring.slice(0, -1)).sort(([x, y], [nx, ny]) => x - nx || y - ny)
+    const av = vertices(a.rings), bv = vertices(b.rings)
+    return av.length === bv.length && av.every(([x, y], index) => close(x, bv[index][0]) && close(y, bv[index][1])) && equalsOperator.execute(a, b)
+  } catch { return false }
 }

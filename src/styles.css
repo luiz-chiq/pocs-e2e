@@ -884,3 +884,6 @@ dialog p { margin: 12px 0 0; color: var(--muted); font-size: .85rem; line-height
 .project-rename input { flex-basis: 100%; }
 .project-error { color: var(--danger-ink); }
 @media (max-width:720px) { .projects-dialog { max-height: calc(100dvh - 24px); } .project-switcher { margin: 4px 12px 8px; } }
+
+.export-format { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 16px 0; font-size: .8rem; }
+.export-format select { flex: 1; max-width: 260px; min-width: 0; min-height: 40px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); }

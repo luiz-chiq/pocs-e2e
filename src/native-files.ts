@@ -1,15 +1,15 @@
 import { Capacitor, registerPlugin } from '@capacitor/core'
-import { maxPolygonFileBytes, validatePolygonDocument } from './polygon-document'
+import { maxPolygonFileBytes, validatePolygonDocument, createExportDocument, type ExportDocument } from './polygon-document'
 
 // A mesma interface do preload Electron; a leitura e escrita ficam no código nativo.
 if (Capacitor.getPlatform() === 'android') {
   const files = registerPlugin<{
     importPolygons(): Promise<PolygonFileResult>
-    exportPolygons(options: { polygons: PolygonFileData[] }): Promise<PolygonFileResult>
+    exportDocument(options: { document: ExportDocument }): Promise<PolygonFileResult>
   }>('PolygonFiles')
   window.polygonFiles = {
     importPolygons: () => files.importPolygons(),
-    exportPolygons: polygons => files.exportPolygons({ polygons })
+    exportDocument: document => files.exportDocument({ document })
   }
 }
 
@@ -19,7 +19,7 @@ if (!window.polygonFiles) {
     importPolygons: () => new Promise(resolve => {
       const input = document.createElement('input')
       input.type = 'file'
-      input.accept = '.json,application/json'
+      input.accept = '.json,.geojson,application/json,application/geo+json'
       input.hidden = true
       const finish = (result: PolygonFileResult) => { input.remove(); resolve(result) }
       input.addEventListener('cancel', () => finish({ status: 'cancelled' }), { once: true })
@@ -39,14 +39,14 @@ if (!window.polygonFiles) {
       document.body.append(input)
       input.click()
     }),
-    exportPolygons: async polygons => {
+    exportDocument: async value => {
       try {
-        const version = polygons.some(item => !item.geometry.rings) ? 2 : 1
-        const normalized = validatePolygonDocument({ format: 'poligonos', version, polygons })
-        const content = JSON.stringify({ format: 'poligonos', version, polygons: normalized }, null, 2) + '\n'
-        const blob = new Blob([content], { type: 'application/json' })
+        const geojson = 'type' in value
+        const normalized = validatePolygonDocument(value)
+        const content = JSON.stringify(createExportDocument(normalized, geojson ? 'geojson' : 'json'), null, 2) + '\n'
+        const blob = new Blob([content], { type: geojson ? 'application/geo+json' : 'application/json' })
         if (blob.size > maxPolygonFileBytes) throw new Error('A exportação excede o limite de 10 MB.')
-        const fileName = 'mapa.json'
+        const fileName = geojson ? 'mapa.geojson' : 'mapa.json'
         const url = URL.createObjectURL(blob)
         const link = document.createElement('a')
         link.href = url

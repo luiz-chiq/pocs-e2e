@@ -125,9 +125,9 @@ export function Sidebar({ openSettings, mobile, mobileOpen, openMobile, closeMob
       <h1 id="page-title">Mapa</h1><span id="polygon-count" className="polygon-count" aria-live="polite">{state.items.length}</span>
       <div className="sidebar-header-actions">
         <div id="polygon-file-actions" className="polygon-file-actions" role="group" aria-label="Gerenciar áreas e pontos" hidden={working || !window.polygonFiles || state.mode === 'map'} aria-busy={state.fileBusy}>
-          <button id="import-polygons" className="secondary icon-button" type="button" disabled={fileWaiting} aria-label="Importar áreas e pontos" title="Importar áreas e pontos de um arquivo JSON" onClick={() => void actions?.polygonFileOperation('import')}><FolderOpen aria-hidden="true" /></button>
+          <button id="import-polygons" className="secondary icon-button" type="button" disabled={fileWaiting} aria-label="Importar áreas e pontos" title="Importar áreas e pontos de JSON ou GeoJSON" onClick={() => void actions?.polygonFileOperation('import')}><FolderOpen aria-hidden="true" /></button>
           <button id="export-polygons" className="secondary icon-button" type="button" disabled={fileWaiting || !state.items.length}
-            aria-label="Exportar áreas e pontos" title="Selecionar áreas e pontos para exportar em JSON" onClick={() => void actions?.polygonFileOperation('export')}><Save aria-hidden="true" /></button>
+            aria-label="Exportar áreas e pontos" title="Selecionar áreas e pontos para exportar em JSON ou GeoJSON" onClick={() => void actions?.polygonFileOperation('export')}><Save aria-hidden="true" /></button>
         </div>
         {state.mode !== 'map' && !mobile && <SettingsButton open={openSettings} />}
         {mobile && <button id="close-mobile-lists" className="mobile-drawer-close" type="button" aria-label="Recolher listagens e ver o mapa" aria-controls="polygon-sidebar" aria-expanded={mobileOpen} onClick={closeMobile}><ChevronDown aria-hidden="true" /></button>}
