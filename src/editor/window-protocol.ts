@@ -1,0 +1,48 @@
+import type Graphic from '@arcgis/core/Graphic.js'
+import type Viewpoint from '@arcgis/core/Viewpoint.js'
+
+export type PolygonJSON = ReturnType<Graphic['toJSON']>
+export type DeletionScope = 'polygon' | 'point' | 'all'
+export type MapCommand =
+  | { type: 'open-create' | 'close-create' }
+  | { type: 'create-feature'; kind: 'polygon' | 'point' }
+  | { type: 'draw-point' }
+  | { type: 'draw' | 'finish' | 'cancel' | 'deselect' | 'confirm-edit-deletion' }
+  | { type: 'select' | 'edit' | 'expand'; id: string }
+  | { type: 'clone'; id: string }
+  | { type: 'delete'; id: string | 'all'; scope?: DeletionScope }
+  | { type: 'request-deletion'; id: string | 'all' }
+  | { type: 'dismiss-deletion' }
+  | { type: 'confirm-deletion'; scope?: DeletionScope }
+  | { type: 'request-exit' }
+  | { type: 'history'; action: 'undo' | 'redo' }
+  | { type: 'navigate'; action: 'zoom-in' | 'zoom-out' | 'north-up' }
+  | { type: 'rename'; id: string; value: string; changeId: string }
+  | { type: 'import'; polygons: PolygonFileData[]; fileName: string; mode: 'add' | 'replace' }
+  | { type: 'draft-lock'; id: string | null; value: boolean }
+  | { type: 'color'; id: string | null; value: string; changeId: string }
+  | { type: 'toggle-lock'; id: string }
+  | { type: 'resolve-switch'; choice: 'save' | 'discard' | 'stay' }
+export interface MapState {
+  polygons: PolygonJSON[]
+  committed: PolygonJSON[]
+  selectedId: string | null
+  expandedId: string | null
+  activeId: string | null
+  action: 'create' | 'update' | null
+  creationMenuOpen: boolean
+  draftKind: 'polygon' | 'point'
+  instructions: string
+  lastEdit: string
+  warning: boolean
+  deletedEditId: string | null
+  confirmingDeletedEdit: boolean
+  pendingDeletionId: string | 'all' | null
+  draftName: string
+  draftLocked: boolean
+  draftColor: string
+  colorChangeId: string | null
+  switchTargetId: string | null
+  nameChangeId: string | null
+  viewpoint: ReturnType<Viewpoint['toJSON']> | null
+}

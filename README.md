@@ -113,7 +113,13 @@ de alterações pendentes aparece somente ao tentar editar outro elemento.
 - `src/App.tsx`: composição da aplicação React.
 - `src/components/`: lista, formulário, barra lateral, mapa, ações e modais.
 - `src/hooks/`: integração do React com o controlador.
-- `src/editor/`: controle do ArcGIS, estado tipado e persistência local.
+- `src/editor/createEditor.ts`: coordenação da sessão e dos comandos de edição.
+- `src/editor/features.ts`: símbolos e validação de geometria, sem estado da interface.
+- `src/editor/map-view.ts` e `map-presentation.ts`: inicialização do ArcGIS, rótulos e realce da seleção.
+- `src/editor/files.ts`: estado dos modais e operações de importação/exportação.
+- `src/editor/keyboard.ts`: tratamento de eventos de teclado e contexto dos comandos.
+- `src/editor/window-protocol.ts`: tipos dos estados e comandos entre janelas.
+- `src/editor/types.ts` e `storage.ts`: estado consumido pelo React e persistência local.
 - `electron/`: processo principal, preload e operações nativas de arquivos.
 - `android/`: projeto Android e plugin nativo de documentos.
 

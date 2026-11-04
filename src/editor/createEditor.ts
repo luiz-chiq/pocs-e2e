@@ -1,30 +1,26 @@
 import { hasSelectedVertices, selectedVertexCount, removeSelectedVertices } from '../sketch-handles'
-import Map from '@arcgis/core/Map.js'
-import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer.js'
-import TileLayer from '@arcgis/core/layers/TileLayer.js'
-import MapView from '@arcgis/core/views/MapView.js'
-import SketchViewModel from '@arcgis/core/widgets/Sketch/SketchViewModel.js'
 import Graphic from '@arcgis/core/Graphic.js'
 import Polygon from '@arcgis/core/geometry/Polygon.js'
-import SimpleFillSymbol from '@arcgis/core/symbols/SimpleFillSymbol.js'
 import Point from '@arcgis/core/geometry/Point.js'
-import SimpleMarkerSymbol from '@arcgis/core/symbols/SimpleMarkerSymbol.js'
 import { validatePointsInAreas } from '../spatial-validation'
-import * as labelPointOperator from '@arcgis/core/geometry/operators/labelPointOperator.js'
 import Viewpoint from '@arcgis/core/Viewpoint.js'
-import HighlightOptions from '@arcgis/core/views/support/HighlightOptions.js'
 import type GraphicsLayerView from '@arcgis/core/views/layers/GraphicsLayerView.js'
 import { watch } from '@arcgis/core/core/reactiveUtils.js'
 import { createId, DetachedMap } from '../detached-map'
 import { attachCompass } from '../compass'
-import { cloneGeometryBeside, defaultPolygonColor, fillPolygonHoles, fixedPolygonColor, groupOverlappingPolygons, isPolygonColor, polygonPalette } from '../polygon-rules'
+import { cloneGeometryBeside, defaultPolygonColor, fillPolygonHoles, fixedPolygonColor, groupOverlappingPolygons, isPolygonColor } from '../polygon-rules'
 import { isValidPolygonName, nextCloneName, normalizePolygonName } from '../polygon-names.ts'
 import { validatePolygonDocument } from '../polygon-document'
-import { shortcutsEnabled } from '../keyboard-settings'
 
-import type { EditorSnapshot, MapLabel } from './types'
+import type { EditorSnapshot } from './types'
 import { initialEditorSnapshot } from './types'
 import { loadPersistedPolygons, persistPolygons } from './storage'
+import { createMapView } from './map-view'
+import { attachEditorKeyboard } from './keyboard'
+import { createFileController } from './files'
+import { createMapPresentation } from './map-presentation'
+import type { DeletionScope, MapCommand, MapState } from './window-protocol'
+import { graphicId, isLocked, polygonColor, polygonSymbol, pointSymbol, featureSymbol, isValidVertices, isValidPolygon, isValidFeature } from './features'
 
 export function createEditor(container: HTMLDivElement) {
   let disposed = false
@@ -36,7 +32,6 @@ export function createEditor(container: HTMLDivElement) {
   let instructions = 'Pronto para desenhar.'
   let lastEditText = 'Nenhuma edição executada.'
   let feedback = ''
-  let labels: MapLabel[] = []
   let validationIssues: EditorSnapshot['validationIssues'] = []
   let draftKind: 'polygon' | 'point' = 'polygon'
   let focusRequest: EditorSnapshot['focusRequest'] = null
@@ -58,31 +53,8 @@ export function createEditor(container: HTMLDivElement) {
   }
   function publish() { notify(); detachedMap.publish() }
   function openMapWindow() { feedback = ''; detachedMap.open(); notify() }
-  let fileOperationPending = false
-  let fileDialog: 'import' | 'export' | null = null
-  let pendingImport: { polygons: PolygonFileData[]; fileName: string } | null = null
 
-  const layer = new GraphicsLayer({ title: 'Áreas' })
-  const map = new Map({
-    basemap: {
-      title: 'Satélite — Esri World Imagery',
-      baseLayers: [new TileLayer({
-        url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer',
-        title: 'Esri World Imagery'
-      })]
-    },
-    layers: [layer]
-  })
-  const view = new MapView({ container, map, center: [-46.6333, -23.5505], zoom: 11, constraints: { snapToZoom: false } })
-  view.highlights.push(new HighlightOptions({ name: 'polygon-selection', color: '#ffffff', haloColor: '#ffffff', haloOpacity: 1, fillOpacity: 0 }))
-  const sketch = new SketchViewModel({
-    view,
-    layer,
-    updateOnGraphicClick: false,
-    polygonSymbol: polygonSymbol(defaultPolygonColor),
-    pointSymbol: pointSymbol(defaultPolygonColor),
-    defaultUpdateOptions: { tool: 'reshape', toggleToolOnClick: false }
-  })
+  const { layer, view, sketch } = createMapView(container)
 
   const defaultColor = defaultPolygonColor
   let draftColor: string = defaultColor
@@ -92,8 +64,6 @@ export function createEditor(container: HTMLDivElement) {
   let switchTargetId: string | null = null
   let switchAfterCommitId: string | null = null
   let switchingEdit = false
-  const labelAnchors = new WeakMap<Graphic, { geometry: Graphic['geometry']; point: Point }>()
-  let labelFrame: number | null = null
   let draftName = ''
   let shownNameError = ''
   let nameChangeId: string | null = null
@@ -115,58 +85,26 @@ export function createEditor(container: HTMLDivElement) {
   let mapInitialized = false
   let applyingWindowState = false
   let graphicsLayerView: GraphicsLayerView | null = null
-  let selectionHighlight: { remove(): void } | null = null
-  let highlightedGraphic: Graphic | null = null
   let validationWarning = false
   let draftVertices: number[][] = []
   let draftHistory: number[][][] = [[]]
   let draftHistoryIndex = 0
 
-  type PolygonJSON = ReturnType<Graphic['toJSON']>
-  type DeletionScope = 'polygon' | 'point' | 'all'
-  type MapCommand =
-    | { type: 'open-create' | 'close-create' }
-    | { type: 'create-feature'; kind: 'polygon' | 'point' }
-    | { type: 'draw-point' }
-    | { type: 'draw' | 'finish' | 'cancel' | 'deselect' | 'confirm-edit-deletion' }
-    | { type: 'select' | 'edit' | 'expand'; id: string }
-    | { type: 'clone'; id: string }
-    | { type: 'delete'; id: string | 'all'; scope?: DeletionScope }
-    | { type: 'request-deletion'; id: string | 'all' }
-    | { type: 'dismiss-deletion' }
-    | { type: 'confirm-deletion'; scope?: DeletionScope }
-    | { type: 'request-exit' }
-    | { type: 'history'; action: 'undo' | 'redo' }
-    | { type: 'navigate'; action: 'zoom-in' | 'zoom-out' | 'north-up' }
-    | { type: 'rename'; id: string; value: string; changeId: string }
-    | { type: 'import'; polygons: PolygonFileData[]; fileName: string; mode: 'add' | 'replace' }
-    | { type: 'draft-lock'; id: string | null; value: boolean }
-    | { type: 'color'; id: string | null; value: string; changeId: string }
-    | { type: 'toggle-lock'; id: string }
-    | { type: 'resolve-switch'; choice: 'save' | 'discard' | 'stay' }
-  interface MapState {
-    polygons: PolygonJSON[]
-    committed: PolygonJSON[]
-    selectedId: string | null
-    expandedId: string | null
-    activeId: string | null
-    action: 'create' | 'update' | null
-    creationMenuOpen: boolean
-    draftKind: 'polygon' | 'point'
-    instructions: string
-    lastEdit: string
-    warning: boolean
-    deletedEditId: string | null
-    confirmingDeletedEdit: boolean
-    pendingDeletionId: string | 'all' | null
-    draftName: string
-    draftLocked: boolean
-    draftColor: string
-    colorChangeId: string | null
-    switchTargetId: string | null
-    nameChangeId: string | null
-    viewpoint: ReturnType<Viewpoint['toJSON']> | null
-  }
+  const files = createFileController({
+    getState: () => ({ action: activeAction, ready: mapInitialized, mode: windowMode,
+      connected: windowConnected, committed: committedPolygons }),
+    feedback: fileFeedback, clearFeedback: () => { feedback = '' }, changed: notify,
+    importPolygons: addImportedPolygons, sendImport: command => detachedMap.command(command)
+  })
+  const { polygonFileOperation, dismissFileDialog, confirmImport, exportPolygons } = files
+
+  const presentation = createMapPresentation(view, {
+    getState: () => ({ ready: mapInitialized, mode: windowMode, action: activeAction,
+      selected: selectedGraphic, active: activeGraphic, draftName }),
+    getGraphics: orderedGraphics, getLayerView: () => graphicsLayerView,
+    name: polygonName, changed: notify
+  })
+  const scheduleMapLabels = presentation.scheduleLabels
 
   const detachedMap = new DetachedMap<MapState, MapCommand>({
     getState: () => ({
@@ -268,10 +206,6 @@ export function createEditor(container: HTMLDivElement) {
     }
   })
 
-  function graphicId(graphic: Graphic | null): string | null {
-    return graphic?.attributes?.polygonId ?? null
-  }
-
   function ensureGraphicIds() {
     layer.graphics.forEach((graphic) => {
       if (!graphicId(graphic)) graphic.attributes = { ...graphic.attributes, polygonId: createId() }
@@ -294,10 +228,6 @@ export function createEditor(container: HTMLDivElement) {
     return graphic.attributes?.name ?? `Área ${layer.graphics.toArray().indexOf(graphic) + 1}`
   }
 
-  function isLocked(graphic: Graphic | null) {
-    return graphic?.attributes?.locked === true
-  }
-
   function lockedMessage(graphic: Graphic) {
     return graphic.geometry?.type === 'point'
       ? `O ponto “${polygonName(graphic)}” está travado. Destrave pelo cadeado da lista para editar.`
@@ -309,27 +239,6 @@ export function createEditor(container: HTMLDivElement) {
     setWarning(true)
     instructions = lockedMessage(graphic)
     render()
-  }
-
-  function polygonColor(graphic: Graphic) {
-    const stored = graphic.attributes?.color
-    return fixedPolygonColor(stored ?? (graphic.symbol?.type === 'simple-fill' ? graphic.symbol.outline?.color?.toHex() : undefined))
-  }
-
-  function polygonSymbol(color: string) {
-    return new SimpleFillSymbol({ color: `${color}80`, outline: { color, width: 2 } })
-  }
-
-  function pointSymbol(color: string, editing = false) {
-    return new SimpleMarkerSymbol({ style: 'circle', size: 13, color, outline: editing ? { color: '#ffffff', width: 3 } : { style: 'none' } })
-  }
-
-  function featureSymbol(graphic: Graphic, color: string, editing = false) {
-    return graphic.geometry?.type === 'point' ? pointSymbol(color, editing) : editing ? editingSymbol(color) : polygonSymbol(color)
-  }
-
-  function editingSymbol(color: string) {
-    return new SimpleFillSymbol({ color: `${color}80`, outline: { color: '#ffffff', width: 3 } })
   }
 
   function updateColorControls() { notify() }
@@ -462,8 +371,6 @@ export function createEditor(container: HTMLDivElement) {
     notify()
   }
 
-
-
   function updateDraftName(value: string, changeId: string) {
     if (!activeAction || deletedEditId) return
     draftName = value
@@ -486,35 +393,7 @@ export function createEditor(container: HTMLDivElement) {
       (order.get(graphicId(a)) ?? committedPolygons.length) - (order.get(graphicId(b)) ?? committedPolygons.length))
   }
 
-  function scheduleMapLabels() {
-    if (labelFrame !== null || disposed) return
-    labelFrame = requestAnimationFrame(() => {
-      labelFrame = null
-      labels = []
-      if (mapInitialized && view.ready && windowMode !== 'detached') {
-        for (const graphic of orderedGraphics()) {
-          const id = graphicId(graphic), geometry = graphic.geometry
-          if (!id || !isValidFeature(geometry)) continue
-          let anchor = labelAnchors.get(graphic)
-          if (!anchor || anchor.geometry !== geometry) {
-            anchor = { geometry, point: geometry?.type === 'point' ? geometry : labelPointOperator.execute(geometry as Polygon) }
-            labelAnchors.set(graphic, anchor)
-          }
-          const point = view.toScreen(anchor.point)
-          if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) continue
-          labels.push({ id, name: activeAction === 'update' && graphic === activeGraphic
-            ? normalizeName(draftName) || polygonName(graphic) : polygonName(graphic),
-            x: point.x, y: point.y - (geometry?.type === 'point' ? 19 : 0), selected: graphic === selectedGraphic,
-            hidden: point.x < 0 || point.y < 0 || point.x > view.width || point.y > view.height })
-        }
-      }
-      notify()
-    })
-  }
-
   function updateWindowControls() { notify() }
-
-
 
   function setWarning(warning: boolean) { validationWarning = warning; notify() }
 
@@ -522,30 +401,6 @@ export function createEditor(container: HTMLDivElement) {
     setWarning(true)
     instructions = 'Desenhe pelo menos 3 pontos diferentes formando uma área antes de concluir.'
     publish()
-  }
-
-  function isValidVertices(vertices: number[][]) {
-    const unique = [...new globalThis.Map<string, number[]>(vertices.filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y))
-      .map((point) => [`${point[0]},${point[1]}`, point] as const)).values()]
-    if (unique.length < 3) return false
-    const [originX, originY] = unique[0]
-    const area = unique.reduce((sum, [x, y], index) => {
-      const [nextX, nextY] = unique[(index + 1) % unique.length]
-      return sum + (x - originX) * (nextY - originY) - (nextX - originX) * (y - originY)
-    }, 0)
-    // Pontos alinhados podem ter pequenas diferenças numéricas após a projeção.
-    const span = unique.reduce((max, [x, y]) => Math.max(max, Math.abs(x - originX), Math.abs(y - originY)), 0)
-    return Math.abs(area) > span * span * 1e-10
-  }
-
-  function isValidPolygon(geometry: Graphic['geometry']) {
-    return geometry?.type === 'polygon' && geometry.rings.length > 0 && geometry.rings.every(isValidVertices)
-  }
-
-  function isValidFeature(geometry: Graphic['geometry']) {
-    return geometry?.type === 'point'
-      ? Number.isFinite(geometry.x) && Number.isFinite(geometry.y)
-      : isValidPolygon(geometry)
   }
 
   function updateSpatialValidation() {
@@ -559,7 +414,7 @@ export function createEditor(container: HTMLDivElement) {
       const filled = fillPolygonHoles(graphic.geometry)
       if (JSON.stringify(filled.rings) !== JSON.stringify(graphic.geometry.rings)) {
         graphic.geometry = filled
-        labelAnchors.delete(graphic)
+        presentation.invalidate(graphic)
       }
     } catch { /* Um contorno incompleto será validado ao concluir a edição. */ }
   }
@@ -683,16 +538,6 @@ export function createEditor(container: HTMLDivElement) {
     }
   }
 
-  function updateSelectionHighlight() {
-    const target = activeAction === 'update' && selectedGraphic === activeGraphic ? null : selectedGraphic
-    if (!graphicsLayerView || highlightedGraphic === target) return
-    selectionHighlight?.remove()
-    selectionHighlight = target
-      ? graphicsLayerView.highlight(target, { name: 'polygon-selection' })
-      : null
-    highlightedGraphic = target
-  }
-
   function setActiveAction(action: 'create' | 'update' | null) { setWarning(false); activeAction = action; notify() }
 
   function requestDeletion(target: Graphic | 'all') {
@@ -776,7 +621,7 @@ export function createEditor(container: HTMLDivElement) {
       graphic.attributes = { ...graphic.attributes, color: group.color, locked: group.locked }
       graphic.symbol = polygonSymbol(group.color)
       graphic.geometry = group.geometry
-      labelAnchors.delete(graphic)
+      presentation.invalidate(graphic)
       if (group.members.length > 1) {
         for (const member of group.members) {
           if (selectedGraphic === member) selectedGraphic = graphic
@@ -835,69 +680,6 @@ export function createEditor(container: HTMLDivElement) {
       publish()
       return false
     }
-  }
-
-  async function polygonFileOperation(action: 'import' | 'export') {
-    if (!window.polygonFiles || fileOperationPending || fileDialog || activeAction || !mapInitialized || (windowMode !== 'main' && !windowConnected)) return
-    feedback = ''
-    if (action === 'export') {
-      if (committedPolygons.length) fileDialog = 'export'
-      notify()
-      return
-    }
-    fileOperationPending = true
-    updateWindowControls()
-    try {
-      const result = await window.polygonFiles.importPolygons()
-      if (result.status === 'cancelled') {
-        fileFeedback('Importação cancelada.')
-      } else if (result.status === 'error') {
-        fileFeedback(result.message)
-      } else if (result.polygons) {
-        pendingImport = { polygons: validatePolygonDocument({ format: 'poligonos', version: 2, polygons: result.polygons }), fileName: result.fileName }
-        fileDialog = 'import'
-      }
-    } catch (error) {
-      fileFeedback(error instanceof Error ? error.message : 'Não foi possível concluir a operação de arquivo. Tente novamente.')
-    } finally {
-      fileOperationPending = false
-      updateWindowControls()
-    }
-  }
-
-  function dismissFileDialog() {
-    if (fileOperationPending) return
-    fileDialog = null
-    pendingImport = null
-    notify()
-  }
-
-  function confirmImport(mode: 'add' | 'replace') {
-    if (fileDialog !== 'import' || !pendingImport || activeAction || fileOperationPending || (windowMode !== 'main' && !windowConnected)) return
-    const command = { type: 'import' as const, ...pendingImport, mode }
-    if (detachedMap.command(command) || addImportedPolygons(command.polygons, command.fileName, mode)) dismissFileDialog()
-  }
-
-  async function exportPolygons(ids: string[]) {
-    if (!window.polygonFiles || fileDialog !== 'export' || fileOperationPending || activeAction || (windowMode !== 'main' && !windowConnected)) return
-    const selected = new Set(ids)
-    const polygons = committedPolygons.filter(polygon => selected.has(polygon.attributes.polygonId))
-    if (!polygons.length || polygons.length !== selected.size) { fileFeedback('Selecione as áreas ou pontos que deseja exportar.'); return }
-    fileOperationPending = true
-    feedback = ''
-    notify()
-    try {
-      const result = await window.polygonFiles.exportPolygons(polygons.map(polygon => ({
-        name: polygon.attributes.name, geometry: polygon.geometry?.rings ? fillPolygonHoles(new Polygon(polygon.geometry)).toJSON() : new Point(polygon.geometry).toJSON(),
-        ...(polygon.attributes.locked === true ? { locked: true } : {}),
-        ...(polygon.attributes.color ? { color: polygon.attributes.color } : {})
-      })))
-      if (result.status === 'success') {
-        fileDialog = null
-        fileFeedback(`${result.count} área(s) ou ponto(s) exportado(s) para ${result.fileName}.`)
-      } else fileFeedback(result.status === 'cancelled' ? 'Exportação cancelada.' : result.message)
-    } catch (error) { fileFeedback(error instanceof Error ? error.message : 'Não foi possível exportar as áreas e pontos.') }
-    finally { fileOperationPending = false; notify() }
   }
 
   function restoreCommittedPolygons() {
@@ -1088,7 +870,7 @@ export function createEditor(container: HTMLDivElement) {
 
   function render() {
     updateSpatialValidation()
-    updateSelectionHighlight()
+    presentation.updateSelection()
     notify()
     scheduleMapLabels()
     if (!applyingWindowState) publish()
@@ -1124,7 +906,7 @@ export function createEditor(container: HTMLDivElement) {
     if (!detachedMap.command({ type: 'draw' })) void beginDrawing()
   }
   function requestCreationMenu() {
-    if (activeAction || !mapInitialized || fileOperationPending || fileDialog || pendingDeletion || (windowMode !== 'main' && !windowConnected)) return
+    if (activeAction || !mapInitialized || files.busy || files.dialog || pendingDeletion || (windowMode !== 'main' && !windowConnected)) return
     if (detachedMap.command({ type: 'open-create' })) return
     creationMenuOpen = true
     publish()
@@ -1278,7 +1060,7 @@ export function createEditor(container: HTMLDivElement) {
   }))
   track(sketch.on('update', (event) => {
     if (applyingWindowState) return
-    event.graphics.forEach((graphic) => labelAnchors.delete(graphic))
+    event.graphics.forEach((graphic) => presentation.invalidate(graphic))
     scheduleMapLabels()
     if (event.state === 'start') {
       activeGraphic = event.graphics[0] ?? null
@@ -1341,116 +1123,15 @@ export function createEditor(container: HTMLDivElement) {
     clearSelection()
   }, { signal: lifetime.signal })
 
-  window.addEventListener('keydown', (event) => {
-    const target = event.target instanceof Element ? event.target : null
-    if (target?.closest('dialog') || event.isComposing) return
-    const control = target?.closest('button, a, summary, input, textarea, select, [contenteditable]:not([contenteditable="false"])')
-    const textControl = target?.closest('input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]), textarea, select, [contenteditable]:not([contenteditable="false"])')
-    const key = event.key.toLowerCase()
-    const modified = event.ctrlKey || event.metaKey || event.altKey
-    const listItem = target?.closest<HTMLElement>('.polygon-list > .pin')
-    const listGraphic = findGraphic(listItem?.dataset.polygonId ?? null)
-    if (shortcutsEnabled() && !modified && !textControl && activeAction === null && listGraphic && ['ArrowUp', 'ArrowDown'].includes(event.key)) {
-      event.preventDefault()
-      event.stopImmediatePropagation()
-      const graphics = orderedGraphics().filter(item => item.geometry?.type === listGraphic.geometry?.type)
-      const direction = event.key === 'ArrowUp' ? -1 : 1
-      focusPolygonList(graphics[(graphics.indexOf(listGraphic) + direction + graphics.length) % graphics.length])
-      return
-    }
-    if (!shortcutsEnabled()) {
-      // Desligar também os atalhos do SDK no canvas; Tab e ativação de botões
-      // continuam disponíveis como navegação acessível, assim como a edição de texto.
-      const nativeControl = target?.closest('button, a, summary, input, textarea, select, [role="button"], [contenteditable]:not([contenteditable="false"])')
-      const sdkShortcut = key === 'delete' || key === 'backspace' || (!modified && ['enter', 'escape', 'z', 'r', 'f', '+', '=', '-', '0', 'h'].includes(key))
-      const historyShortcut = (event.ctrlKey || event.metaKey) && activeAction && (key === 'z' || key === 'y')
-      if (!nativeControl && (sdkShortcut || historyShortcut || (matchMedia('(max-width: 720px)').matches && event.key !== 'Tab'))) {
-        event.preventDefault()
-        event.stopImmediatePropagation()
-      }
-      return
-    }
-    const deletionTarget = activeGraphic ?? selectedGraphic
-    if ((event.key === 'Delete' || event.key === 'Backspace') && !textControl && activeAction !== 'create' && deletionTarget && !hasSelectedVertices(sketch)) {
-      event.preventDefault()
-      // Interceptar antes do SDK remover o desenho ou os vértices selecionados.
-      event.stopImmediatePropagation()
-      if (!event.repeat) requestDeletion(deletionTarget)
-      return
-    }
-    if (!textControl && !event.altKey && (event.ctrlKey || event.metaKey) && (key === 'z' || key === 'y')) {
-      if (!activeAction) return
-      event.preventDefault()
-      event.stopImmediatePropagation()
-      if (!event.repeat) changeHistory(key === 'y' || event.shiftKey ? 'redo' : 'undo')
-      return
-    }
-    if (modified) return
-    if (!textControl && key === 'l') {
-      event.preventDefault()
-      event.stopImmediatePropagation()
-      if (event.repeat || windowMode === 'map') return
-      const tab = document.querySelector<HTMLButtonElement>('.sidebar-tabs [aria-selected="true"]')
-      if (!tab || tab.disabled) return
-      tab.focus({ preventScroll: true })
-      requestFocus('lists')
-      return
-    }
-    const colorOption = polygonPalette.find(([, , shortcut]) => !event.shiftKey && key === shortcut)
-    if (!textControl && colorOption) {
-      event.preventDefault()
-      event.stopImmediatePropagation()
-      if (activeAction && !event.repeat && mapInitialized && (windowMode === 'main' || windowConnected)) chooseColor(colorOption[1])
-      return
-    }
-    if (key === 'd' && !textControl && activeAction === null && listGraphic) {
-      event.preventDefault()
-      event.stopImmediatePropagation()
-      if (!event.repeat) requestDeletion(listGraphic)
-      return
-    }
-    if (!textControl && ['n', 'p', 'e', 'c', 't', 'm', 'z', 'r', '+', '=', '-', 'h'].includes(key)) {
-      event.preventDefault()
-      event.stopImmediatePropagation()
-      if (event.repeat || !mapInitialized || (windowMode !== 'main' && !windowConnected)) return
-      if (key === 'n' && activeAction === null) {
-        requestCreationMenu()
-      }
-      if (key === 'p' && activeAction === null) drawPoint()
-      if (key === 'e' && activeAction === null && (listGraphic ?? selectedGraphic)) void startEditing((listGraphic ?? selectedGraphic)!)
-      if (key === 'c' && activeAction === null && selectedGraphic) clonePolygon(selectedGraphic)
-      if (key === 't') toggleCurrentLock()
-      if (key === 'm') {
-        if (windowMode === 'map') detachedMap.focusMenu()
-        else if (activeAction === null) {
-          if (windowMode === 'main') openMapWindow()
-          else detachedMap.reunite()
-        }
-      }
-      if ((key === 'z' || key === 'r') && activeAction) changeHistory(key === 'z' ? 'undo' : 'redo')
-      if (key === '+' || key === '=') { if (mapInitialized && view.canZoomIn) void navigateMap('zoom-in') }
-      if (key === '-') { if (mapInitialized && view.canZoomOut) void navigateMap('zoom-out') }
-      if (key === 'h' && mapInitialized) void navigateMap('north-up')
-      return
-    }
-    const checkbox = target instanceof HTMLInputElement && (target.type === 'checkbox' || target.type === 'radio')
-    if (event.key === 'Enter' && (!control || target?.id === 'polygon-name' || checkbox) && (activeAction !== null || (selectedGraphic && !target?.closest('.polygon-label')))) {
-      event.preventDefault()
-      event.stopPropagation()
-      if (event.repeat) return
-      if (activeAction === null && selectedGraphic) {
-        void startEditing(selectedGraphic)
-        return
-      }
-      if (detachedMap.command({ type: 'finish' })) return
-      finishActiveAction()
-    }
-    if (event.key === 'Escape') {
-      event.preventDefault()
-      event.stopImmediatePropagation()
-      if (!event.repeat) void requestExit()
-    }
-  }, { capture: true, signal: lifetime.signal })
+  attachEditorKeyboard({
+    getState: () => ({ activeAction, activeGraphic, selectedGraphic, windowMode, windowConnected,
+      mapInitialized, canZoomIn: view.canZoomIn, canZoomOut: view.canZoomOut }),
+    findGraphic, orderedGraphics, focusPolygonList, requestDeletion, changeHistory,
+    requestFocusLists: () => requestFocus('lists'), chooseColor, requestCreationMenu, drawPoint,
+    startEditing, clonePolygon, toggleCurrentLock, openMapWindow, navigateMap, requestExit, finish,
+    hasSelectedVertices: () => hasSelectedVertices(sketch),
+    focusMenu: () => detachedMap.focusMenu(), reunite: () => detachedMap.reunite()
+  }, lifetime.signal)
   view.when(async () => {
     if (disposed) return
     view.ui.remove('zoom')
@@ -1492,9 +1173,9 @@ export function createEditor(container: HTMLDivElement) {
       selectedVertexCount: activeAction === 'update' && draftKind === 'polygon' ? selectedVertexCount(sketch) : 0,
       draftName, draftColor, draftLocked, nameError,
       nameHint: activeAction ? nameError || (length >= 24 ? `${length}/30 caracteres. ${length >= 30 ? 'Limite atingido.' : `${30 - length} restantes.`}` : '') : '',
-      mode: windowMode, connected: windowConnected, ready: mapInitialized, fileBusy: fileOperationPending,
-      fileDialog, pendingImport: pendingImport ? { fileName: pendingImport.fileName, count: pendingImport.polygons.length, areaCount: pendingImport.polygons.filter(item => item.geometry.rings).length, pointCount: pendingImport.polygons.filter(item => !item.geometry.rings).length } : null,
-      instructions, lastEdit: lastEditText, warning: validationWarning, feedback, labels,
+      mode: windowMode, connected: windowConnected, ready: mapInitialized, fileBusy: files.busy,
+      fileDialog: files.dialog, pendingImport: files.pendingImportSummary,
+      instructions, lastEdit: lastEditText, warning: validationWarning, feedback, labels: presentation.getLabels(),
       pendingDeletionId: pendingDeletion === 'all' ? 'all' : graphicId(pendingDeletion),
       pendingDeletionName: pendingDeletion && pendingDeletion !== 'all' ? polygonName(pendingDeletion) : '',
       confirmingDeletedEdit, deletedEditId,
@@ -1539,9 +1220,8 @@ export function createEditor(container: HTMLDivElement) {
       lifetime.abort()
       subscriptions.forEach(handle => handle.remove())
       listeners.clear()
-      if (labelFrame !== null) cancelAnimationFrame(labelFrame)
+      presentation.destroy()
       detachedMap.destroy()
-      selectionHighlight?.remove()
       sketch.destroy()
       view.destroy()
     }
